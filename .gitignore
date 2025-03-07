@@ -1,0 +1,38 @@
+# Ignore build files and dependencies
+/.pio/
+/.vscode/
+*.bak
+*.swp
+*.swo
+
+# Ignore PlatformIO specific files
+.pioenvs/
+.piolibdeps/
+
+# Ignore Arduino libraries (if manually downloaded)
+lib/
+
+# Ignore OS-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore compiled binaries and temporary files
+*.elf
+*.bin
+*.hex
+*.eep
+*.map
+
+# Ignore logs and temp files
+*.log
+*.tmp
+*.cache
+*.pyc
+__pycache__/
+
+# Ignore Arduino IDE project workspace files
+*.workspace
+*.code-workspace
+
+# Ignore backup files
+*~
