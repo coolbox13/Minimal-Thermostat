@@ -57,6 +57,14 @@ void WebInterface::handleRoot() {
     html += "<p>Pressure: " + String(pressure) + " hPa</p>";
     html += "<p>Setpoint: " + String(thermostatState->targetTemperature) + " °C</p>";
     html += "<p>Valve Position: " + String(thermostatState->valvePosition) + " %</p>";
+
+    // Setpoint form
+    html += "<form action='/setpoint' method='post'>";
+    html += "<label for='setpoint'>Change Setpoint:</label>";
+    html += "<input type='number' id='setpoint' name='value' step='0.5' value='" + String(thermostatState->targetTemperature) + "'>";
+    html += "<input type='submit' value='Set'>";
+    html += "</form>";
+
   } else {
     html += "<p>BME280 sensor not found</p>";
   }
@@ -128,7 +136,8 @@ void WebInterface::handleSetpoint() {
     
     if (setpoint > 0 && setpoint < 40) {  // Sanity check
       thermostatState->setTargetTemperature(setpoint);
-      server.send(200, "text/plain", "Setpoint updated to " + String(setpoint));
+      server.sendHeader("Location", "/", true);   // Redirect to root
+      server.send(302, "text/plain", "Redirecting...");
     } else {
       server.send(400, "text/plain", "Invalid setpoint value");
     }
