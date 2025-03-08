@@ -1,11 +1,11 @@
+
 #ifndef PROTOCOL_MANAGER_H
 #define PROTOCOL_MANAGER_H
 
 #include "thermostat_state.h"
 
-// Forward declarations to resolve circular dependency
+// Forward declaration to resolve circular dependency
 class KNXInterface;
-class MQTTInterface;
 
 // Different command sources to handle priority
 enum CommandSource {
@@ -32,7 +32,7 @@ public:
   void begin(ThermostatState* state);
   
   // Register protocol interfaces
-  void registerProtocols(KNXInterface* knx, MQTTInterface* mqtt);
+  void registerProtocols(KNXInterface* knx);
   
   // Handle incoming commands from various sources
   void handleIncomingCommand(CommandSource source, CommandType cmd, float value);
@@ -46,7 +46,6 @@ public:
 private:
   ThermostatState* thermostatState;
   KNXInterface* knxInterface;
-  MQTTInterface* mqttInterface;
   
   // Last command source for conflict resolution
   CommandSource lastCommandSource;

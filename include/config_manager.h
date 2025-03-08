@@ -2,37 +2,36 @@
 #define CONFIG_MANAGER_H
 
 #include <Arduino.h>
+
+// Determine which file system to use based on platform
+#include <LittleFS.h>
+#define FileFS LittleFS
+
 #include <ArduinoJson.h>
 
-#ifdef ESP32
-  #include <WiFi.h>
-  #include <SPIFFS.h>
-  #define FileFS SPIFFS
-#elif defined(ESP8266)
-  #include <ESP8266WiFi.h>
-  #include <LittleFS.h>
-  #define FileFS LittleFS
-#endif
-
-#include <WiFiManager.h>
+// Default device name
+#define DEFAULT_DEVICE_NAME "KNX-Thermostat"
+#define CONFIG_FILE "/config.json"
 
 class ConfigManager {
 public:
   // Constructor
   ConfigManager();
   
-  // Initialize configuration manager
+  // Initialize configuration
   bool begin();
   
-  // Set up WiFi using WiFiManager
+  // WiFi setup with WiFiManager
   bool setupWiFi();
   
-  // Load/save configuration
+  // Save and load configuration
   bool saveConfig();
   bool loadConfig();
   
-  // Reset settings
+  // Set defaults
   void setDefaults();
+  
+  // Factory reset (clear all settings)
   void factoryReset();
   
   // Setters
@@ -40,17 +39,27 @@ public:
   void setSendInterval(int interval);
   void setPidInterval(int interval);
   
+  // KNX physical address
   void setKnxPhysicalAddress(int area, int line, int member);
+  
+  // KNX group addresses
   void setKnxTemperatureGA(int area, int line, int member);
   void setKnxSetpointGA(int area, int line, int member);
   void setKnxValveGA(int area, int line, int member);
+  void setKnxModeGA(int area, int line, int member);
   
+  // KNX general settings
+  void setKnxEnabled(bool enabled);
+  
+  // MQTT settings
   void setMqttServer(const char* server);
   void setMqttPort(int port);
   void setMqttUser(const char* user);
   void setMqttPassword(const char* password);
   void setMqttClientId(const char* clientId);
+  void setMqttEnabled(bool enabled);
   
+  // PID settings
   void setKp(float value);
   void setKi(float value);
   void setKd(float value);
@@ -61,10 +70,12 @@ public:
   int getSendInterval() const;
   int getPidInterval() const;
   
+  // KNX physical address
   int getKnxPhysicalArea() const;
   int getKnxPhysicalLine() const;
   int getKnxPhysicalMember() const;
   
+  // KNX group addresses
   int getKnxTempArea() const;
   int getKnxTempLine() const;
   int getKnxTempMember() const;
@@ -77,43 +88,60 @@ public:
   int getKnxValveLine() const;
   int getKnxValveMember() const;
   
+  int getKnxModeArea() const;
+  int getKnxModeLine() const;
+  int getKnxModeMember() const;
+  
+  // KNX general settings
+  bool getKnxEnabled() const;
+  
+  // MQTT settings
   const char* getMqttServer() const;
   int getMqttPort() const;
   const char* getMqttUser() const;
   const char* getMqttPassword() const;
   const char* getMqttClientId() const;
+  bool getMqttEnabled() const;
   
+  // PID settings
   float getKp() const;
   float getKi() const;
   float getKd() const;
   float getSetpoint() const;
 
 private:
-  // Configuration file path
-  static constexpr const char* CONFIG_FILE = "/config.json";
-  static constexpr const char* DEFAULT_DEVICE_NAME = "KNX-Thermostat";
-  
-  // Settings
+  // Device settings
   char deviceName[32];
   int sendInterval;
   int pidInterval;
   
-  // KNX settings
+  // KNX physical address
   int knxPhysicalArea;
   int knxPhysicalLine;
   int knxPhysicalMember;
   
+  // KNX enabled flag
+  bool knxEnabled;
+  
+  // KNX temperature group address
   int knxTempArea;
   int knxTempLine;
   int knxTempMember;
   
+  // KNX setpoint group address
   int knxSetpointArea;
   int knxSetpointLine;
   int knxSetpointMember;
   
+  // KNX valve position group address
   int knxValveArea;
   int knxValveLine;
   int knxValveMember;
+  
+  // KNX operating mode group address
+  int knxModeArea;
+  int knxModeLine;
+  int knxModeMember;
   
   // MQTT settings
   char mqttServer[40];
@@ -121,6 +149,7 @@ private:
   char mqttUser[24];
   char mqttPassword[24];
   char mqttClientId[24];
+  bool mqttEnabled;
   
   // PID settings
   float kp;

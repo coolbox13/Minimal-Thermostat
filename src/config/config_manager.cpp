@@ -1,4 +1,6 @@
 #include "config_manager.h"
+#include <WiFiManager.h>
+#include <LittleFS.h>
 
 ConfigManager::ConfigManager() {
   // Initialize with default values
@@ -50,6 +52,7 @@ bool ConfigManager::saveConfig() {
   doc["pidInterval"] = pidInterval;
   
   // KNX settings
+  doc["knxEnabled"] = knxEnabled;
   doc["knxPhysicalArea"] = knxPhysicalArea;
   doc["knxPhysicalLine"] = knxPhysicalLine;
   doc["knxPhysicalMember"] = knxPhysicalMember;
@@ -66,7 +69,12 @@ bool ConfigManager::saveConfig() {
   doc["knxValveLine"] = knxValveLine;
   doc["knxValveMember"] = knxValveMember;
   
+  doc["knxModeArea"] = knxModeArea;
+  doc["knxModeLine"] = knxModeLine;
+  doc["knxModeMember"] = knxModeMember;
+  
   // MQTT settings
+  doc["mqttEnabled"] = mqttEnabled;
   doc["mqttServer"] = mqttServer;
   doc["mqttPort"] = mqttPort;
   doc["mqttUser"] = mqttUser;
@@ -119,6 +127,7 @@ bool ConfigManager::loadConfig() {
   pidInterval = doc["pidInterval"] | 30000;
   
   // KNX settings
+  knxEnabled = doc["knxEnabled"] | false;
   knxPhysicalArea = doc["knxPhysicalArea"] | 1;
   knxPhysicalLine = doc["knxPhysicalLine"] | 1;
   knxPhysicalMember = doc["knxPhysicalMember"] | 201;
@@ -135,7 +144,12 @@ bool ConfigManager::loadConfig() {
   knxValveLine = doc["knxValveLine"] | 3;
   knxValveMember = doc["knxValveMember"] | 0;
   
+  knxModeArea = doc["knxModeArea"] | 3;
+  knxModeLine = doc["knxModeLine"] | 4;
+  knxModeMember = doc["knxModeMember"] | 0;
+  
   // MQTT settings
+  mqttEnabled = doc["mqttEnabled"] | false;
   strlcpy(mqttServer, doc["mqttServer"] | "192.168.178.32", sizeof(mqttServer));
   mqttPort = doc["mqttPort"] | 1883;
   strlcpy(mqttUser, doc["mqttUser"] | "", sizeof(mqttUser));
@@ -158,6 +172,7 @@ void ConfigManager::setDefaults() {
   pidInterval = 30000;
   
   // KNX settings
+  knxEnabled = false;
   knxPhysicalArea = 1;
   knxPhysicalLine = 1;
   knxPhysicalMember = 201;
@@ -174,7 +189,12 @@ void ConfigManager::setDefaults() {
   knxValveLine = 3;
   knxValveMember = 0;
   
+  knxModeArea = 3;
+  knxModeLine = 4;
+  knxModeMember = 0;
+  
   // MQTT settings
+  mqttEnabled = false;
   strlcpy(mqttServer, "192.168.178.32", sizeof(mqttServer));
   mqttPort = 1883;
   strlcpy(mqttUser, "", sizeof(mqttUser));
@@ -236,6 +256,16 @@ void ConfigManager::setKnxValveGA(int area, int line, int member) {
   knxValveMember = member;
 }
 
+void ConfigManager::setKnxModeGA(int area, int line, int member) {
+  knxModeArea = area;
+  knxModeLine = line;
+  knxModeMember = member;
+}
+
+void ConfigManager::setKnxEnabled(bool enabled) {
+  knxEnabled = enabled;
+}
+
 void ConfigManager::setMqttServer(const char* server) {
   strlcpy(mqttServer, server, sizeof(mqttServer));
 }
@@ -254,6 +284,10 @@ void ConfigManager::setMqttPassword(const char* password) {
 
 void ConfigManager::setMqttClientId(const char* clientId) {
   strlcpy(mqttClientId, clientId, sizeof(mqttClientId));
+}
+
+void ConfigManager::setMqttEnabled(bool enabled) {
+  mqttEnabled = enabled;
 }
 
 void ConfigManager::setKp(float value) {
@@ -333,6 +367,22 @@ int ConfigManager::getKnxValveMember() const {
   return knxValveMember;
 }
 
+int ConfigManager::getKnxModeArea() const {
+  return knxModeArea;
+}
+
+int ConfigManager::getKnxModeLine() const {
+  return knxModeLine;
+}
+
+int ConfigManager::getKnxModeMember() const {
+  return knxModeMember;
+}
+
+bool ConfigManager::getKnxEnabled() const {
+  return knxEnabled;
+}
+
 const char* ConfigManager::getMqttServer() const {
   return mqttServer;
 }
@@ -351,6 +401,10 @@ const char* ConfigManager::getMqttPassword() const {
 
 const char* ConfigManager::getMqttClientId() const {
   return mqttClientId;
+}
+
+bool ConfigManager::getMqttEnabled() const {
+  return mqttEnabled;
 }
 
 float ConfigManager::getKp() const {
