@@ -102,3 +102,88 @@ Contributions welcome! Please follow the modular architecture and maintain separ
 ## License
 
 This project is released under the MIT License.
+
+
+
+
+# ESP32-KNX-Thermostat Project Improvements
+
+## Key Fixes
+
+### KNX/UDP Communication Issues
+1. **Fixed ESP32 Multicast Configuration**:
+   - Added proper initialization for ESP32's multicast UDP: `udp.beginMulticast(localIP, MULTICAST_IP, MULTICAST_PORT)`
+   - Disabled WiFi power saving for better reliability: `WiFi.setSleep(false)` and `esp_wifi_set_ps(WIFI_PS_NONE)`
+
+2. **Improved Packet Handling**:
+   - Used fixed buffer sizes to prevent stack overflows
+   - Added error checking for UDP multicast operations
+   - Added packet validation and boundary checks for received KNX messages
+   - Enhanced error logging and debugging output
+
+3. **Enhanced Send Function**:
+   - Completely rewrote the KNX packet transmission code
+   - Added proper error handling when sending packets
+   - Fixed potential memory safety issues
+
+### Added MQTT Support
+1. **Created MQTT Interface**:
+   - Added full MQTT client implementation
+   - Implemented auto-reconnect logic
+   - Added support for all thermostat parameters
+
+2. **Enhanced Protocol Manager**:
+   - Updated to include both KNX and MQTT
+   - Improved command priority handling
+   - Added periodic state broadcasting (heartbeat)
+
+### Overall System Improvements
+1. **Multi-core Task Management**:
+   - Separated sensor processing and communication tasks
+   - Utilized both ESP32 cores effectively
+   - Added task watchdog and monitoring
+
+2. **Improved Web Interface**:
+   - Added static file support from LittleFS
+   - Enhanced security with rate limiting
+   - Fixed configuration saving/loading
+   - Added JSON API for status
+
+3. **Memory and Stability**:
+   - Fixed memory leaks and buffer management
+   - Added system monitoring and recovery mechanisms
+   - Improved error handling throughout the codebase
+
+## Files Created/Modified
+
+1. **MQTT Implementation**:
+   - `include/mqtt_interface.h` (new)
+   - `src/communication/mqtt_interface.cpp` (new)
+
+2. **KNX UDP Fixes**:
+   - `lib/esp-knx-ip/esp-knx-ip.cpp` (fixed)
+   - `lib/esp-knx-ip/esp-knx-ip-send.cpp` (fixed)
+
+3. **Protocol Management**:
+   - `include/protocol_manager.h` (updated)
+   - `src/communication/protocol_manager.cpp` (updated)
+
+4. **Web Interface**:
+   - `include/web_interface.h` (improved)
+   - `src/communication/web_interface.cpp` (improved)
+
+5. **Main Application**:
+   - `src/main/main.cpp` (restructured for multi-core)
+
+## Next Steps
+
+1. **Testing**:
+   - Test KNX communication stability
+   - Test MQTT integration
+   - Test the complete system under load
+
+2. **Further Improvements**:
+   - Add firmware OTA update capability
+   - Add SSL/TLS support for MQTT
+   - Create mobile application for control
+   - Implement advanced scheduling functionality
