@@ -3,11 +3,11 @@
 
 // Operating modes for the thermostat
 enum class ThermostatMode {
-    OFF = 0,
-    COMFORT = 1,
-    STANDBY = 2,
-    ECONOMY = 3,
-    PROTECTION = 4
+    OFF = 0,        // System is off
+    COMFORT = 1,    // Normal comfort mode
+    STANDBY = 2,    // Reduced temperature mode
+    ECONOMY = 3,    // Energy saving mode
+    PROTECTION = 4  // Building protection mode (frost/heat)
 };
 
 // Temperature ranges and limits
@@ -24,7 +24,8 @@ enum class ThermostatStatus {
     OK = 0,
     ERROR_SENSOR = -1,
     ERROR_COMMUNICATION = -2,
-    ERROR_CONFIGURATION = -3
+    ERROR_CONFIGURATION = -3,
+    ERROR_FILESYSTEM = -4
 };
 
 #endif // THERMOSTAT_TYPES_H 

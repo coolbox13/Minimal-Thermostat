@@ -1,13 +1,17 @@
 #ifndef PROTOCOL_INTERFACE_H
 #define PROTOCOL_INTERFACE_H
 
-#include "thermostat_types.h"
+#include <Arduino.h>
+
+// Forward declarations
+enum class ThermostatMode;
+enum class ThermostatStatus;
 
 class ProtocolInterface {
 public:
     virtual ~ProtocolInterface() = default;
 
-    // Connection management
+    // Core functionality
     virtual bool begin() = 0;
     virtual void loop() = 0;
     virtual bool isConnected() const = 0;
