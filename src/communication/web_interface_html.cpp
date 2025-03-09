@@ -118,6 +118,9 @@ String WebInterface::generateHtml() {
     html += "<p>Humidity: <span class='status-value'>" + String(sensorInterface->getHumidity()) + " %</span></p>";
     html += "<p>Target Temperature: <span class='status-value'>" + String(thermostatState->getTargetTemperature()) + " °C</span></p>";
     html += "<p>Heating: <span class='status-value'>" + String(thermostatState->isHeating() ? "Active" : "Inactive") + "</span></p>";
+    if (pidController) {
+      html += "<p>Valve Position: <span class='status-value'>" + String(thermostatState->getValvePosition()) + "%</span></p>";
+    }
   } else {
     html += "<p>Status information not available</p>";
   }
