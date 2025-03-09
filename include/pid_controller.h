@@ -59,7 +59,7 @@ private:
     ThermostatStatus lastError;
     
     // PID calculation variables
-    float lastError;
+    float prevError;
     float integral;
     float derivative;
     unsigned long lastTime;

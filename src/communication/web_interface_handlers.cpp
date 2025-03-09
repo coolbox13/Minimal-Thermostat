@@ -1,4 +1,11 @@
-#include "web_interface.h"
+#include "web/web_interface.h"
+#include "config_manager.h"
+#include "sensor_interface.h"
+#include "thermostat_state.h"
+#include "pid_controller.h"
+#include "protocol_manager.h"
+#include "communication/knx/knx_interface.h"
+#include "communication/mqtt/mqtt_interface.h"
 #include <ArduinoJson.h>
 
 void WebInterface::handleRoot() {
@@ -58,63 +65,59 @@ void WebInterface::handleSave() {
   configManager->setKnxEnabled(server.hasArg("knxEnabled"));
   
   // KNX group addresses
-  if (server.hasArg("knxTempArea") && server.hasArg("knxTempLine") && server.hasArg("knxTempMember")) {
-    int area = server.arg("knxTempArea").toInt();
-    int line = server.arg("knxTempLine").toInt();
-    int member = server.arg("knxTempMember").toInt();
-    
+  if (server.hasArg("knxTemperatureGA")) {
+    uint8_t area = server.arg("knxTemperatureGA_area").toInt();
+    uint8_t line = server.arg("knxTemperatureGA_line").toInt();
+    uint8_t member = server.arg("knxTemperatureGA_member").toInt();
     configManager->setKnxTemperatureGA(area, line, member);
     if (knxInterface) {
-        knxInterface->setTemperatureGA({
-            static_cast<uint8_t>(area),
-            static_cast<uint8_t>(line),
-            static_cast<uint8_t>(member)
-        });
+      knxInterface->setTemperatureGA({
+        .area = area,
+        .line = line,
+        .member = member
+      });
     }
   }
   
-  if (server.hasArg("knxSetpointArea") && server.hasArg("knxSetpointLine") && server.hasArg("knxSetpointMember")) {
-    int area = server.arg("knxSetpointArea").toInt();
-    int line = server.arg("knxSetpointLine").toInt();
-    int member = server.arg("knxSetpointMember").toInt();
-    
+  if (server.hasArg("knxSetpointGA")) {
+    uint8_t area = server.arg("knxSetpointGA_area").toInt();
+    uint8_t line = server.arg("knxSetpointGA_line").toInt();
+    uint8_t member = server.arg("knxSetpointGA_member").toInt();
     configManager->setKnxSetpointGA(area, line, member);
     if (knxInterface) {
-        knxInterface->setSetpointGA({
-            static_cast<uint8_t>(area),
-            static_cast<uint8_t>(line),
-            static_cast<uint8_t>(member)
-        });
+      knxInterface->setSetpointGA({
+        .area = area,
+        .line = line,
+        .member = member
+      });
     }
   }
   
-  if (server.hasArg("knxValveArea") && server.hasArg("knxValveLine") && server.hasArg("knxValveMember")) {
-    int area = server.arg("knxValveArea").toInt();
-    int line = server.arg("knxValveLine").toInt();
-    int member = server.arg("knxValveMember").toInt();
-    
+  if (server.hasArg("knxValveGA")) {
+    uint8_t area = server.arg("knxValveGA_area").toInt();
+    uint8_t line = server.arg("knxValveGA_line").toInt();
+    uint8_t member = server.arg("knxValveGA_member").toInt();
     configManager->setKnxValveGA(area, line, member);
     if (knxInterface) {
-        knxInterface->setValvePositionGA({
-            static_cast<uint8_t>(area),
-            static_cast<uint8_t>(line),
-            static_cast<uint8_t>(member)
-        });
+      knxInterface->setValvePositionGA({
+        .area = area,
+        .line = line,
+        .member = member
+      });
     }
   }
   
-  if (server.hasArg("knxModeArea") && server.hasArg("knxModeLine") && server.hasArg("knxModeMember")) {
-    int area = server.arg("knxModeArea").toInt();
-    int line = server.arg("knxModeLine").toInt();
-    int member = server.arg("knxModeMember").toInt();
-    
+  if (server.hasArg("knxModeGA")) {
+    uint8_t area = server.arg("knxModeGA_area").toInt();
+    uint8_t line = server.arg("knxModeGA_line").toInt();
+    uint8_t member = server.arg("knxModeGA_member").toInt();
     configManager->setKnxModeGA(area, line, member);
     if (knxInterface) {
-        knxInterface->setModeGA({
-            static_cast<uint8_t>(area),
-            static_cast<uint8_t>(line),
-            static_cast<uint8_t>(member)
-        });
+      knxInterface->setModeGA({
+        .area = area,
+        .line = line,
+        .member = member
+      });
     }
   }
   
@@ -334,10 +337,10 @@ void WebInterface::handleFactoryReset() {
   if (configManager) {
     configManager->factoryReset();
     configManager->saveConfig();
-    server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Factory reset complete\"}");
+    server.send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Factory reset complete\"}");
     
     // Schedule a reboot
-    delay(1000);
+    delay(500);
     ESP.restart();
   } else {
     server.send(500, "text/plain", "Configuration manager not available");

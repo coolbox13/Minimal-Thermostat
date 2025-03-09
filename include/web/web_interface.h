@@ -21,6 +21,20 @@
 #include <WiFi.h>
 #include "web_auth_manager.h"
 
+// HTTP method constants
+#ifndef HTTP_GET
+#define HTTP_GET 0
+#endif
+#ifndef HTTP_POST
+#define HTTP_POST 1
+#endif
+#ifndef HTTP_PUT
+#define HTTP_PUT 2
+#endif
+#ifndef HTTP_DELETE
+#define HTTP_DELETE 3
+#endif
+
 // Forward declarations
 class ThermostatState;
 class ConfigManager;

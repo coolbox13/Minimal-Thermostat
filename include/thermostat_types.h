@@ -5,11 +5,10 @@
 
 // Operating modes for the thermostat
 enum class ThermostatMode : uint8_t {
-    OFF = 0,        // System is off
-    COMFORT = 1,    // Normal comfort mode
-    STANDBY = 2,    // Reduced temperature mode
-    ECONOMY = 3,    // Energy saving mode
-    PROTECTION = 4  // Building protection mode (frost/heat)
+    MODE_OFF = 0,   // System is off
+    MODE_HEAT = 1,  // Heating mode
+    MODE_COOL = 2,  // Cooling mode
+    MODE_AUTO = 3   // Automatic mode (heating or cooling)
 };
 
 // Temperature ranges and limits
@@ -26,21 +25,38 @@ struct ThermostatLimits {
 
 // Status codes for operations
 enum class ThermostatStatus : int8_t {
-    OK = 0,                    // Operation successful
-    ERROR_SENSOR = -1,         // Sensor reading error
-    ERROR_COMMUNICATION = -2,  // Communication protocol error
-    ERROR_CONFIGURATION = -3,  // Configuration error
-    ERROR_FILESYSTEM = -4      // File system error
+    OK = 0,                       // Operation successful
+    ERROR_SENSOR = -1,           // Sensor reading error
+    ERROR_COMMUNICATION = -2,    // Communication protocol error
+    ERROR_CONFIGURATION = -3,    // Configuration error
+    ERROR_FILESYSTEM = -4,       // File system error
+    ERROR_INITIALIZATION = -5    // Initialization error
+};
+
+// Command types for protocol interfaces
+enum class CommandType : uint8_t {
+    CMD_NONE = 0,
+    CMD_SETPOINT,
+    CMD_MODE,
+    CMD_VALVE,
+    CMD_HEATING
+};
+
+// Command sources for protocol interfaces
+enum class CommandSource : uint8_t {
+    SOURCE_NONE = 0,
+    SOURCE_KNX,
+    SOURCE_MQTT,
+    SOURCE_WEB
 };
 
 // Helper functions
 inline const char* getThermostatModeName(ThermostatMode mode) {
     switch (mode) {
-        case ThermostatMode::OFF: return "Off";
-        case ThermostatMode::COMFORT: return "Comfort";
-        case ThermostatMode::STANDBY: return "Standby";
-        case ThermostatMode::ECONOMY: return "Economy";
-        case ThermostatMode::PROTECTION: return "Protection";
+        case ThermostatMode::MODE_OFF: return "Off";
+        case ThermostatMode::MODE_HEAT: return "Heat";
+        case ThermostatMode::MODE_COOL: return "Cool";
+        case ThermostatMode::MODE_AUTO: return "Auto";
         default: return "Unknown";
     }
 }
@@ -52,6 +68,7 @@ inline const char* getThermostatStatusString(ThermostatStatus status) {
         case ThermostatStatus::ERROR_COMMUNICATION: return "Communication Error";
         case ThermostatStatus::ERROR_CONFIGURATION: return "Configuration Error";
         case ThermostatStatus::ERROR_FILESYSTEM: return "Filesystem Error";
+        case ThermostatStatus::ERROR_INITIALIZATION: return "Initialization Error";
         default: return "Unknown Error";
     }
 }
