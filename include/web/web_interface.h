@@ -1,31 +1,32 @@
 #pragma once
 
 #include <Arduino.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <LittleFS.h>
 #include <ArduinoJson.h>
-#include <ElegantOTA.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncTCP.h>
+#include <LittleFS.h>
+#include <ESPmDNS.h>
 #include "base64.h"
-#include "../config_manager.h"
-#include "../sensor_interface.h"
-#include "../pid_controller.h"
-#include "../thermostat_state.h"
-#include "../communication/protocol_manager.h"
+
+#include "config_manager.h"
+#include "interfaces/sensor_interface.h"
+#include "pid_controller.h"
+#include "thermostat_state.h"
+#include "protocol_manager.h"
 
 class WebInterface {
 public:
-    WebInterface(ConfigManager* configManager, SensorInterface* sensorInterface, 
+    WebInterface(ConfigManager* configManager, SensorInterface* sensorInterface,
                 PIDController* pidController, ThermostatState* thermostatState,
-                ProtocolManager* protocolManager);
+                ProtocolManager* protocolManager = nullptr);
     ~WebInterface();
 
     void begin();
     void end();
-    void handleClient();
+    void loop();
 
 private:
-    WebServer server;
+    AsyncWebServer server;
     ConfigManager* configManager;
     SensorInterface* sensorInterface;
     PIDController* pidController;
@@ -33,26 +34,24 @@ private:
     ProtocolManager* protocolManager;
 
     // Request handlers
-    void handleRoot();
-    void handleSave();
-    void handleGetStatus();
-    void handleSetpoint();
-    void handleSaveConfig();
-    void handleReboot();
-    void handleFactoryReset();
-    void handleNotFound();
+    void handleRoot(AsyncWebServerRequest* request);
+    void handleSave(AsyncWebServerRequest* request);
+    void handleGetStatus(AsyncWebServerRequest* request);
+    void handleSetpoint(AsyncWebServerRequest* request);
+    void handleSaveConfig(AsyncWebServerRequest* request);
+    void handleGetConfig(AsyncWebServerRequest* request);
+    void handleReboot(AsyncWebServerRequest* request);
+    void handleFactoryReset(AsyncWebServerRequest* request);
+    void handleNotFound(AsyncWebServerRequest* request);
+    bool handleFileRead(AsyncWebServerRequest* request, String path);
 
-    // File handling
-    bool handleFileRead(String path);
+    // Helper functions
+    bool isAuthenticated(AsyncWebServerRequest* request);
+    void requestAuthentication(AsyncWebServerRequest* request);
     String getContentType(String filename);
-
-    // Security
-    bool isAuthenticated();
-    void requestAuthentication();
-    void addSecurityHeaders();
-    bool validateCSRFToken();
-    String generateCSRFToken();
-
-    // HTML generation
+    void addSecurityHeaders(AsyncWebServerResponse* response);
+    bool validateCSRFToken(AsyncWebServerRequest* request);
+    String generateCSRFToken(AsyncWebServerRequest* request);
     String generateHtml();
+    void setupMDNS();
 }; 

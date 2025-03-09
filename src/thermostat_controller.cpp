@@ -1,4 +1,7 @@
 #include "thermostat_controller.h"
+#include <esp_log.h>
+
+static const char* TAG = "ThermostatController";
 
 ThermostatController::ThermostatController(PIDController* pid, SensorInterface* sensor)
     : currentTemp(0)
@@ -25,38 +28,22 @@ void ThermostatController::begin() {
 }
 
 void ThermostatController::update() {
-    if (!sensorInterface || !pidController) {
+    if (!pidController || !pidController->isActive()) {
         return;
     }
 
-    // Update current temperature
-    currentTemp = sensorInterface->getTemperature();
+    float currentTemp = sensorInterface->getTemperature();
+    float targetTemp = targetTemp;
 
     // Update PID controller
-    if (mode != ThermostatMode::OFF) {
-        pidController->setSetpoint(targetTemp);
-        output = pidController->compute(currentTemp);
+    pidController->setSetpoint(targetTemp);
+    pidController->setInput(currentTemp);
+    pidController->loop();
 
-        switch (mode) {
-            case ThermostatMode::HEAT:
-                isHeating = currentTemp < (targetTemp - hysteresis);
-                break;
-            case ThermostatMode::COOL:
-                isHeating = currentTemp > (targetTemp + hysteresis);
-                break;
-            case ThermostatMode::AUTO:
-                if (currentTemp < (targetTemp - hysteresis)) {
-                    isHeating = true;
-                } else if (currentTemp > (targetTemp + hysteresis)) {
-                    isHeating = false;
-                }
-                break;
-            default:
-                isHeating = false;
-                break;
-        }
-    } else {
-        isHeating = false;
-        output = 0;
-    }
+    // Get and apply the output
+    float output = pidController->getOutput();
+    sensorInterface->setValvePosition(output);
+
+    ESP_LOGD(TAG, "Thermostat: Target=%.2f, Current=%.2f, Valve=%.2f",
+             targetTemp, currentTemp, output);
 } 

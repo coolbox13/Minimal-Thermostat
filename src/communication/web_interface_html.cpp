@@ -1,136 +1,76 @@
 #include "web/web_interface.h"
 
 String WebInterface::generateHtml() {
-    String html = R"(
+    return R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Thermostat</title>
+    <title>ESP32 KNX Thermostat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: #fff; border-radius: 5px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input[type="text"], input[type="number"], input[type="password"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .status { font-size: 1.2em; margin-bottom: 20px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .input {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h2>Current Status</h2>
-            <div class="status">
-                Temperature: <span id="currentTemp">--</span>°C<br>
-                Target: <span id="targetTemp">--</span>°C<br>
-                Mode: <span id="mode">--</span><br>
-                Output: <span id="output">--</span>%
-            </div>
-            <button onclick="updateStatus()">Refresh</button>
-        </div>
+    <div class="card">
+        <h2>Current Status</h2>
+        <div id="status">Loading...</div>
+        <button onclick="updateStatus()">Refresh</button>
+    </div>
 
-        <div class="card">
-            <h2>Device Settings</h2>
-            <div class="form-group">
-                <label>Device Name:</label>
-                <input type="text" id="deviceName" value=")" + 
-                String(configManager ? configManager->getDeviceName() : "") + R"(">
-            </div>
-            <div class="form-group">
-                <label>Send Interval (ms):</label>
-                <input type="number" id="sendInterval" value=")" + 
-                String(configManager ? configManager->getSendInterval() : 10000) + R"(">
-            </div>
-            <div class="form-group">
-                <label>PID Interval (ms):</label>
-                <input type="number" id="pidInterval" value=")" + 
-                String(configManager ? configManager->getPidInterval() : 10000) + R"(">
-            </div>
-        </div>
+    <div class="card">
+        <h2>Settings</h2>
+        <form id="settingsForm">
+            <label for="deviceName">Device Name:</label><br>
+            <input type="text" id="deviceName" name="deviceName" class="input"><br>
+            <label for="sendInterval">Send Interval (ms):</label><br>
+            <input type="number" id="sendInterval" name="sendInterval" class="input"><br>
+            <label for="pidInterval">PID Interval (ms):</label><br>
+            <input type="number" id="pidInterval" name="pidInterval" class="input"><br>
+            <label for="knxAddress">KNX Physical Address:</label><br>
+            <input type="text" id="knxAddress" name="knxAddress" class="input" pattern="\d{1,2}\.\d{1,2}\.\d{1,3}" title="Format: x.x.x (e.g., 1.1.1)"><br>
+            <input type="submit" value="Save" class="button">
+        </form>
+    </div>
 
-        <div class="card">
-            <h2>KNX Settings</h2>
-            <div class="form-group">
-                <label>KNX Enabled:</label>
-                <input type="checkbox" id="knxEnabled")" + 
-                String(configManager && configManager->getKnxEnabled() ? " checked" : "") + R"(>
-            </div>
-            <div class="form-group">
-                <label>Physical Address:</label>
-                <input type="number" min="0" max="15" id="knxArea" value=")" + 
-                String(configManager ? configManager->getKnxPhysicalArea() : 1) + R"(">.
-                <input type="number" min="0" max="15" id="knxLine" value=")" + 
-                String(configManager ? configManager->getKnxPhysicalLine() : 1) + R"(">.
-                <input type="number" min="0" max="255" id="knxMember" value=")" + 
-                String(configManager ? configManager->getKnxPhysicalMember() : 1) + R"(">
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>MQTT Settings</h2>
-            <div class="form-group">
-                <label>MQTT Enabled:</label>
-                <input type="checkbox" id="mqttEnabled")" + 
-                String(configManager && configManager->getMQTTEnabled() ? " checked" : "") + R"(>
-            </div>
-            <div class="form-group">
-                <label>MQTT Server:</label>
-                <input type="text" id="mqttServer" value=")" + 
-                String(configManager ? configManager->getMQTTServer() : "") + R"(">
-            </div>
-            <div class="form-group">
-                <label>MQTT Port:</label>
-                <input type="number" id="mqttPort" value=")" + 
-                String(configManager ? configManager->getMQTTPort() : 1883) + R"(">
-            </div>
-            <div class="form-group">
-                <label>MQTT User:</label>
-                <input type="text" id="mqttUser" value=")" + 
-                String(configManager ? configManager->getMQTTUser() : "") + R"(">
-            </div>
-            <div class="form-group">
-                <label>MQTT Password:</label>
-                <input type="password" id="mqttPassword">
-            </div>
-            <div class="form-group">
-                <label>MQTT Client ID:</label>
-                <input type="text" id="mqttClientId" value=")" + 
-                String(configManager ? configManager->getMQTTClientId() : "") + R"(">
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>PID Settings</h2>
-            <div class="form-group">
-                <label>Kp:</label>
-                <input type="number" step="0.1" id="pidKp" value=")" + 
-                String(pidController ? pidController->getKp() : 1.0) + R"(">
-            </div>
-            <div class="form-group">
-                <label>Ki:</label>
-                <input type="number" step="0.1" id="pidKi" value=")" + 
-                String(pidController ? pidController->getKi() : 0.1) + R"(">
-            </div>
-            <div class="form-group">
-                <label>Kd:</label>
-                <input type="number" step="0.1" id="pidKd" value=")" + 
-                String(pidController ? pidController->getKd() : 0.0) + R"(">
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Thermostat Settings</h2>
-            <div class="form-group">
-                <label>Setpoint:</label>
-                <input type="number" step="0.5" id="setpoint" value=")" + 
-                String(configManager ? configManager->getSetpoint() : 21.0) + R"(">
-            </div>
-        </div>
-
-        <button onclick="saveSettings()">Save Settings</button>
+    <div class="card">
+        <h2>System</h2>
+        <button onclick="reboot()" class="button">Reboot</button>
+        <button onclick="factoryReset()" class="button">Factory Reset</button>
     </div>
 
     <script>
@@ -138,59 +78,113 @@ String WebInterface::generateHtml() {
             fetch('/status')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('currentTemp').textContent = data.currentTemp.toFixed(1);
-                    document.getElementById('targetTemp').textContent = data.targetTemp.toFixed(1);
-                    document.getElementById('mode').textContent = data.mode;
-                    document.getElementById('output').textContent = data.output.toFixed(1);
+                    let statusHtml = `
+                        <p>Temperature: ${data.temperature}°C</p>
+                        <p>Humidity: ${data.humidity}%</p>
+                        <p>Pressure: ${data.pressure} hPa</p>
+                        <p>Setpoint: ${data.setpoint}°C</p>
+                        <p>Mode: ${data.mode}</p>
+                        <p>Valve Position: ${data.valve}%</p>
+                        <p>Heating: ${data.heating ? 'On' : 'Off'}</p>
+                    `;
+                    if (data.error) {
+                        statusHtml += `<p>Error: ${data.error}</p>`;
+                    }
+                    document.getElementById('status').innerHTML = statusHtml;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('status').innerHTML = 'Error loading status';
                 });
         }
 
-        function saveSettings() {
-            const data = {
-                deviceName: document.getElementById('deviceName').value,
-                sendInterval: parseInt(document.getElementById('sendInterval').value),
-                pidInterval: parseInt(document.getElementById('pidInterval').value),
-                knxEnabled: document.getElementById('knxEnabled').checked,
-                knxArea: parseInt(document.getElementById('knxArea').value),
-                knxLine: parseInt(document.getElementById('knxLine').value),
-                knxMember: parseInt(document.getElementById('knxMember').value),
-                mqttEnabled: document.getElementById('mqttEnabled').checked,
-                mqttServer: document.getElementById('mqttServer').value,
-                mqttPort: parseInt(document.getElementById('mqttPort').value),
-                mqttUser: document.getElementById('mqttUser').value,
-                mqttPassword: document.getElementById('mqttPassword').value,
-                mqttClientId: document.getElementById('mqttClientId').value,
-                pidKp: parseFloat(document.getElementById('pidKp').value),
-                pidKi: parseFloat(document.getElementById('pidKi').value),
-                pidKd: parseFloat(document.getElementById('pidKd').value),
-                setpoint: parseFloat(document.getElementById('setpoint').value)
-            };
+        document.getElementById('settingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
 
             fetch('/save', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
                 },
                 body: JSON.stringify(data)
             })
             .then(response => {
                 if (response.ok) {
                     alert('Settings saved successfully');
-                    updateStatus();
                 } else {
-                    alert('Failed to save settings');
+                    throw new Error('Failed to save settings');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving settings');
             });
+        });
+
+        function reboot() {
+            if (confirm('Are you sure you want to reboot the device?')) {
+                fetch('/reboot', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Device is rebooting...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 5000);
+                    } else {
+                        throw new Error('Failed to reboot device');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error rebooting device');
+                });
+            }
         }
 
-        // Update status on page load
+        function factoryReset() {
+            if (confirm('Are you sure you want to reset the device to factory settings? This will erase all configuration!')) {
+                fetch('/reset', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Device is resetting to factory settings and will reboot...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 5000);
+                    } else {
+                        throw new Error('Failed to reset device');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error resetting device');
+                });
+            }
+        }
+
+        function getCsrfToken() {
+            return document.cookie.replace(/(?:(?:^|.*;\s*)XSRF-TOKEN\s*=\s*([^;]*).*$)|^.*$/, '$1');
+        }
+
         updateStatus();
-        // Update status every 10 seconds
         setInterval(updateStatus, 10000);
     </script>
 </body>
 </html>
-)";
-
-    return html;
+)rawliteral";
 }

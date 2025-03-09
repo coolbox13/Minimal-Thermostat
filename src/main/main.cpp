@@ -1,232 +1,164 @@
 #include <Arduino.h>
-#include <Wire.h>
 #include <WiFi.h>
-#include <FS.h>
+#include <ESPmDNS.h>
+#include <esp_log.h>
 #include <LittleFS.h>
 
-// Thermostat components
 #include "config_manager.h"
 #include "thermostat_state.h"
-#include "sensor_interface.h"
-#include "knx_interface.h"
-#include "mqtt_interface.h"
-#include "web_interface.h"
 #include "pid_controller.h"
+#include "interfaces/sensor_interface.h"
+#include "mqtt_interface.h"
+#include "web/web_interface.h"
+#include "communication/knx/knx_interface.h"
 #include "protocol_manager.h"
+
+static const char* TAG = "Main";
 
 // Global objects
 ConfigManager configManager;
 ThermostatState thermostatState;
-SensorInterface sensorInterface;
-KNXInterface knxInterface;
-MQTTInterface mqttInterface;
-WebInterface webInterface;
 PIDController pidController;
-ProtocolManager protocolManager;
+BME280SensorInterface sensorInterface;
+KNXInterface knxInterface(&thermostatState);
+MQTTInterface mqttInterface(&thermostatState);
+WebInterface webInterface(&configManager, &sensorInterface, &pidController, &thermostatState);
+ProtocolManager protocolManager(&thermostatState);
 
-// Task management
-TaskHandle_t sensorTask = NULL;
-TaskHandle_t communicationTask = NULL;
+// Task handles
+TaskHandle_t communicationTask;
 
-// Sensor task to run on separate core
-void sensorTaskFunction(void * parameter) {
-    for(;;) {
-        // Update sensor readings
-        sensorInterface.loop();
-        
-        // Process PID control
-        pidController.loop();
-        
-        vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms yield
-    }
-}
+// Function declarations
+void communicationTaskFunction(void* parameter);
 
-// Communication task to run on separate core
-void communicationTaskFunction(void * parameter) {
-    for(;;) {
-        // Process protocol communications via protocol manager
+// Communication task
+void communicationTaskFunction(void* parameter) {
+    const TickType_t xDelay = pdMS_TO_TICKS(100); // 100ms delay
+
+    while (true) {
+        // Handle protocol communication
         protocolManager.loop();
-        
-        // Process web interface
-        webInterface.handle();
-        
-        vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms yield
+
+        // Handle web interface
+        webInterface.loop();
+
+        // Small delay to prevent watchdog issues
+        vTaskDelay(xDelay);
     }
 }
 
 void setup() {
-    delay(1000); // Allow ESP32 to stabilize at startup
-    
+    // Initialize serial communication
     Serial.begin(115200);
-    Serial.println("\n\nStarting ESP32-KNX-Thermostat...");
-    
-    // Initialize file system early
+    ESP_LOGI(TAG, "Starting ESP32 KNX Thermostat...");
+
+    // Initialize file system
     if (!LittleFS.begin(true)) {
-        Serial.println("LittleFS mount failed! Formatting...");
-        LittleFS.format();
-        if (!LittleFS.begin()) {
-            Serial.println("LittleFS mount failed even after format attempt");
-        } else {
-            Serial.println("LittleFS mounted successfully after format");
-        }
-    } else {
-        Serial.println("LittleFS mounted successfully");
+        ESP_LOGE(TAG, "Failed to mount file system");
+        return;
     }
-    
-    // Initialize I2C for sensors
-    Wire.begin();
-    
-    // Initialize configuration
-    if (!configManager.begin()) {
-        Serial.println("Failed to initialize configuration");
+
+    // Load configuration
+    if (!configManager.loadConfig()) {
+        ESP_LOGE(TAG, "Failed to load configuration");
+        return;
     }
-    
-    // Setup WiFi with increased timeout and retry
-    WiFi.setAutoReconnect(true);
-    if (!configManager.setupWiFi()) {
-        Serial.println("Failed to connect to WiFi");
+
+    // Initialize WiFi
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(configManager.getWiFiSSID(), configManager.getWiFiPassword());
+
+    // Wait for WiFi connection
+    ESP_LOGI(TAG, "Connecting to WiFi...");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        ESP_LOGI(TAG, ".");
     }
-    
-    // Initialize thermostat state with default values
-    thermostatState.setTargetTemperature(configManager.getSetpoint());
-    
-    // Initialize protocol manager
-    protocolManager.begin();
-    
-    // Initialize sensor interface
+    ESP_LOGI(TAG, "WiFi connected");
+    ESP_LOGI(TAG, "IP address: %s", WiFi.localIP().toString().c_str());
+
+    // Initialize MDNS
+    if (!MDNS.begin(configManager.getDeviceName())) {
+        ESP_LOGE(TAG, "Error setting up MDNS responder!");
+    }
+
+    // Initialize sensor
     if (!sensorInterface.begin()) {
-        Serial.println("Failed to initialize sensors");
+        ESP_LOGE(TAG, "Failed to initialize sensor");
+        return;
     }
-    sensorInterface.setUpdateInterval(configManager.getSendInterval());
-    
-    // Initialize KNX interface if enabled
-    if (configManager.getKnxEnabled()) {
-        if (knxInterface.begin()) {
-            Serial.println("KNX interface initialized");
-            
-            // Set group addresses from configuration
-            knxInterface.setTemperatureGA({
-                static_cast<uint8_t>(configManager.getKnxTempArea()),
-                static_cast<uint8_t>(configManager.getKnxTempLine()),
-                static_cast<uint8_t>(configManager.getKnxTempMember())
-            });
-            
-            knxInterface.setSetpointGA({
-                static_cast<uint8_t>(configManager.getKnxSetpointArea()),
-                static_cast<uint8_t>(configManager.getKnxSetpointLine()),
-                static_cast<uint8_t>(configManager.getKnxSetpointMember())
-            });
-            
-            knxInterface.setValvePositionGA({
-                static_cast<uint8_t>(configManager.getKnxValveArea()),
-                static_cast<uint8_t>(configManager.getKnxValveLine()),
-                static_cast<uint8_t>(configManager.getKnxValveMember())
-            });
-            
-            knxInterface.setModeGA({
-                static_cast<uint8_t>(configManager.getKnxModeArea()),
-                static_cast<uint8_t>(configManager.getKnxModeLine()),
-                static_cast<uint8_t>(configManager.getKnxModeMember())
-            });
-            
-            // Register with protocol manager
-            knxInterface.registerCallbacks(&thermostatState, &protocolManager);
-        } else {
-            Serial.println("Failed to initialize KNX interface");
-        }
-    } else {
-        Serial.println("KNX interface disabled in config");
-    }
-    
-    // Initialize MQTT interface if enabled
-    if (configManager.getMqttEnabled()) {
-        mqttInterface.setEnabled(true);
-        mqttInterface.setServer(
-            configManager.getMqttServer(),
-            configManager.getMqttPort()
+
+    // Initialize protocols
+    protocolManager.begin();
+
+    // Add protocols to manager
+    if (configManager.getMQTTEnabled()) {
+        mqttInterface.configure(
+            configManager.getMQTTServer(),
+            configManager.getMQTTPort(),
+            configManager.getMQTTUser(),
+            configManager.getMQTTPassword()
         );
-        mqttInterface.setCredentials(
-            configManager.getMqttUser(),
-            configManager.getMqttPassword()
-        );
-        mqttInterface.setClientId(configManager.getMqttClientId());
-        
-        if (mqttInterface.begin()) {
-            Serial.println("MQTT interface initialized");
-            mqttInterface.registerCallbacks(&thermostatState, &protocolManager);
-        } else {
-            Serial.println("Failed to initialize MQTT interface");
-        }
-    } else {
-        Serial.println("MQTT interface disabled in config");
-        mqttInterface.setEnabled(false);
+        mqttInterface.setClientId(configManager.getMQTTClientId());
+        protocolManager.addProtocol(&mqttInterface);
     }
-    
-    // Register protocols with protocol manager
-    protocolManager.registerProtocols(&knxInterface, &mqttInterface);
-    
+
+    if (configManager.getKNXEnabled()) {
+        knxInterface.configure(
+            configManager.getKNXIPAddress(),
+            configManager.getKNXPort(),
+            configManager.getKNXPhysicalAddress()
+        );
+        protocolManager.addProtocol(&knxInterface);
+    }
+
     // Initialize PID controller
+    pidController.configure(configManager.getPIDConfig());
     pidController.begin();
-    pidController.setTunings(
-        configManager.getKp(),
-        configManager.getKi(),
-        configManager.getKd()
-    );
-    pidController.setUpdateInterval(configManager.getPidInterval());
-    
+
     // Initialize web interface
-    webInterface.begin(&thermostatState, 
-                    &configManager, 
-                    &sensorInterface,
-                    &knxInterface,
-                    &mqttInterface,
-                    &pidController,
-                    &protocolManager);
-    
-    Serial.println("Setup completed");
+    webInterface.begin();
 
-    // Create tasks to run on separate cores
+    // Create communication task
     xTaskCreatePinnedToCore(
-        sensorTaskFunction,        // Task function
-        "SensorTask",              // Name
-        4096,                      // Stack size (bytes)
-        NULL,                      // Parameters
-        1,                         // Priority (1 is low)
-        &sensorTask,               // Task handle
-        0                          // Core (0)
+        communicationTaskFunction,
+        "CommunicationTask",
+        8192,
+        NULL,
+        1,
+        &communicationTask,
+        0
     );
 
-    xTaskCreatePinnedToCore(
-        communicationTaskFunction,  // Task function
-        "CommTask",                 // Name
-        8192,                       // Stack size (bytes) - more for network
-        NULL,                       // Parameters
-        1,                          // Priority (1 is low)
-        &communicationTask,         // Task handle
-        1                           // Core (1)
-    );
-
-    Serial.println("Tasks started on both cores");
+    ESP_LOGI(TAG, "Setup complete");
 }
 
 void loop() {
-    // Main loop is now minimal since tasks handle the work
-    delay(1000); // Just yield to other tasks
-    
-    // Background monitoring
-    static unsigned long lastHealthCheck = 0;
-    unsigned long currentTime = millis();
-    
-    if (currentTime - lastHealthCheck > 60000) { // Every minute
-        lastHealthCheck = currentTime;
-        
-        // Check WiFi and reconnect if needed
+    static unsigned long lastWiFiCheck = 0;
+    static unsigned long lastHeapCheck = 0;
+    const unsigned long CHECK_INTERVAL = 30000; // 30 seconds
+
+    // Update sensor readings
+    sensorInterface.loop();
+
+    // Update PID controller
+    pidController.loop();
+
+    // Check WiFi connection periodically
+    if (millis() - lastWiFiCheck >= CHECK_INTERVAL) {
         if (WiFi.status() != WL_CONNECTED) {
-            Serial.println("WiFi connection lost, reconnecting...");
+            ESP_LOGW(TAG, "WiFi connection lost, reconnecting...");
             WiFi.reconnect();
         }
-        
-        // Log memory usage
-        Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+        lastWiFiCheck = millis();
     }
+
+    // Log heap info periodically
+    if (millis() - lastHeapCheck >= CHECK_INTERVAL) {
+        ESP_LOGI(TAG, "Free heap: %d bytes", ESP.getFreeHeap());
+        lastHeapCheck = millis();
+    }
+
+    // Small delay to prevent watchdog issues
+    delay(100);
 }

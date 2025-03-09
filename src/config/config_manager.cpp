@@ -1,6 +1,8 @@
 // Basic includes
 #include <Arduino.h>
-#include <WiFiManager.h>
+#include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
+#include <WiFi.h>
 
 // Include the ThermostatState first since other components depend on it
 #include "thermostat_state.h"
@@ -38,15 +40,21 @@ bool ConfigManager::setupWiFi() {
     // Try to connect using saved credentials
     if (WiFi.begin() == WL_CONNECT_FAILED) {
         // If connection fails, start WiFi Manager
-        WiFiManager wifiManager;
+        AsyncWebServer server(80);
+        DNSServer dns;
+        AsyncWiFiManager wifiManager(&server, &dns);
         wifiManager.setConfigPortalTimeout(180); // 3 minutes timeout
         
-        if (!wifiManager.startConfigPortal("ESP32-Thermostat")) {
-            log_e("Failed to connect and hit timeout");
+        if (!wifiManager.autoConnect(deviceName)) {
+            log_e("Failed to connect to WiFi - restarting");
+            delay(1000);
+            ESP.restart();
             return false;
         }
     }
     
+    log_i("Connected to WiFi");
+    log_i("IP address: %s", WiFi.localIP().toString().c_str());
     return true;
 }
 

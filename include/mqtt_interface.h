@@ -1,5 +1,4 @@
-#ifndef MQTT_INTERFACE_H
-#define MQTT_INTERFACE_H
+#pragma once
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -10,6 +9,7 @@
 #include <memory>
 #include "interfaces/protocol_interface.h"
 #include "protocol_manager.h"
+#include "thermostat_state.h"
 
 // Forward declarations
 class ThermostatState;
@@ -17,8 +17,7 @@ class ProtocolManager;
 
 class MQTTInterface : public ProtocolInterface {
 public:
-    // Constructor and destructor
-    MQTTInterface();
+    MQTTInterface(ThermostatState* state);
     virtual ~MQTTInterface() = default;
 
     // ProtocolInterface implementation
@@ -60,7 +59,6 @@ public:
     void setCredentials(const char* username, const char* password);
     void setClientId(const char* clientId);
     void setTopicPrefix(const char* prefix);
-    void setEnabled(bool enabled);
     bool isEnabled() const;
 
     // Protocol manager registration
@@ -80,6 +78,22 @@ private:
     void handleMessage(char* topic, uint8_t* payload, unsigned int length);
     static void mqttCallback(char* topic, uint8_t* payload, unsigned int length);
     String getFullTopic(const char* suffix) const;
-};
 
-#endif // MQTT_INTERFACE_H
+    ThermostatState* state;
+    WiFiClient wifiClient;
+    PubSubClient mqttClient;
+    bool enabled;
+    bool initialized;
+
+    String server;
+    uint16_t port;
+    String username;
+    String password;
+    String clientId;
+    String topicPrefix;
+
+    void connect();
+    void publishState();
+    void handleCallback(char* topic, byte* payload, unsigned int length);
+    static void callbackWrapper(char* topic, byte* payload, unsigned int length, void* arg);
+};

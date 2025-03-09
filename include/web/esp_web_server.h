@@ -1,17 +1,21 @@
-#ifndef ESP_WEB_SERVER_H
-#define ESP_WEB_SERVER_H
+#pragma once
+
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <LittleFS.h>
+#include <ESPAsyncWebServer.h>
+#include <WiFi.h>
+#include <ESPmDNS.h>
+
+// Forward declarations
+class ThermostatState;
+class ProtocolManager;
 
 #include "interfaces/web_interface.h"
 #include "interfaces/config_interface.h"
 #include "interfaces/control_interface.h"
 #include "interfaces/protocol_interface.h"
 #include "thermostat_state.h"
-
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <LITTLEFS.h>
-#define WebServerClass WebServer
-#define FileFS LITTLEFS
 
 class ESPWebServer : public WebInterface {
 public:
@@ -55,7 +59,7 @@ protected:
 
 private:
     // Web server
-    WebServerClass server;
+    AsyncWebServer server;
     uint16_t port;
     char username[32];
     char password[32];

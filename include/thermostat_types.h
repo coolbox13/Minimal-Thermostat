@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>  // For float type
+#include <ArduinoJson.h>
 
 // Operating modes for the thermostat
 enum class ThermostatMode : uint8_t {
@@ -106,4 +107,35 @@ inline int thermostatStatusToInt(ThermostatStatus status) {
 
 inline ThermostatStatus intToThermostatStatus(int value) {
     return static_cast<ThermostatStatus>(value);
+}
+
+// Add JSON serialization support
+namespace ArduinoJson {
+    namespace V731PB22 {
+        template<>
+        struct Converter<ThermostatMode> {
+            static void toJson(const ThermostatMode& src, JsonVariant dst) {
+                switch (src) {
+                    case ThermostatMode::OFF: dst.set("OFF"); break;
+                    case ThermostatMode::HEAT: dst.set("HEAT"); break;
+                    case ThermostatMode::COOL: dst.set("COOL"); break;
+                    case ThermostatMode::AUTO: dst.set("AUTO"); break;
+                }
+            }
+        };
+
+        template<>
+        struct Converter<ThermostatStatus> {
+            static void toJson(const ThermostatStatus& src, JsonVariant dst) {
+                switch (src) {
+                    case ThermostatStatus::OK: dst.set("OK"); break;
+                    case ThermostatStatus::ERROR_SENSOR: dst.set("Sensor Error"); break;
+                    case ThermostatStatus::ERROR_COMMUNICATION: dst.set("Communication Error"); break;
+                    case ThermostatStatus::ERROR_CONFIGURATION: dst.set("Configuration Error"); break;
+                    case ThermostatStatus::ERROR_FILESYSTEM: dst.set("Filesystem Error"); break;
+                    case ThermostatStatus::ERROR_INITIALIZATION: dst.set("Initialization Error"); break;
+                }
+            }
+        };
+    }
 } 

@@ -1,4 +1,12 @@
-#include "web_auth_manager.h"
+#include "web/web_auth_manager.h"
+#include <Arduino.h>
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <DNSServer.h>
+#include <LittleFS.h>
+#include <esp_log.h>
+#include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
 #include "config_manager.h"
 
 #ifdef ESP32
@@ -7,19 +15,21 @@
   #include <ESP8266WebServer.h>
 #endif
 
-WebAuthManager::WebAuthManager(WebServerClass& server, ConfigManager& config)
+static const char* TAG = "WebAuthManager";
+
+WebAuthManager::WebAuthManager(AsyncWebServer& server, ConfigManager& config)
     : server(server), config(config) {
 }
 
-bool WebAuthManager::isAuthenticated() {
+bool WebAuthManager::isAuthenticated(AsyncWebServerRequest *request) {
     // First check rate limiting
-    String ip = server.client().remoteIP().toString();
+    String ip = request->client()->remoteIP().toString();
     if (!checkRateLimit(ip)) {
         return false;
     }
     
     // Check if session cookie exists
-    String sessionId = server.header("Cookie");
+    String sessionId = request->header("Cookie");
     if (sessionId.length() > 0) {
         // Extract session ID from cookie
         int start = sessionId.indexOf("session=");
@@ -38,10 +48,11 @@ bool WebAuthManager::isAuthenticated() {
     
     // If no valid session, check basic auth
     if (config.getWebUsername()[0] != '\0') {
-        if (server.authenticate(config.getWebUsername(), config.getWebPassword())) {
+        if (request->authenticate(config.getWebUsername(), config.getWebPassword())) {
             // Create new session
             String newSession = createSession();
-            server.sendHeader("Set-Cookie", "session=" + newSession + "; Path=/; Max-Age=3600; HttpOnly; SameSite=Strict");
+            AsyncWebServerResponse *response = request->beginResponse(200);
+            response->addHeader("Set-Cookie", "session=" + newSession + "; Path=/; Max-Age=3600; HttpOnly; SameSite=Strict");
             return true;
         }
         return false;
@@ -50,8 +61,10 @@ bool WebAuthManager::isAuthenticated() {
     return true; // No authentication required if no credentials set
 }
 
-void WebAuthManager::requestAuthentication() {
-    server.requestAuthentication();
+void WebAuthManager::requestAuthentication(AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(401);
+    response->addHeader("WWW-Authenticate", "Basic realm=\"Login Required\"");
+    request->send(response);
 }
 
 bool WebAuthManager::validateSession(const String& sessionId) {
@@ -78,7 +91,6 @@ String WebAuthManager::createSession() {
     
     String sessionId = generateRandomString(32);
     Session session;
-    session.ip = server.client().remoteIP().toString();
     session.created = millis();
     session.lastAccess = session.created;
     
@@ -90,9 +102,9 @@ void WebAuthManager::removeSession(const String& sessionId) {
     sessions.erase(sessionId);
 }
 
-bool WebAuthManager::validateCSRFToken(const String& token) {
+bool WebAuthManager::validateCSRFToken(AsyncWebServerRequest *request, const String& token) {
     // Get the CSRF token from the session cookie
-    String sessionId = server.header("Cookie");
+    String sessionId = request->header("Cookie");
     if (sessionId.length() > 0) {
         int start = sessionId.indexOf("session=");
         if (start >= 0) {
@@ -112,9 +124,9 @@ bool WebAuthManager::validateCSRFToken(const String& token) {
     return false;
 }
 
-String WebAuthManager::generateCSRFToken() {
+String WebAuthManager::generateCSRFToken(AsyncWebServerRequest *request) {
     // Get the current session ID
-    String sessionId = server.header("Cookie");
+    String sessionId = request->header("Cookie");
     if (sessionId.length() > 0) {
         int start = sessionId.indexOf("session=");
         if (start >= 0) {
@@ -170,13 +182,13 @@ bool WebAuthManager::checkRateLimit(const String& ip) {
     return true;
 }
 
-void WebAuthManager::addSecurityHeaders() {
-    server.sendHeader("X-Content-Type-Options", "nosniff");
-    server.sendHeader("X-Frame-Options", "DENY");
-    server.sendHeader("X-XSS-Protection", "1; mode=block");
-    server.sendHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-    server.sendHeader("Content-Security-Policy", "default-src 'self'");
-    server.sendHeader("Referrer-Policy", "same-origin");
+void WebAuthManager::addSecurityHeaders(AsyncWebServerResponse *response) {
+    response->addHeader("X-Content-Type-Options", "nosniff");
+    response->addHeader("X-Frame-Options", "DENY");
+    response->addHeader("X-XSS-Protection", "1; mode=block");
+    response->addHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    response->addHeader("Content-Security-Policy", "default-src 'self'");
+    response->addHeader("Referrer-Policy", "same-origin");
 }
 
 void WebAuthManager::cleanupSessions() {

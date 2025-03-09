@@ -8,165 +8,147 @@
 #include "knx_interface.h"
 #include "config_manager.h"
 #include "pid_controller.h"
+#include <esp_log.h>
+
+static const char* TAG = "PIDController";
 
 PIDController::PIDController() :
-  thermostatState(nullptr),
-  kp(1.0),
-  ki(0.1),
-  kd(0.01),
-  lastUpdateTime(0),
-  updateInterval(30000),  // Default 30 seconds
-  lastError(0.0),
-  integral(0.0),
-  lastOutput(0.0),
-  proportionalTerm(0.0),
-  integralTerm(0.0),
-  derivativeTerm(0.0) {
+    setpoint(0.0f),
+    input(0.0f),
+    output(0.0f),
+    active(false),
+    lastError(ThermostatStatus::OK),
+    prevError(0.0f),
+    integral(0.0f),
+    derivative(0.0f),
+    lastTime(0) {
+    // Initialize config with default values
+    config.kp = 1.0f;
+    config.ki = 0.1f;
+    config.kd = 0.01f;
+    config.interval = 30000; // 30 seconds
+    config.outputMin = 0.0f;
+    config.outputMax = 100.0f;
+    config.reverse = false;
 }
 
-void PIDController::begin(ThermostatState* state, float kp, float ki, float kd) {
-  thermostatState = state;
-  setTunings(kp, ki, kd);
-  reset();
+bool PIDController::begin() {
+    reset();
+    return true;
 }
 
-void PIDController::setTunings(float kp, float ki, float kd) {
-  // Guard against invalid values
-  if (kp < 0.0) kp = 0.0;
-  if (ki < 0.0) ki = 0.0;
-  if (kd < 0.0) kd = 0.0;
-  
-  this->kp = kp;
-  this->ki = ki;
-  this->kd = kd;
+void PIDController::loop() {
+    if (!active) return;
+
+    unsigned long now = millis();
+    if (now - lastTime >= config.interval) {
+        computePID();
+        lastTime = now;
+    }
 }
 
 void PIDController::setUpdateInterval(unsigned long interval) {
-  // Prevent zero interval
-  if (interval < 1000) interval = 1000;
-  updateInterval = interval;
+    config.interval = interval;
 }
 
-void PIDController::update() {
-  if (!thermostatState) {
-    return;
-  }
-  
-  unsigned long currentTime = millis();
-  
-  // Check if it's time to update
-  if (currentTime - lastUpdateTime >= updateInterval) {
-    float output = calculate();
-    thermostatState->setValvePosition(output);
-    lastOutput = output;
-    lastUpdateTime = currentTime;
-  }
+void PIDController::setSetpoint(float value) {
+    setpoint = value;
+}
+
+void PIDController::setInput(float value) {
+    input = value;
+}
+
+float PIDController::getOutput() const {
+    return output;
+}
+
+bool PIDController::isActive() const {
+    return active;
+}
+
+void PIDController::setActive(bool active) {
+    if (this->active != active) {
+        this->active = active;
+        if (active) {
+            lastTime = millis();
+        }
+        reset();
+    }
+}
+
+ThermostatStatus PIDController::getLastError() const {
+    return lastError;
 }
 
 void PIDController::reset() {
-  integral = 0.0;
-  lastError = 0.0;
-  lastOutput = 0.0;
-  lastUpdateTime = 0; // Force immediate update
+    integral = 0.0f;
+    prevError = 0.0f;
+    derivative = 0.0f;
+    output = 0.0f;
+    lastTime = 0;
+    lastError = ThermostatStatus::OK;
 }
 
-float PIDController::getKp() const {
-  return kp;
+void PIDController::configure(const void* config) {
+    if (config) {
+        const PIDConfig* pidConfig = static_cast<const PIDConfig*>(config);
+        this->config = *pidConfig;
+    }
 }
 
-float PIDController::getKi() const {
-  return ki;
+bool PIDController::saveConfig() {
+    // No persistent storage implemented yet
+    return true;
 }
 
-float PIDController::getKd() const {
-  return kd;
+void PIDController::setTunings(float kp, float ki, float kd) {
+    config.kp = kp;
+    config.ki = ki;
+    config.kd = kd;
 }
 
-float PIDController::getLastError() const {
-  return lastError;
+void PIDController::setOutputLimits(float min, float max) {
+    if (min >= max) return;
+    config.outputMin = min;
+    config.outputMax = max;
+    output = clamp(output, min, max);
 }
 
-float PIDController::getProportionalTerm() const {
-  return proportionalTerm;
+void PIDController::setDirection(bool reverse) {
+    config.reverse = reverse;
 }
 
-float PIDController::getIntegralTerm() const {
-  return integralTerm;
+void PIDController::computePID() {
+    float error = setpoint - input;
+    if (config.reverse) {
+        error = -error;
+    }
+
+    // Proportional term
+    float pTerm = config.kp * error;
+
+    // Integral term
+    integral += error * (config.interval / 1000.0f);
+    float iTerm = config.ki * integral;
+
+    // Derivative term
+    derivative = (error - prevError) / (config.interval / 1000.0f);
+    float dTerm = config.kd * derivative;
+
+    // Calculate output
+    output = pTerm + iTerm + dTerm;
+    output = clamp(output, config.outputMin, config.outputMax);
+
+    // Store error for next iteration
+    prevError = error;
+
+    ESP_LOGD(TAG, "PID: SP=%.2f, PV=%.2f, P=%.2f, I=%.2f, D=%.2f, OUT=%.2f",
+             setpoint, input, pTerm, iTerm, dTerm, output);
 }
 
-float PIDController::getDerivativeTerm() const {
-  return derivativeTerm;
-}
-
-float PIDController::getLastOutput() const {
-  return lastOutput;
-}
-
-float PIDController::calculate() {
-  if (!thermostatState) {
-    return 0.0;
-  }
-  
-  // Get current temperature and setpoint
-  float currentTemp = thermostatState->currentTemperature;
-  float targetTemp = thermostatState->targetTemperature;
-  
-  // Calculate error
-  float error = targetTemp - currentTemp;
-  
-  // Calculate proportional term
-  proportionalTerm = kp * error;
-  
-  // Calculate integral term
-  integral += ki * error;
-  limitIntegral();
-  integralTerm = integral;
-  
-  // Calculate derivative term
-  derivativeTerm = kd * (error - lastError);
-  
-  // Calculate output
-  float output = proportionalTerm + integralTerm + derivativeTerm;
-  
-  // Limit output to 0-100%
-  if (output > 100.0) output = 100.0;
-  if (output < 0.0) output = 0.0;
-  
-  // Debug output
-  Serial.println("PID Calculation:");
-  Serial.print("Setpoint: ");
-  Serial.print(targetTemp);
-  Serial.println(" °C");
-  
-  Serial.print("Current Temperature: ");
-  Serial.print(currentTemp);
-  Serial.println(" °C");
-  
-  Serial.print("Error: ");
-  Serial.print(error);
-  Serial.println(" °C");
-  
-  Serial.print("P-Term: ");
-  Serial.println(proportionalTerm);
-  
-  Serial.print("I-Term: ");
-  Serial.println(integralTerm);
-  
-  Serial.print("D-Term: ");
-  Serial.println(derivativeTerm);
-  
-  Serial.print("Output: ");
-  Serial.print(output);
-  Serial.println(" %");
-  
-  // Save last error for next iteration
-  lastError = error;
-  
-  return output;
-}
-
-void PIDController::limitIntegral() {
-  // Anti-windup protection
-  if (integral > 100.0) integral = 100.0;
-  if (integral < 0.0) integral = 0.0;
+float PIDController::clamp(float value, float min, float max) const {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
 }

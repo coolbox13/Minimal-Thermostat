@@ -2,6 +2,7 @@
 #define WEB_AUTH_MANAGER_H
 
 #include <Arduino.h>
+#include <ESPAsyncWebServer.h>
 #include <map>
 #include <vector>
 #include "config_manager.h"
@@ -9,23 +10,23 @@
 
 class WebAuthManager {
 public:
-    WebAuthManager(WebServer& server, ConfigManager& config);
+    WebAuthManager(AsyncWebServer& server, ConfigManager& config);
     
     // Authentication methods
-    bool isAuthenticated();
-    void requestAuthentication();
+    bool isAuthenticated(AsyncWebServerRequest *request);
+    void requestAuthentication(AsyncWebServerRequest *request);
     bool validateSession(const String& sessionId);
     String createSession();
     void removeSession(const String& sessionId);
     
     // Security methods
-    bool validateCSRFToken(const String& token);
-    String generateCSRFToken();
+    bool validateCSRFToken(AsyncWebServerRequest *request, const String& token);
+    String generateCSRFToken(AsyncWebServerRequest *request);
     bool checkRateLimit(const String& ip);
-    void addSecurityHeaders();
+    void addSecurityHeaders(AsyncWebServerResponse *response);
     
 private:
-    WebServer& server;
+    AsyncWebServer& server;
     ConfigManager& config;
     
     // Session management

@@ -1,5 +1,4 @@
-#ifndef KNX_INTERFACE_H
-#define KNX_INTERFACE_H
+#pragma once
 
 #include <memory>
 #include <ArduinoJson.h>
@@ -7,6 +6,8 @@
 #include "interfaces/protocol_interface.h"
 #include "protocol_types.h"
 #include "thermostat_types.h"
+#include "thermostat_state.h"
+#include "esp-knx-ip.h"
 
 // Forward declarations
 class ThermostatState;
@@ -24,11 +25,8 @@ struct KnxGroupAddress {
 
 class KNXInterface : public ProtocolInterface {
 public:
-    // Constructor
-    KNXInterface();
-    
-    // Destructor
-    virtual ~KNXInterface();
+    KNXInterface(ThermostatState* state);
+    virtual ~KNXInterface() = default;
     
     // Core functionality
     bool begin() override;
@@ -66,12 +64,12 @@ public:
     
     // KNX specific methods
     void setPhysicalAddress(uint8_t area, uint8_t line, uint8_t member);
-    void setTemperatureGA(const KnxGroupAddress& ga);
+    void setTemperatureGA(uint8_t area, uint8_t line, uint8_t member);
     void setHumidityGA(const KnxGroupAddress& ga);
     void setPressureGA(const KnxGroupAddress& ga);
-    void setSetpointGA(const KnxGroupAddress& ga);
+    void setSetpointGA(uint8_t area, uint8_t line, uint8_t member);
     void setValvePositionGA(const KnxGroupAddress& ga);
-    void setModeGA(const KnxGroupAddress& ga);
+    void setModeGA(uint8_t area, uint8_t line, uint8_t member);
     void setHeatingStateGA(const KnxGroupAddress& ga);
     
     // Protocol manager registration
@@ -88,6 +86,18 @@ private:
     void cleanupCallbacks();
     uint8_t modeToKnx(ThermostatMode mode) const;
     ThermostatMode knxToMode(uint8_t value) const;
-};
 
-#endif // KNX_INTERFACE_H 
+    ThermostatState* state;
+    ESPKNXIP knx;
+    bool enabled;
+    bool initialized;
+
+    // Group addresses
+    address_t temperatureGA;
+    address_t setpointGA;
+    address_t valveGA;
+    address_t modeGA;
+
+    void handleKnxEvent(message_t const &msg);
+    void updateKnxValues();
+}; 

@@ -1,131 +1,113 @@
-#include "sensor_interface.h"
-#include "thermostat_state.h"
-#include <Wire.h>
+#include "interfaces/sensor_interface.h"
 #include <Adafruit_BME280.h>
+#include <Wire.h>
+#include <esp_log.h>
 
-class SensorInterfaceImpl {
+static const char* TAG = "SensorInterface";
+
+class BME280SensorInterface : public SensorInterface {
 public:
+    BME280SensorInterface() :
+        lastUpdateTime(0),
+        updateInterval(30000), // 30 seconds default
+        tempOffset(0.0f),
+        humidityOffset(0.0f),
+        pressureOffset(0.0f),
+        lastError(ThermostatStatus::OK) {}
+
+    bool begin() override {
+        Wire.begin();
+        if (!bme.begin(BME280_ADDRESS_ALTERNATE)) {
+            ESP_LOGE(TAG, "Could not find BME280 sensor!");
+            lastError = ThermostatStatus::ERROR_SENSOR_READ;
+            return false;
+        }
+        
+        // Configure the sensor
+        bme.setSampling(Adafruit_BME280::MODE_NORMAL,     // Operating Mode
+                       Adafruit_BME280::SAMPLING_X2,       // Temp. oversampling
+                       Adafruit_BME280::SAMPLING_X16,      // Pressure oversampling
+                       Adafruit_BME280::SAMPLING_X1,       // Humidity oversampling
+                       Adafruit_BME280::FILTER_X16,        // Filtering
+                       Adafruit_BME280::STANDBY_MS_500);   // Standby time
+
+        ESP_LOGI(TAG, "BME280 sensor initialized successfully");
+        return true;
+    }
+
+    void loop() override {
+        unsigned long now = millis();
+        if (now - lastUpdateTime >= updateInterval) {
+            updateReadings();
+            lastUpdateTime = now;
+        }
+    }
+
+    void setUpdateInterval(unsigned long interval) override {
+        updateInterval = interval;
+    }
+
+    float getTemperature() const override {
+        return temperature + tempOffset;
+    }
+
+    float getHumidity() const override {
+        return humidity + humidityOffset;
+    }
+
+    float getPressure() const override {
+        return pressure + pressureOffset;
+    }
+
+    bool isAvailable() const override {
+        return lastError == ThermostatStatus::OK;
+    }
+
+    ThermostatStatus getLastError() const override {
+        return lastError;
+    }
+
+    void setTemperatureOffset(float offset) override {
+        tempOffset = offset;
+    }
+
+    void setHumidityOffset(float offset) override {
+        humidityOffset = offset;
+    }
+
+    void setPressureOffset(float offset) override {
+        pressureOffset = offset;
+    }
+
+private:
     Adafruit_BME280 bme;
-    ThermostatState* thermostatState;
     unsigned long lastUpdateTime;
     unsigned long updateInterval;
     float temperature;
     float humidity;
     float pressure;
-    bool sensorAvailable;
     float tempOffset;
-    float humOffset;
-    float pressOffset;
+    float humidityOffset;
+    float pressureOffset;
     ThermostatStatus lastError;
+
+    void updateReadings() {
+        float temp = bme.readTemperature();
+        float hum = bme.readHumidity();
+        float pres = bme.readPressure() / 100.0F; // Convert Pa to hPa
+
+        if (isnan(temp) || isnan(hum) || isnan(pres)) {
+            ESP_LOGE(TAG, "Failed to read from BME280 sensor!");
+            lastError = ThermostatStatus::ERROR_SENSOR_READ;
+            return;
+        }
+
+        temperature = temp;
+        humidity = hum;
+        pressure = pres;
+        lastError = ThermostatStatus::OK;
+
+        ESP_LOGD(TAG, "Sensor readings - Temp: %.2f°C, Humidity: %.2f%%, Pressure: %.2fhPa",
+                 temperature, humidity, pressure);
+    }
 };
-
-SensorInterface::SensorInterface() : pimpl(new SensorInterfaceImpl()) {
-    pimpl->thermostatState = nullptr;
-    pimpl->lastUpdateTime = 0;
-    pimpl->updateInterval = 10000;
-    pimpl->temperature = 0.0;
-    pimpl->humidity = 0.0;
-    pimpl->pressure = 0.0;
-    pimpl->sensorAvailable = false;
-    pimpl->tempOffset = 0.0;
-    pimpl->humOffset = 0.0;
-    pimpl->pressOffset = 0.0;
-    pimpl->lastError = ThermostatStatus::OK;
-}
-
-bool SensorInterface::begin() {
-    Serial.println("Initializing BME280 sensor...");
-    
-    // Try to initialize BME280 sensor
-    if (!pimpl->bme.begin(0x76)) {
-        Serial.println("Could not find a valid BME280 sensor, check wiring!");
-        pimpl->sensorAvailable = false;
-        pimpl->lastError = ThermostatStatus::ERROR_SENSOR;
-        return false;
-    }
-    
-    pimpl->bme.setSampling(Adafruit_BME280::MODE_NORMAL,
-                         Adafruit_BME280::SAMPLING_X1, // temperature
-                         Adafruit_BME280::SAMPLING_X1, // pressure
-                         Adafruit_BME280::SAMPLING_X1, // humidity
-                         Adafruit_BME280::FILTER_OFF   );
-    
-    Serial.println("BME280 sensor initialized successfully");
-    pimpl->sensorAvailable = true;
-    
-    // Take initial reading
-    loop();
-    
-    return true;
-}
-
-void SensorInterface::loop() {
-    unsigned long currentTime = millis();
-    
-    // Check if it's time to update readings
-    if (currentTime - pimpl->lastUpdateTime >= pimpl->updateInterval) {
-        readSensor();
-        pimpl->lastUpdateTime = currentTime;
-    }
-}
-
-void SensorInterface::setUpdateInterval(unsigned long interval) {
-    pimpl->updateInterval = interval;
-}
-
-float SensorInterface::getTemperature() const {
-    return pimpl->temperature + pimpl->tempOffset;
-}
-
-float SensorInterface::getHumidity() const {
-    return pimpl->humidity + pimpl->humOffset;
-}
-
-float SensorInterface::getPressure() const {
-    return pimpl->pressure + pimpl->pressOffset;
-}
-
-bool SensorInterface::isAvailable() const {
-    return pimpl->sensorAvailable;
-}
-
-ThermostatStatus SensorInterface::getLastError() const {
-    return pimpl->lastError;
-}
-
-void SensorInterface::setTemperatureOffset(float offset) {
-    pimpl->tempOffset = offset;
-}
-
-void SensorInterface::setHumidityOffset(float offset) {
-    pimpl->humOffset = offset;
-}
-
-void SensorInterface::setPressureOffset(float offset) {
-    pimpl->pressOffset = offset;
-}
-
-void SensorInterface::readSensor() {
-    if (!pimpl->sensorAvailable) {
-        Serial.println("Sensor not available");
-        return;
-    }
-    
-    // Read sensor values
-    pimpl->temperature = pimpl->bme.readTemperature();
-    pimpl->humidity = pimpl->bme.readHumidity();
-    pimpl->pressure = pimpl->bme.readPressure() / 100.0F; // Convert to hPa
-    
-    Serial.println("Sensor readings:");
-    Serial.print("Temperature: ");
-    Serial.print(pimpl->temperature);
-    Serial.println(" °C");
-    
-    Serial.print("Humidity: ");
-    Serial.print(pimpl->humidity);
-    Serial.println(" %");
-    
-    Serial.print("Pressure: ");
-    Serial.print(pimpl->pressure);
-    Serial.println(" hPa");
-}
