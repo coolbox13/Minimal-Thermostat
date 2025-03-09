@@ -90,6 +90,10 @@ bool ConfigManager::saveConfig() {
   doc["mqttPassword"] = mqttPassword;
   doc["mqttClientId"] = mqttClientId;
   
+  // Web authentication settings
+  doc["webUsername"] = webUsername;
+  doc["webPassword"] = webPassword;
+  
   // PID settings
   doc["kp"] = kp;
   doc["ki"] = ki;
@@ -165,6 +169,10 @@ bool ConfigManager::loadConfig() {
   strlcpy(mqttPassword, doc["mqttPassword"] | "", sizeof(mqttPassword));
   strlcpy(mqttClientId, doc["mqttClientId"] | "ESP32Thermostat", sizeof(mqttClientId));
   
+  // Web authentication settings
+  strlcpy(webUsername, doc["webUsername"] | "", sizeof(webUsername));
+  strlcpy(webPassword, doc["webPassword"] | "", sizeof(webPassword));
+  
   // PID settings
   kp = doc["kp"] | 1.0;
   ki = doc["ki"] | 0.1;
@@ -209,6 +217,10 @@ void ConfigManager::setDefaults() {
   strlcpy(mqttUser, "", sizeof(mqttUser));
   strlcpy(mqttPassword, "", sizeof(mqttPassword));
   strlcpy(mqttClientId, "ESP32Thermostat", sizeof(mqttClientId));
+  
+  // Web authentication settings
+  strlcpy(webUsername, "", sizeof(webUsername));
+  strlcpy(webPassword, "", sizeof(webPassword));
   
   // PID settings
   kp = 1.0;
@@ -313,6 +325,14 @@ void ConfigManager::setKd(float value) {
 
 void ConfigManager::setSetpoint(float value) {
   setpoint = value;
+}
+
+void ConfigManager::setWebUsername(const char* username) {
+    strlcpy(webUsername, username, sizeof(webUsername));
+}
+
+void ConfigManager::setWebPassword(const char* password) {
+    strlcpy(webPassword, password, sizeof(webPassword));
 }
 
 // Getters
@@ -430,4 +450,12 @@ float ConfigManager::getKd() const {
 
 float ConfigManager::getSetpoint() const {
   return setpoint;
+}
+
+const char* ConfigManager::getWebUsername() const {
+    return webUsername;
+}
+
+const char* ConfigManager::getWebPassword() const {
+    return webPassword;
 }

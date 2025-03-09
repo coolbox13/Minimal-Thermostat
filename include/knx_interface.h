@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <memory>
+
+// Include our interfaces and types first
 #include "interfaces/protocol_interface.h"
 #include "thermostat_types.h"
 #include "protocol_types.h"

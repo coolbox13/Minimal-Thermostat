@@ -4,11 +4,12 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
+#include <FS.h>
 
 // Define the appropriate file system
-#ifdef ESP32
-  #include <LITTLEFS.h>
-  #define FileFS LITTLEFS
+#if defined(ESP32)
+  #include <LittleFS.h>
+  #define FileFS LittleFS
 #elif defined(ESP8266)
   #include <LittleFS.h>
   #define FileFS LittleFS
@@ -55,6 +56,8 @@ public:
   void setKi(float value);
   void setKd(float value);
   void setSetpoint(float value);
+  void setWebUsername(const char* username);
+  void setWebPassword(const char* password);
   
   // Getters
   const char* getDeviceName() const;
@@ -86,6 +89,8 @@ public:
   float getKi() const;
   float getKd() const;
   float getSetpoint() const;
+  const char* getWebUsername() const;
+  const char* getWebPassword() const;
   
 private:
   // Configuration values
@@ -122,6 +127,10 @@ private:
   char mqttUser[24];
   char mqttPassword[24];
   char mqttClientId[24];
+  
+  // Web authentication settings
+  char webUsername[24];
+  char webPassword[24];
   
   // PID settings
   float kp;

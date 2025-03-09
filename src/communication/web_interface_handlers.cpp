@@ -65,7 +65,11 @@ void WebInterface::handleSave() {
     
     configManager->setKnxTemperatureGA(area, line, member);
     if (knxInterface) {
-      knxInterface->setTemperatureGA(area, line, member);
+        knxInterface->setTemperatureGA({
+            static_cast<uint8_t>(area),
+            static_cast<uint8_t>(line),
+            static_cast<uint8_t>(member)
+        });
     }
   }
   
@@ -76,7 +80,11 @@ void WebInterface::handleSave() {
     
     configManager->setKnxSetpointGA(area, line, member);
     if (knxInterface) {
-      knxInterface->setSetpointGA(area, line, member);
+        knxInterface->setSetpointGA({
+            static_cast<uint8_t>(area),
+            static_cast<uint8_t>(line),
+            static_cast<uint8_t>(member)
+        });
     }
   }
   
@@ -87,7 +95,11 @@ void WebInterface::handleSave() {
     
     configManager->setKnxValveGA(area, line, member);
     if (knxInterface) {
-      knxInterface->setValvePositionGA(area, line, member);
+        knxInterface->setValvePositionGA({
+            static_cast<uint8_t>(area),
+            static_cast<uint8_t>(line),
+            static_cast<uint8_t>(member)
+        });
     }
   }
   
@@ -98,7 +110,11 @@ void WebInterface::handleSave() {
     
     configManager->setKnxModeGA(area, line, member);
     if (knxInterface) {
-      knxInterface->setModeGA(area, line, member);
+        knxInterface->setModeGA({
+            static_cast<uint8_t>(area),
+            static_cast<uint8_t>(line),
+            static_cast<uint8_t>(member)
+        });
     }
   }
   
@@ -205,6 +221,13 @@ void WebInterface::handleSetpoint() {
     return;
   }
 
+  if (!validateCSRFToken()) {
+    server.send(403, "text/plain", "Invalid CSRF token");
+    return;
+  }
+
+  addSecurityHeaders();
+
   String json = server.arg("plain");
   StaticJsonDocument<200> doc;
   DeserializationError error = deserializeJson(doc, json);
@@ -226,7 +249,7 @@ void WebInterface::handleSetpoint() {
       CommandType::CMD_SET_TEMPERATURE,
       setpoint
     );
-    server.send(200, "text/plain", "OK");
+    server.send(200, "application/json", "{\"status\":\"success\"}");
   } else {
     server.send(500, "text/plain", "Protocol manager not initialized");
   }
@@ -238,6 +261,18 @@ void WebInterface::handleSaveConfig() {
     return;
   }
 
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+    return;
+  }
+
+  if (!validateCSRFToken()) {
+    server.send(403, "text/plain", "Invalid CSRF token");
+    return;
+  }
+
+  addSecurityHeaders();
+
   if (!configManager) {
     server.send(500, "text/plain", "Configuration manager not available");
     return;
@@ -247,31 +282,24 @@ void WebInterface::handleSaveConfig() {
   StaticJsonDocument<1024> doc;
   String jsonStr = server.arg("plain");
   DeserializationError error = deserializeJson(doc, jsonStr);
-  
+
   if (error) {
     server.send(400, "text/plain", "Invalid JSON");
     return;
   }
 
-  // Update configuration
-  bool needsSave = false;
-  
+  // Update web authentication
   if (doc.containsKey("webUsername")) {
     configManager->setWebUsername(doc["webUsername"].as<const char*>());
-    needsSave = true;
-  }
-  
-  if (doc.containsKey("webPassword")) {
-    configManager->setWebPassword(doc["webPassword"].as<const char*>());
-    needsSave = true;
   }
 
-  if (needsSave) {
-    configManager->saveConfig();
-    server.send(200, "text/plain", "Configuration saved");
-  } else {
-    server.send(400, "text/plain", "No valid configuration provided");
+  if (doc.containsKey("webPassword")) {
+    configManager->setWebPassword(doc["webPassword"].as<const char*>());
   }
+
+  // Save configuration
+  configManager->saveConfig();
+  server.send(200, "application/json", "{\"status\":\"success\"}");
 }
 
 void WebInterface::handleReboot() {
@@ -291,15 +319,29 @@ void WebInterface::handleFactoryReset() {
     return;
   }
 
-  if (!configManager) {
-    server.send(500, "text/plain", "Configuration manager not available");
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
     return;
   }
 
-  configManager->resetToDefaults();
-  server.send(200, "text/plain", "Factory reset completed. Device will reboot...");
-  delay(500); // Give time for the response to be sent
-  ESP.restart();
+  if (!validateCSRFToken()) {
+    server.send(403, "text/plain", "Invalid CSRF token");
+    return;
+  }
+
+  addSecurityHeaders();
+
+  if (configManager) {
+    configManager->factoryReset();
+    configManager->saveConfig();
+    server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Factory reset complete\"}");
+    
+    // Schedule a reboot
+    delay(1000);
+    ESP.restart();
+  } else {
+    server.send(500, "text/plain", "Configuration manager not available");
+  }
 }
 
 void WebInterface::handleNotFound() {

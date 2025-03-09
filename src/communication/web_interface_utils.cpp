@@ -21,8 +21,8 @@ bool WebInterface::handleFileRead(String path) {
   else if (path.endsWith(".ico")) contentType = "image/x-icon";
   else contentType = "text/plain";
   
-  if (LittleFS.exists(path)) {
-    File file = LittleFS.open(path, "r");
+  if (FileFS.exists(path)) {
+    File file = FileFS.open(path, "r");
     server.streamFile(file, contentType);
     file.close();
     return true;
@@ -31,13 +31,22 @@ bool WebInterface::handleFileRead(String path) {
 }
 
 bool WebInterface::isAuthenticated() {
-  if (configManager && configManager->getWebUsername()[0] != '\0') {
-    return server.authenticate(configManager->getWebUsername(), 
-                             configManager->getWebPassword());
-  }
-  return true; // No authentication required if no credentials set
+  return authManager->isAuthenticated();
 }
 
 void WebInterface::requestAuthentication() {
-  server.requestAuthentication();
+  authManager->requestAuthentication();
+}
+
+void WebInterface::addSecurityHeaders() {
+  authManager->addSecurityHeaders();
+}
+
+bool WebInterface::validateCSRFToken() {
+  String token = server.arg("csrf_token");
+  return authManager->validateCSRFToken(token);
+}
+
+String WebInterface::generateCSRFToken() {
+  return authManager->generateCSRFToken();
 }

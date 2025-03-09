@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <FS.h>
 #include <LittleFS.h>
 
 // Thermostat components
@@ -58,29 +59,22 @@ void setup() {
   
   Serial.begin(115200);
   Serial.println("\n\nStarting ESP32-KNX-Thermostat...");
-
     
   // Initialize file system early
-#ifdef ESP32
-if (!LITTLEFS.begin(true)) {
-  Serial.println("LittleFS mount failed! Formatting...");
-  LITTLEFS.format();
-}
-#else
-if (!LittleFS.begin()) {
-  Serial.println("LittleFS mount failed!");
-}
-#endif
-  
-  // Initialize I2C for sensors
-  Wire.begin();
-
-  // Initialize LittleFS
-  if (!LittleFS.begin(true)) { // true = format on failure
-    Serial.println("LittleFS mount failed even after format attempt");
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS mount failed! Formatting...");
+    LittleFS.format();
+    if (!LittleFS.begin()) {
+      Serial.println("LittleFS mount failed even after format attempt");
+    } else {
+      Serial.println("LittleFS mounted successfully after format");
+    }
   } else {
     Serial.println("LittleFS mounted successfully");
   }
+  
+  // Initialize I2C for sensors
+  Wire.begin();
   
   // Initialize configuration
   if (!configManager.begin()) {
@@ -107,33 +101,33 @@ if (!LittleFS.begin()) {
   
   // Initialize KNX interface if enabled
   if (configManager.getKnxEnabled()) {
-    if (knxInterface.begin(
-          configManager.getKnxPhysicalArea(),
-          configManager.getKnxPhysicalLine(),
-          configManager.getKnxPhysicalMember())) {
-      
+    if (knxInterface.begin()) {
       Serial.println("KNX interface initialized");
       
       // Set group addresses from configuration
-      knxInterface.setTemperatureGA(
-        configManager.getKnxTempArea(),
-        configManager.getKnxTempLine(),
-        configManager.getKnxTempMember());
+      knxInterface.setTemperatureGA({
+        static_cast<uint8_t>(configManager.getKnxTempArea()),
+        static_cast<uint8_t>(configManager.getKnxTempLine()),
+        static_cast<uint8_t>(configManager.getKnxTempMember())
+      });
         
-      knxInterface.setSetpointGA(
-        configManager.getKnxSetpointArea(),
-        configManager.getKnxSetpointLine(),
-        configManager.getKnxSetpointMember());
+      knxInterface.setSetpointGA({
+        static_cast<uint8_t>(configManager.getKnxSetpointArea()),
+        static_cast<uint8_t>(configManager.getKnxSetpointLine()),
+        static_cast<uint8_t>(configManager.getKnxSetpointMember())
+      });
         
-      knxInterface.setValvePositionGA(
-        configManager.getKnxValveArea(),
-        configManager.getKnxValveLine(),
-        configManager.getKnxValveMember());
+      knxInterface.setValvePositionGA({
+        static_cast<uint8_t>(configManager.getKnxValveArea()),
+        static_cast<uint8_t>(configManager.getKnxValveLine()),
+        static_cast<uint8_t>(configManager.getKnxValveMember())
+      });
         
-      knxInterface.setModeGA(
-        configManager.getKnxModeArea(),
-        configManager.getKnxModeLine(),
-        configManager.getKnxModeMember());
+      knxInterface.setModeGA({
+        static_cast<uint8_t>(configManager.getKnxModeArea()),
+        static_cast<uint8_t>(configManager.getKnxModeLine()),
+        static_cast<uint8_t>(configManager.getKnxModeMember())
+      });
       
       // Register with protocol manager
       knxInterface.registerCallbacks(&thermostatState, &protocolManager);
@@ -179,7 +173,8 @@ if (!LittleFS.begin()) {
                     &sensorInterface,
                     &knxInterface,
                     &mqttInterface,
-                    &pidController);
+                    &pidController,
+                    &protocolManager);
   
   Serial.println("Setup completed");
 

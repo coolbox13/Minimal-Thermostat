@@ -6,17 +6,20 @@
 #ifdef ESP32
   #include <WebServer.h>
   #include <ESPmDNS.h>
-  #include <LITTLEFS.h>
+  #include <FS.h>
+  #include <LittleFS.h>
   #define WebServerClass WebServer
-  #define LittleFS LITTLEFS
+  #define FileFS LittleFS
 #elif defined(ESP8266)
   #include <ESP8266WebServer.h>
   #include <ESP8266mDNS.h>
   #include <LittleFS.h>
   #define WebServerClass ESP8266WebServer
+  #define FileFS LittleFS
 #endif
 
 #include <WiFi.h>
+#include "web_auth_manager.h"
 
 // Forward declarations
 class ThermostatState;
@@ -47,6 +50,7 @@ public:
 private:
   // Web server
   WebServerClass server;
+  std::unique_ptr<WebAuthManager> authManager;
   
   // References to components
   ThermostatState* thermostatState;
@@ -76,9 +80,12 @@ private:
   // File handling
   bool handleFileRead(String path);
   
-  // Authentication
+  // Security helpers
   bool isAuthenticated();
   void requestAuthentication();
+  void addSecurityHeaders();
+  bool validateCSRFToken();
+  String generateCSRFToken();
 };
 
 #endif // WEB_INTERFACE_H 
