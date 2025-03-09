@@ -8,7 +8,7 @@
 #include "communication/mqtt/mqtt_interface.h"
 #include "communication/knx/knx_interface.h"
 #include "sensors/bme280_sensor_interface.h"
-#include "control/pid_controller.h"
+#include "pid_controller.h"
 #include "web/esp_web_server.h"
 
 // Global objects

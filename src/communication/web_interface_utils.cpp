@@ -1,5 +1,6 @@
 #include "web/web_interface.h"
 #include "esp_log.h"
+#include <ESPmDNS.h>
 
 static const char* TAG = "WebInterface";
 
