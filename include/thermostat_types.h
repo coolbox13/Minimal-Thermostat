@@ -1,14 +1,13 @@
-#ifndef THERMOSTAT_TYPES_H
-#define THERMOSTAT_TYPES_H
+#pragma once
 
 #include <Arduino.h>  // For float type
 
 // Operating modes for the thermostat
 enum class ThermostatMode : uint8_t {
-    MODE_OFF = 0,   // System is off
-    MODE_HEAT = 1,  // Heating mode
-    MODE_COOL = 2,  // Cooling mode
-    MODE_AUTO = 3   // Automatic mode (heating or cooling)
+    OFF = 0,
+    HEAT = 1,
+    COOL = 2,
+    AUTO = 3
 };
 
 // Temperature ranges and limits
@@ -56,11 +55,11 @@ enum class CommandType : uint8_t {
 // Helper functions
 inline const char* getThermostatModeName(ThermostatMode mode) {
     switch (mode) {
-        case ThermostatMode::MODE_OFF: return "Off";
-        case ThermostatMode::MODE_HEAT: return "Heat";
-        case ThermostatMode::MODE_COOL: return "Cool";
-        case ThermostatMode::MODE_AUTO: return "Auto";
-        default: return "Unknown";
+        case ThermostatMode::OFF: return "OFF";
+        case ThermostatMode::HEAT: return "HEAT";
+        case ThermostatMode::COOL: return "COOL";
+        case ThermostatMode::AUTO: return "AUTO";
+        default: return "UNKNOWN";
     }
 }
 

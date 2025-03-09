@@ -7,6 +7,8 @@
 #include <ESPAsyncWiFiManager.h>
 #include <FS.h>
 #include <LittleFS.h>
+#include <ESPmDNS.h>
+#include <ElegantOTA.h>
 #include "config_manager.h"
 #include "thermostat_state.h"
 #include "sensor_interface.h"
@@ -15,6 +17,8 @@
 #include "pid_controller.h"
 #include "protocol_manager.h"
 #include "thermostat_controller.h"
+#include <memory>
+#include <functional>
 
 // HTTP method constants
 #ifndef HTTP_GET
@@ -86,45 +90,41 @@ struct Converter<ThermostatMode> {
 
 class WebInterface {
 public:
-  WebInterface(ConfigManager* configManager, MQTTInterface* mqttInterface, ThermostatController* thermostatController);
-  ~WebInterface();
-
-  void begin();
-  void handleClient();
-
-  // Request handlers
-  void handleRoot(AsyncWebServerRequest *request);
-  void handleSave(AsyncWebServerRequest *request);
-  void handleSaveConfig(AsyncWebServerRequest *request);
-  void handleSetpoint(AsyncWebServerRequest *request);
-  void handleReboot(AsyncWebServerRequest *request);
-  void handleFactoryReset(AsyncWebServerRequest *request);
-  void handleNotFound(AsyncWebServerRequest *request);
-  void handleGetStatus(AsyncWebServerRequest *request);
-
-  // File handling
-  bool handleFileRead(AsyncWebServerRequest *request, String path);
-  String getContentType(String filename);
-
-  // Authentication
-  bool isAuthenticated(AsyncWebServerRequest *request);
-  void requestAuthentication(AsyncWebServerRequest *request);
-  void addSecurityHeaders(AsyncWebServerResponse *response);
-  bool validateCSRFToken(AsyncWebServerRequest *request);
-  String generateCSRFToken();
+    WebInterface(ConfigManager* configManager, ThermostatController* thermostatController, MQTTInterface* mqttInterface);
+    
+    void begin();
+    
+    // Request handlers
+    void handleRoot(AsyncWebServerRequest* request);
+    void handleSave(AsyncWebServerRequest* request);
+    void handleSaveConfig(AsyncWebServerRequest* request);
+    void handleSetpoint(AsyncWebServerRequest* request);
+    void handleReboot(AsyncWebServerRequest* request);
+    void handleFactoryReset(AsyncWebServerRequest* request);
+    void handleNotFound(AsyncWebServerRequest* request);
+    void handleGetStatus(AsyncWebServerRequest* request);
+    
+    // File handling
+    bool handleFileRead(AsyncWebServerRequest* request, String path);
+    
+    // Security helpers
+    bool isAuthenticated(AsyncWebServerRequest* request);
+    void requestAuthentication(AsyncWebServerRequest* request);
+    void addSecurityHeaders(AsyncWebServerResponse* response);
+    bool validateCSRFToken(AsyncWebServerRequest* request);
+    String generateCSRFToken();
+    
+    // HTML generation
+    String generateHtml();
 
 private:
-  AsyncWebServer* server;
-  DNSServer dns;
-  AsyncWiFiManager wifiManager;
-
-  ConfigManager* configManager;
-  MQTTInterface* mqttInterface;
-  ThermostatController* thermostatController;
-
-  String csrfToken;
-  String generateHtml();
-  void setupMDNS();
+    AsyncWebServer server;
+    ConfigManager* configManager;
+    ThermostatController* thermostatController;
+    MQTTInterface* mqttInterface;
+    
+    // HTML generation
+    String generateHtml();
 };
 
 #endif // WEB_INTERFACE_H 
