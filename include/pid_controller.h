@@ -9,9 +9,9 @@ struct PIDConfig {
     float kp;
     float ki;
     float kd;
-    unsigned long interval;
     float outputMin;
     float outputMax;
+    uint32_t sampleTime;  // in milliseconds
     bool reverse;
 };
 

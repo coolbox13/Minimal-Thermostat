@@ -1,10 +1,13 @@
-#include "mqtt_interface.h"
+#include "communication/mqtt/mqtt_interface.h"
 #include "thermostat_state.h"
 #include "protocol_manager.h"
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <memory>
+#include <esp_log.h>
+
+static const char* TAG = "MQTTInterface";
 
 // Define make_unique for C++11 compatibility
 #if __cplusplus < 201402L
@@ -52,6 +55,7 @@ public:
     char heatingTopic[128] = {0};
     char statusTopic[128] = {0};
     
+    // Constructor
     Impl() : client(espClient) {
         client.setBufferSize(512); // Increase buffer size for larger messages
         // Initialize with default values
@@ -69,7 +73,7 @@ public:
         strcpy(heatingTopic, "heating");
         strcpy(statusTopic, "status");
         
-        // Set callback
+        // Initialize client
         client.setCallback([](char* topic, byte* payload, unsigned int length) {
             if (instance) {
                 instance->handleMessage(topic, payload, length);
@@ -84,9 +88,9 @@ public:
     void handleMessage(char* topic, byte* payload, unsigned int length);
 };
 
-// Constructor
-MQTTInterface::MQTTInterface() : pimpl(std::make_unique<Impl>()) {
-    // Set static instance pointer for callbacks
+// Constructor implementation
+MQTTInterface::MQTTInterface(ThermostatState* state) : pimpl(new Impl()) {
+    pimpl->thermostatState = state;
     instance = this;
 }
 
@@ -104,12 +108,15 @@ MQTTInterface::~MQTTInterface() {
 // Connection management
 bool MQTTInterface::begin() {
     if (!pimpl->enabled) {
-        log_i("MQTT disabled, not connecting");
+        ESP_LOGI(TAG, "MQTT disabled, not connecting");
         return false;
     }
     
-    log_i("Connecting to MQTT broker at %s:%d", pimpl->server, pimpl->port);
+    ESP_LOGI(TAG, "Connecting to MQTT broker at %s:%d", pimpl->server, pimpl->port);
     pimpl->client.setServer(pimpl->server, pimpl->port);
+    pimpl->client.setCallback([this](char* topic, byte* payload, unsigned int length) {
+        this->handleMessage(topic, payload, length);
+    });
     
     return reconnect();
 }
@@ -160,7 +167,7 @@ bool MQTTInterface::reconnect() {
     }
     
     if (result) {
-        log_i("Connected to MQTT broker");
+        ESP_LOGI(TAG, "Connected to MQTT broker");
         pimpl->connected = true;
         
         // Subscribe to topics
@@ -175,7 +182,7 @@ bool MQTTInterface::reconnect() {
         
         return true;
     } else {
-        log_e("Failed to connect to MQTT broker, rc=%d", pimpl->client.state());
+        ESP_LOGE(TAG, "Failed to connect to MQTT broker, rc=%d", pimpl->client.state());
         pimpl->connected = false;
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
         return false;
@@ -184,8 +191,8 @@ bool MQTTInterface::reconnect() {
 
 // Configuration
 bool MQTTInterface::configure(const JsonDocument& config) {
-    if (!config.containsKey("server") || !config.containsKey("port")) {
-        log_e("Invalid MQTT configuration");
+    if (!config["server"].is<const char*>() || !config["port"].is<uint16_t>()) {
+        ESP_LOGE(TAG, "Invalid MQTT configuration");
         pimpl->lastError = ThermostatStatus::ERROR_CONFIGURATION;
         return false;
     }
@@ -194,19 +201,19 @@ bool MQTTInterface::configure(const JsonDocument& config) {
     strlcpy(pimpl->server, config["server"] | "localhost", sizeof(pimpl->server));
     pimpl->port = config["port"] | 1883;
     
-    if (config.containsKey("username")) {
+    if (config["username"].is<const char*>()) {
         strlcpy(pimpl->username, config["username"], sizeof(pimpl->username));
     }
     
-    if (config.containsKey("password")) {
+    if (config["password"].is<const char*>()) {
         strlcpy(pimpl->password, config["password"], sizeof(pimpl->password));
     }
     
-    if (config.containsKey("clientId")) {
+    if (config["clientId"].is<const char*>()) {
         strlcpy(pimpl->clientId, config["clientId"], sizeof(pimpl->clientId));
     }
     
-    if (config.containsKey("topicPrefix")) {
+    if (config["topicPrefix"].is<const char*>()) {
         strlcpy(pimpl->topicPrefix, config["topicPrefix"], sizeof(pimpl->topicPrefix));
     }
     
@@ -258,7 +265,7 @@ bool MQTTInterface::sendValvePosition(float position) {
 }
 
 bool MQTTInterface::sendMode(ThermostatMode mode) {
-    const char* modeStr = getThermostatModeName(mode);
+    const char* modeStr = mode == ThermostatMode::HEAT ? "heat" : "off";
     return publish(pimpl->modeTopic, modeStr);
 }
 
@@ -330,14 +337,14 @@ bool MQTTInterface::validateTopics() const {
 
 bool MQTTInterface::publish(const char* topic, const char* payload, bool retain) {
     if (!pimpl->enabled || !pimpl->connected) {
-        log_e("MQTT not connected, can't publish");
+        ESP_LOGE(TAG, "MQTT not connected, can't publish");
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
         return false;
     }
     
     String fullTopic = String(pimpl->topicPrefix) + topic;
     if (!pimpl->client.publish(fullTopic.c_str(), payload, retain)) {
-        log_e("Failed to publish to %s", fullTopic.c_str());
+        ESP_LOGE(TAG, "Failed to publish to %s", fullTopic.c_str());
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
         return false;
     }
@@ -346,26 +353,29 @@ bool MQTTInterface::publish(const char* topic, const char* payload, bool retain)
 }
 
 void MQTTInterface::handleMessage(char* topic, byte* payload, unsigned int length) {
-    if (!pimpl->protocolManager) return;
-    
+    if (!pimpl->thermostatState || !pimpl->protocolManager) {
+        return;
+    }
+
     String topicStr(topic);
-    String setpointTopic = getFullTopic("setpoint");
-    String modeTopic = getFullTopic("mode");
-    
-    if (topicStr == setpointTopic) {
-        float setpoint = atof(String((char*)payload, length).c_str());
-        pimpl->protocolManager->handleIncomingCommand(
-            getCommandSource(),
-            CommandType::CMD_SETPOINT,
-            setpoint
-        );
-    } else if (topicStr == modeTopic) {
-        int mode = atoi(String((char*)payload, length).c_str());
-        pimpl->protocolManager->handleIncomingCommand(
-            getCommandSource(),
-            CommandType::CMD_MODE,
-            static_cast<float>(mode)
-        );
+    String payloadStr;
+    payloadStr.reserve(length);
+    for (unsigned int i = 0; i < length; i++) {
+        payloadStr += (char)payload[i];
+    }
+
+    // Handle setpoint changes
+    if (topicStr.endsWith("/setpoint/set")) {
+        float setpoint = payloadStr.toFloat();
+        pimpl->thermostatState->setTargetTemperature(setpoint);
+    }
+    // Handle mode changes
+    else if (topicStr.endsWith("/mode/set")) {
+        ThermostatMode mode = ThermostatMode::OFF;
+        if (payloadStr == "heat") {
+            mode = ThermostatMode::HEAT;
+        }
+        pimpl->thermostatState->setMode(mode);
     }
 }
 
@@ -376,13 +386,10 @@ String MQTTInterface::getFullTopic(const char* suffix) const {
 }
 
 void MQTTInterface::setEnabled(bool enabled) {
-    pimpl->enabled = enabled;
-    
-    if (enabled && !pimpl->connected) {
+    if (enabled && !isConnected()) {
         reconnect();
-    } else if (!enabled && pimpl->connected) {
-        pimpl->client.disconnect();
-        pimpl->connected = false;
+    } else if (!enabled && isConnected()) {
+        disconnect();
     }
 }
 

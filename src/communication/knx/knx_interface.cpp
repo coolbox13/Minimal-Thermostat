@@ -3,6 +3,9 @@
 #include "communication/knx/knx_interface.h"
 #include "protocol_manager.h"
 #include "thermostat_state.h"
+#include <esp_log.h>
+
+static const char* TAG = "KNXInterface";
 
 // Simple implementation class to avoid EspKnxIp errors
 class KNXInterface::Impl {
@@ -34,11 +37,8 @@ public:
 };
 
 // Constructor
-KNXInterface::KNXInterface() : pimpl(new Impl()) {
-}
-
-// Destructor
-KNXInterface::~KNXInterface() {
+KNXInterface::KNXInterface(ThermostatState* state) : pimpl(new Impl()) {
+    pimpl->thermostatState = state;
 }
 
 // Core functionality
@@ -201,10 +201,8 @@ void KNXInterface::setPhysicalAddress(uint8_t area, uint8_t line, uint8_t member
     }
 }
 
-void KNXInterface::setTemperatureGA(const KnxGroupAddress& ga) {
-    if (pimpl) {
-        pimpl->temperatureGA = ga;
-    }
+void KNXInterface::setTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
+    pimpl->temperatureGA = KnxGroupAddress(area, line, member);
 }
 
 void KNXInterface::setHumidityGA(const KnxGroupAddress& ga) {
@@ -219,10 +217,8 @@ void KNXInterface::setPressureGA(const KnxGroupAddress& ga) {
     }
 }
 
-void KNXInterface::setSetpointGA(const KnxGroupAddress& ga) {
-    if (pimpl) {
-        pimpl->setpointGA = ga;
-    }
+void KNXInterface::setSetpointGA(uint8_t area, uint8_t line, uint8_t member) {
+    pimpl->setpointGA = KnxGroupAddress(area, line, member);
 }
 
 void KNXInterface::setValvePositionGA(const KnxGroupAddress& ga) {
@@ -231,10 +227,8 @@ void KNXInterface::setValvePositionGA(const KnxGroupAddress& ga) {
     }
 }
 
-void KNXInterface::setModeGA(const KnxGroupAddress& ga) {
-    if (pimpl) {
-        pimpl->modeGA = ga;
-    }
+void KNXInterface::setModeGA(uint8_t area, uint8_t line, uint8_t member) {
+    pimpl->modeGA = KnxGroupAddress(area, line, member);
 }
 
 void KNXInterface::setHeatingStateGA(const KnxGroupAddress& ga) {

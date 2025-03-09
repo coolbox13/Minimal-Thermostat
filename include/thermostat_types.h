@@ -25,12 +25,12 @@ struct ThermostatLimits {
 
 // Status codes for operations
 enum class ThermostatStatus : int8_t {
-    OK = 0,                       // Operation successful
-    ERROR_SENSOR = -1,           // Sensor reading error
-    ERROR_COMMUNICATION = -2,    // Communication protocol error
-    ERROR_CONFIGURATION = -3,    // Configuration error
-    ERROR_FILESYSTEM = -4,       // File system error
-    ERROR_INITIALIZATION = -5    // Initialization error
+    OK = 0,
+    ERROR_CONFIGURATION,
+    ERROR_COMMUNICATION,
+    ERROR_SENSOR_READ,
+    ERROR_CONTROL,
+    ERROR_STORAGE
 };
 
 // Command sources for protocol interfaces
@@ -66,13 +66,20 @@ inline const char* getThermostatModeName(ThermostatMode mode) {
 
 inline const char* getThermostatStatusString(ThermostatStatus status) {
     switch (status) {
-        case ThermostatStatus::OK: return "OK";
-        case ThermostatStatus::ERROR_SENSOR: return "Sensor Error";
-        case ThermostatStatus::ERROR_COMMUNICATION: return "Communication Error";
-        case ThermostatStatus::ERROR_CONFIGURATION: return "Configuration Error";
-        case ThermostatStatus::ERROR_FILESYSTEM: return "Filesystem Error";
-        case ThermostatStatus::ERROR_INITIALIZATION: return "Initialization Error";
-        default: return "Unknown Error";
+        case ThermostatStatus::OK:
+            return "OK";
+        case ThermostatStatus::ERROR_CONFIGURATION:
+            return "Configuration Error";
+        case ThermostatStatus::ERROR_COMMUNICATION:
+            return "Communication Error";
+        case ThermostatStatus::ERROR_SENSOR_READ:
+            return "Sensor Read Error";
+        case ThermostatStatus::ERROR_CONTROL:
+            return "Control Error";
+        case ThermostatStatus::ERROR_STORAGE:
+            return "Storage Error";
+        default:
+            return "Unknown Error";
     }
 }
 
@@ -129,11 +136,11 @@ namespace ArduinoJson {
             static void toJson(const ThermostatStatus& src, JsonVariant dst) {
                 switch (src) {
                     case ThermostatStatus::OK: dst.set("OK"); break;
-                    case ThermostatStatus::ERROR_SENSOR: dst.set("Sensor Error"); break;
-                    case ThermostatStatus::ERROR_COMMUNICATION: dst.set("Communication Error"); break;
                     case ThermostatStatus::ERROR_CONFIGURATION: dst.set("Configuration Error"); break;
-                    case ThermostatStatus::ERROR_FILESYSTEM: dst.set("Filesystem Error"); break;
-                    case ThermostatStatus::ERROR_INITIALIZATION: dst.set("Initialization Error"); break;
+                    case ThermostatStatus::ERROR_COMMUNICATION: dst.set("Communication Error"); break;
+                    case ThermostatStatus::ERROR_SENSOR_READ: dst.set("Sensor Read Error"); break;
+                    case ThermostatStatus::ERROR_CONTROL: dst.set("Control Error"); break;
+                    case ThermostatStatus::ERROR_STORAGE: dst.set("Storage Error"); break;
                 }
             }
         };

@@ -6,40 +6,41 @@
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <AsyncJson.h>
 
 // Forward declarations
 class ThermostatState;
 class ProtocolManager;
 
-#include "interfaces/web_interface.h"
-#include "interfaces/config_interface.h"
-#include "interfaces/control_interface.h"
-#include "interfaces/protocol_interface.h"
+#include "web/web_interface.h"
+#include "config_manager.h"
 #include "thermostat_state.h"
 
-class ESPWebServer : public WebInterface {
+class ESPWebServer {
 public:
-    ESPWebServer(uint16_t port = 80);
+    ESPWebServer(ConfigManager* configManager, ThermostatState* state);
+    virtual ~ESPWebServer() = default;
+
+    bool begin();
+    void stop();
 
     // WebInterface implementation
-    bool begin() override;
-    void loop() override;
-    bool isConnected() const override;
-    void setPort(uint16_t port) override;
-    void setCredentials(const char* username, const char* password) override;
-    void setHostname(const char* hostname) override;
-    ThermostatStatus getLastError() const override;
+    bool isConnected() const;
+    void setPort(uint16_t port);
+    void setCredentials(const char* username, const char* password);
+    void setHostname(const char* hostname);
+    ThermostatStatus getLastError() const;
 
     // API endpoints
-    void handleRoot() override;
-    void handleSave() override;
-    void handleSetpoint() override;
-    void handleMode() override;
-    void handleStatus() override;
-    void handleConfig() override;
-    void handleReboot() override;
-    void handleReset() override;
-    void handleNotFound() override;
+    void handleRoot();
+    void handleSave();
+    void handleSetpoint();
+    void handleMode();
+    void handleStatus();
+    void handleConfig();
+    void handleReboot();
+    void handleReset();
+    void handleNotFound();
 
     // Component registration
     void registerComponents(
@@ -52,10 +53,10 @@ public:
 
 protected:
     // Helper methods
-    bool isAuthenticated() override;
-    void requestAuthentication() override;
-    String generateHtml() override;
-    bool handleFileRead(String path) override;
+    bool isAuthenticated();
+    void requestAuthentication();
+    String generateHtml();
+    bool handleFileRead(String path);
 
 private:
     // Web server
@@ -82,6 +83,10 @@ private:
     String generateConfigJson();
     void handleJsonResponse(String& json);
     void handleError(const char* message, int code = 500);
+
+    void handleGetStatus(AsyncWebServerRequest* request);
+    void handleSaveConfig(AsyncWebServerRequest* request);
+    void handleNotFound(AsyncWebServerRequest* request);
 };
 
 #endif // ESP_WEB_SERVER_H 

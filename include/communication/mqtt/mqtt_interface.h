@@ -18,9 +18,9 @@ class ProtocolManager;
 class MQTTInterface : public ProtocolInterface {
 public:
     MQTTInterface(ThermostatState* state);
-    virtual ~MQTTInterface() = default;
+    virtual ~MQTTInterface();
 
-    // ProtocolInterface implementation
+    // Core functionality
     bool begin() override;
     void loop() override;
     bool isConnected() const override;
@@ -54,6 +54,9 @@ public:
     const char* getProtocolName() const override { return "MQTT"; }
     CommandSource getCommandSource() const override { return CommandSource::SOURCE_MQTT; }
 
+    // Enable/disable MQTT
+    void setEnabled(bool enabled);
+
     // MQTT specific configuration
     void setServer(const char* server, uint16_t port = 1883);
     void setCredentials(const char* username, const char* password);
@@ -65,19 +68,21 @@ public:
     void registerProtocolManager(ProtocolManager* manager);
 
 private:
-    // Forward declare private implementation
+    // Implementation details
     class Impl;
     std::unique_ptr<Impl> pimpl;
 
-    // Internal helpers
-    bool validateConnection() const;
-    bool validateTopics() const;
+    // Message handling
     bool publish(const char* topic, const char* payload, bool retain = true);
     void setupSubscriptions();
     void cleanupSubscriptions();
     void handleMessage(char* topic, uint8_t* payload, unsigned int length);
     static void mqttCallback(char* topic, uint8_t* payload, unsigned int length);
     String getFullTopic(const char* suffix) const;
+
+    // Validation
+    bool validateConnection() const;
+    bool validateTopics() const;
 
     ThermostatState* state;
     WiFiClient wifiClient;

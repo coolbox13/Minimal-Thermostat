@@ -13,55 +13,58 @@
 #include <ESPAsyncWiFiManager.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
+#include <esp_log.h>
+#include "pid_controller.h"
+#include "protocol_types.h"
+#include "communication/mqtt/mqtt_interface.h"
+
+static const char* TAG = "ConfigManager";
 
 ConfigManager::ConfigManager() {
-    resetToDefaults();
-}
-
-ConfigManager::~ConfigManager() {
-    end();
+    // Initialize default values
+    strlcpy(deviceName, "ESP32 Thermostat", sizeof(deviceName));
+    
+    // Web interface defaults
+    strlcpy(webUsername, "admin", sizeof(webUsername));
+    strlcpy(webPassword, "admin", sizeof(webPassword));
+    
+    // KNX defaults
+    knxEnabled = false;
+    knxPhysicalAddress = {1, 1, 1};
+    
+    // MQTT defaults
+    mqttEnabled = false;
+    strlcpy(mqttServer, "localhost", sizeof(mqttServer));
+    mqttPort = 1883;
+    strlcpy(mqttUser, "", sizeof(mqttUser));
+    strlcpy(mqttPassword, "", sizeof(mqttPassword));
+    strlcpy(mqttClientId, "esp32_thermostat", sizeof(mqttClientId));
+    strlcpy(mqttTopicPrefix, "esp32/thermostat/", sizeof(mqttTopicPrefix));
+    
+    // PID defaults
+    pidConfig = {
+        .kp = 1.0f,
+        .ki = 0.1f,
+        .kd = 0.05f,
+        .outputMin = 0.0f,
+        .outputMax = 100.0f,
+        .sampleTime = 1000
+    };
 }
 
 bool ConfigManager::begin() {
-    if (!LittleFS.begin()) {
-        log_e("Failed to mount LittleFS");
+    if (!LittleFS.begin(true)) {
+        ESP_LOGE(TAG, "Failed to mount file system");
         return false;
     }
     return loadConfig();
 }
 
-void ConfigManager::end() {
-    saveConfig();
-}
-
-bool ConfigManager::setupWiFi() {
-    WiFi.mode(WIFI_STA);
-    
-    // Try to connect using saved credentials
-    if (WiFi.begin() == WL_CONNECT_FAILED) {
-        // If connection fails, start WiFi Manager
-        AsyncWebServer server(80);
-        DNSServer dns;
-        AsyncWiFiManager wifiManager(&server, &dns);
-        wifiManager.setConfigPortalTimeout(180); // 3 minutes timeout
-        
-        if (!wifiManager.autoConnect(deviceName)) {
-            log_e("Failed to connect to WiFi - restarting");
-            delay(1000);
-            ESP.restart();
-            return false;
-        }
-    }
-    
-    log_i("Connected to WiFi");
-    log_i("IP address: %s", WiFi.localIP().toString().c_str());
-    return true;
-}
-
 bool ConfigManager::loadConfig() {
     File file = LittleFS.open("/config.json", "r");
     if (!file) {
-        log_e("Failed to open config file");
+        ESP_LOGW(TAG, "Failed to open config file, using defaults");
         return false;
     }
 
@@ -70,47 +73,56 @@ bool ConfigManager::loadConfig() {
     file.close();
 
     if (error) {
-        log_e("Failed to parse config file");
+        ESP_LOGE(TAG, "Failed to parse config file: %s", error.c_str());
         return false;
     }
 
-    // Device settings
-    strlcpy(deviceName, doc["deviceName"] | "ESP32-Thermostat", sizeof(deviceName));
-    sendInterval = doc["sendInterval"] | 10000;
-    pidInterval = doc["pidInterval"] | 10000;
+    // Load device settings
+    if (doc.containsKey("deviceName")) {
+        strlcpy(deviceName, doc["deviceName"] | "ESP32 Thermostat", sizeof(deviceName));
+    }
 
-    // Web interface settings
-    strlcpy(webUsername, doc["webUsername"] | "admin", sizeof(webUsername));
-    strlcpy(webPassword, doc["webPassword"] | "admin", sizeof(webPassword));
+    // Load web interface settings
+    JsonObject web = doc["web"];
+    if (web) {
+        strlcpy(webUsername, web["username"] | "admin", sizeof(webUsername));
+        strlcpy(webPassword, web["password"] | "admin", sizeof(webPassword));
+    }
 
-    // KNX settings
-    knxEnabled = doc["knxEnabled"] | false;
-    knxPhysicalArea = doc["knxPhysicalArea"] | 1;
-    knxPhysicalLine = doc["knxPhysicalLine"] | 1;
-    knxPhysicalMember = doc["knxPhysicalMember"] | 1;
-    knxTempArea = doc["knxTempArea"] | 1;
-    knxTempLine = doc["knxTempLine"] | 1;
-    knxTempMember = doc["knxTempMember"] | 1;
-    knxSetpointArea = doc["knxSetpointArea"] | 1;
-    knxSetpointLine = doc["knxSetpointLine"] | 1;
-    knxSetpointMember = doc["knxSetpointMember"] | 1;
-    knxValveArea = doc["knxValveArea"] | 1;
-    knxValveLine = doc["knxValveLine"] | 1;
-    knxValveMember = doc["knxValveMember"] | 1;
-    knxModeArea = doc["knxModeArea"] | 1;
-    knxModeLine = doc["knxModeLine"] | 1;
-    knxModeMember = doc["knxModeMember"] | 1;
+    // Load KNX settings
+    JsonObject knx = doc["knx"];
+    if (knx) {
+        knxEnabled = knx["enabled"] | false;
+        JsonObject physical = knx["physical"];
+        if (physical) {
+            knxPhysicalAddress.area = physical["area"] | 1;
+            knxPhysicalAddress.line = physical["line"] | 1;
+            knxPhysicalAddress.member = physical["member"] | 1;
+        }
+    }
 
-    // MQTT settings
-    mqttEnabled = doc["mqttEnabled"] | false;
-    strlcpy(mqttServer, doc["mqttServer"] | "", sizeof(mqttServer));
-    mqttPort = doc["mqttPort"] | 1883;
-    strlcpy(mqttUser, doc["mqttUser"] | "", sizeof(mqttUser));
-    strlcpy(mqttPassword, doc["mqttPassword"] | "", sizeof(mqttPassword));
-    strlcpy(mqttClientId, doc["mqttClientId"] | "", sizeof(mqttClientId));
+    // Load MQTT settings
+    JsonObject mqtt = doc["mqtt"];
+    if (mqtt) {
+        mqttEnabled = mqtt["enabled"] | false;
+        strlcpy(mqttServer, mqtt["server"] | "localhost", sizeof(mqttServer));
+        mqttPort = mqtt["port"] | 1883;
+        strlcpy(mqttUser, mqtt["username"] | "", sizeof(mqttUser));
+        strlcpy(mqttPassword, mqtt["password"] | "", sizeof(mqttPassword));
+        strlcpy(mqttClientId, mqtt["clientId"] | "esp32_thermostat", sizeof(mqttClientId));
+        strlcpy(mqttTopicPrefix, mqtt["topicPrefix"] | "esp32/thermostat/", sizeof(mqttTopicPrefix));
+    }
 
-    // Thermostat settings
-    setpoint = doc["setpoint"] | 21.0;
+    // Load PID settings
+    JsonObject pid = doc["pid"];
+    if (pid) {
+        pidConfig.kp = pid["kp"] | 1.0f;
+        pidConfig.ki = pid["ki"] | 0.1f;
+        pidConfig.kd = pid["kd"] | 0.05f;
+        pidConfig.outputMin = pid["outputMin"] | 0.0f;
+        pidConfig.outputMax = pid["outputMax"] | 100.0f;
+        pidConfig.sampleTime = pid["sampleTime"] | 1000;
+    }
 
     return true;
 }
@@ -118,129 +130,145 @@ bool ConfigManager::loadConfig() {
 void ConfigManager::saveConfig() {
     StaticJsonDocument<1024> doc;
 
-    // Device settings
+    // Save device settings
     doc["deviceName"] = deviceName;
-    doc["sendInterval"] = sendInterval;
-    doc["pidInterval"] = pidInterval;
 
-    // Web interface settings
-    doc["webUsername"] = webUsername;
-    doc["webPassword"] = webPassword;
+    // Save web interface settings
+    JsonObject web = doc.createNestedObject("web");
+    web["username"] = webUsername;
+    web["password"] = webPassword;
 
-    // KNX settings
-    doc["knxEnabled"] = knxEnabled;
-    doc["knxPhysicalArea"] = knxPhysicalArea;
-    doc["knxPhysicalLine"] = knxPhysicalLine;
-    doc["knxPhysicalMember"] = knxPhysicalMember;
-    doc["knxTempArea"] = knxTempArea;
-    doc["knxTempLine"] = knxTempLine;
-    doc["knxTempMember"] = knxTempMember;
-    doc["knxSetpointArea"] = knxSetpointArea;
-    doc["knxSetpointLine"] = knxSetpointLine;
-    doc["knxSetpointMember"] = knxSetpointMember;
-    doc["knxValveArea"] = knxValveArea;
-    doc["knxValveLine"] = knxValveLine;
-    doc["knxValveMember"] = knxValveMember;
-    doc["knxModeArea"] = knxModeArea;
-    doc["knxModeLine"] = knxModeLine;
-    doc["knxModeMember"] = knxModeMember;
+    // Save KNX settings
+    JsonObject knx = doc.createNestedObject("knx");
+    knx["enabled"] = knxEnabled;
+    JsonObject physical = knx.createNestedObject("physical");
+    physical["area"] = knxPhysicalAddress.area;
+    physical["line"] = knxPhysicalAddress.line;
+    physical["member"] = knxPhysicalAddress.member;
 
-    // MQTT settings
-    doc["mqttEnabled"] = mqttEnabled;
-    doc["mqttServer"] = mqttServer;
-    doc["mqttPort"] = mqttPort;
-    doc["mqttUser"] = mqttUser;
-    doc["mqttPassword"] = mqttPassword;
-    doc["mqttClientId"] = mqttClientId;
+    // Save MQTT settings
+    JsonObject mqtt = doc.createNestedObject("mqtt");
+    mqtt["enabled"] = mqttEnabled;
+    mqtt["server"] = mqttServer;
+    mqtt["port"] = mqttPort;
+    mqtt["username"] = mqttUser;
+    mqtt["password"] = mqttPassword;
+    mqtt["clientId"] = mqttClientId;
+    mqtt["topicPrefix"] = mqttTopicPrefix;
 
-    // Thermostat settings
-    doc["setpoint"] = setpoint;
+    // Save PID settings
+    JsonObject pid = doc.createNestedObject("pid");
+    pid["kp"] = pidConfig.kp;
+    pid["ki"] = pidConfig.ki;
+    pid["kd"] = pidConfig.kd;
+    pid["outputMin"] = pidConfig.outputMin;
+    pid["outputMax"] = pidConfig.outputMax;
+    pid["sampleTime"] = pidConfig.sampleTime;
 
     File file = LittleFS.open("/config.json", "w");
     if (!file) {
-        log_e("Failed to open config file for writing");
+        ESP_LOGE(TAG, "Failed to open config file for writing");
         return;
     }
 
     if (serializeJson(doc, file) == 0) {
-        log_e("Failed to write config file");
+        ESP_LOGE(TAG, "Failed to write config file");
     }
-
     file.close();
 }
 
 void ConfigManager::resetToDefaults() {
-    // Device settings
-    strlcpy(deviceName, "ESP32-Thermostat", sizeof(deviceName));
-    sendInterval = 10000;
-    pidInterval = 10000;
-
-    // Web interface settings
+    // Reset device settings
+    strlcpy(deviceName, "ESP32 Thermostat", sizeof(deviceName));
+    
+    // Reset web interface settings
     strlcpy(webUsername, "admin", sizeof(webUsername));
     strlcpy(webPassword, "admin", sizeof(webPassword));
-
-    // KNX settings
+    
+    // Reset KNX settings
     knxEnabled = false;
-    knxPhysicalArea = 1;
-    knxPhysicalLine = 1;
-    knxPhysicalMember = 1;
-    knxTempArea = 1;
-    knxTempLine = 1;
-    knxTempMember = 1;
-    knxSetpointArea = 1;
-    knxSetpointLine = 1;
-    knxSetpointMember = 1;
-    knxValveArea = 1;
-    knxValveLine = 1;
-    knxValveMember = 1;
-    knxModeArea = 1;
-    knxModeLine = 1;
-    knxModeMember = 1;
-
-    // MQTT settings
+    knxPhysicalAddress = {1, 1, 1};
+    
+    // Reset MQTT settings
     mqttEnabled = false;
-    strlcpy(mqttServer, "", sizeof(mqttServer));
+    strlcpy(mqttServer, "localhost", sizeof(mqttServer));
     mqttPort = 1883;
     strlcpy(mqttUser, "", sizeof(mqttUser));
     strlcpy(mqttPassword, "", sizeof(mqttPassword));
-    strlcpy(mqttClientId, "", sizeof(mqttClientId));
-
-    // Thermostat settings
-    setpoint = 21.0;
+    strlcpy(mqttClientId, "esp32_thermostat", sizeof(mqttClientId));
+    strlcpy(mqttTopicPrefix, "esp32/thermostat/", sizeof(mqttTopicPrefix));
+    
+    // Reset PID settings
+    pidConfig = {
+        .kp = 1.0f,
+        .ki = 0.1f,
+        .kd = 0.05f,
+        .outputMin = 0.0f,
+        .outputMax = 100.0f,
+        .sampleTime = 1000
+    };
+    
+    saveConfig();
 }
 
-// Device settings
 void ConfigManager::setDeviceName(const char* name) {
     strlcpy(deviceName, name, sizeof(deviceName));
 }
 
-const char* ConfigManager::getDeviceName() const {
-    return deviceName;
-}
-
-void ConfigManager::setSendInterval(uint32_t interval) {
-    sendInterval = interval;
-}
-
-uint32_t ConfigManager::getSendInterval() const {
-    return sendInterval;
-}
-
-void ConfigManager::setPidInterval(uint32_t interval) {
-    pidInterval = interval;
-}
-
-uint32_t ConfigManager::getPidInterval() const {
-    return pidInterval;
-}
-
-// Web interface settings
 void ConfigManager::setWebUsername(const char* username) {
     strlcpy(webUsername, username, sizeof(webUsername));
 }
 
 void ConfigManager::setWebPassword(const char* password) {
     strlcpy(webPassword, password, sizeof(webPassword));
+}
+
+void ConfigManager::setMQTTServer(const char* server) {
+    strlcpy(mqttServer, server, sizeof(mqttServer));
+}
+
+void ConfigManager::setMQTTUser(const char* user) {
+    strlcpy(mqttUser, user, sizeof(mqttUser));
+}
+
+void ConfigManager::setMQTTPassword(const char* password) {
+    strlcpy(mqttPassword, password, sizeof(mqttPassword));
+}
+
+void ConfigManager::setMQTTClientId(const char* clientId) {
+    strlcpy(mqttClientId, clientId, sizeof(mqttClientId));
+}
+
+void ConfigManager::setMQTTTopicPrefix(const char* prefix) {
+    strlcpy(mqttTopicPrefix, prefix, sizeof(mqttTopicPrefix));
+}
+
+void ConfigManager::setKnxPhysicalAddress(uint8_t area, uint8_t line, uint8_t member) {
+    knxPhysicalAddress.area = area;
+    knxPhysicalAddress.line = line;
+    knxPhysicalAddress.member = member;
+}
+
+void ConfigManager::getKnxPhysicalAddress(uint8_t& area, uint8_t& line, uint8_t& member) const {
+    area = knxPhysicalAddress.area;
+    line = knxPhysicalAddress.line;
+    member = knxPhysicalAddress.member;
+}
+
+uint8_t ConfigManager::getKnxPhysicalArea() const {
+    return knxPhysicalAddress.area;
+}
+
+uint8_t ConfigManager::getKnxPhysicalLine() const {
+    return knxPhysicalAddress.line;
+}
+
+uint8_t ConfigManager::getKnxPhysicalMember() const {
+    return knxPhysicalAddress.member;
+}
+
+const char* ConfigManager::getDeviceName() const {
+    return deviceName;
 }
 
 const char* ConfigManager::getWebUsername() const {
@@ -251,189 +279,54 @@ const char* ConfigManager::getWebPassword() const {
     return webPassword;
 }
 
-// KNX settings
-void ConfigManager::setKnxEnabled(bool enabled) {
-    knxEnabled = enabled;
-}
-
 bool ConfigManager::getKnxEnabled() const {
     return knxEnabled;
 }
 
-void ConfigManager::setKnxPhysicalAddress(uint8_t area, uint8_t line, uint8_t member) {
-    knxPhysicalArea = area;
-    knxPhysicalLine = line;
-    knxPhysicalMember = member;
-}
-
-void ConfigManager::getKnxPhysicalAddress(uint8_t& area, uint8_t& line, uint8_t& member) const {
-    area = knxPhysicalArea;
-    line = knxPhysicalLine;
-    member = knxPhysicalMember;
-}
-
-uint8_t ConfigManager::getKnxPhysicalArea() const {
-    return knxPhysicalArea;
-}
-
-uint8_t ConfigManager::getKnxPhysicalLine() const {
-    return knxPhysicalLine;
-}
-
-uint8_t ConfigManager::getKnxPhysicalMember() const {
-    return knxPhysicalMember;
-}
-
-void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
-    knxTempArea = area;
-    knxTempLine = line;
-    knxTempMember = member;
-}
-
-void ConfigManager::getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
-    area = knxTempArea;
-    line = knxTempLine;
-    member = knxTempMember;
-}
-
-uint8_t ConfigManager::getKnxTempArea() const {
-    return knxTempArea;
-}
-
-uint8_t ConfigManager::getKnxTempLine() const {
-    return knxTempLine;
-}
-
-uint8_t ConfigManager::getKnxTempMember() const {
-    return knxTempMember;
-}
-
-void ConfigManager::setKnxSetpointGA(uint8_t area, uint8_t line, uint8_t member) {
-    knxSetpointArea = area;
-    knxSetpointLine = line;
-    knxSetpointMember = member;
-}
-
-void ConfigManager::getKnxSetpointGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
-    area = knxSetpointArea;
-    line = knxSetpointLine;
-    member = knxSetpointMember;
-}
-
-uint8_t ConfigManager::getKnxSetpointArea() const {
-    return knxSetpointArea;
-}
-
-uint8_t ConfigManager::getKnxSetpointLine() const {
-    return knxSetpointLine;
-}
-
-uint8_t ConfigManager::getKnxSetpointMember() const {
-    return knxSetpointMember;
-}
-
-void ConfigManager::setKnxValveGA(uint8_t area, uint8_t line, uint8_t member) {
-    knxValveArea = area;
-    knxValveLine = line;
-    knxValveMember = member;
-}
-
-void ConfigManager::getKnxValveGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
-    area = knxValveArea;
-    line = knxValveLine;
-    member = knxValveMember;
-}
-
-uint8_t ConfigManager::getKnxValveArea() const {
-    return knxValveArea;
-}
-
-uint8_t ConfigManager::getKnxValveLine() const {
-    return knxValveLine;
-}
-
-uint8_t ConfigManager::getKnxValveMember() const {
-    return knxValveMember;
-}
-
-void ConfigManager::setKnxModeGA(uint8_t area, uint8_t line, uint8_t member) {
-    knxModeArea = area;
-    knxModeLine = line;
-    knxModeMember = member;
-}
-
-void ConfigManager::getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
-    area = knxModeArea;
-    line = knxModeLine;
-    member = knxModeMember;
-}
-
-uint8_t ConfigManager::getKnxModeArea() const {
-    return knxModeArea;
-}
-
-uint8_t ConfigManager::getKnxModeLine() const {
-    return knxModeLine;
-}
-
-uint8_t ConfigManager::getKnxModeMember() const {
-    return knxModeMember;
-}
-
-// MQTT settings
-void ConfigManager::setMQTTEnabled(bool enabled) {
-    mqttEnabled = enabled;
+void ConfigManager::setKnxEnabled(bool enabled) {
+    knxEnabled = enabled;
 }
 
 bool ConfigManager::getMQTTEnabled() const {
     return mqttEnabled;
 }
 
-void ConfigManager::setMQTTServer(const char* server) {
-    strlcpy(mqttServer, server, sizeof(mqttServer));
+void ConfigManager::setMQTTEnabled(bool enabled) {
+    mqttEnabled = enabled;
 }
 
 const char* ConfigManager::getMQTTServer() const {
     return mqttServer;
 }
 
-void ConfigManager::setMQTTPort(uint16_t port) {
-    mqttPort = port;
-}
-
 uint16_t ConfigManager::getMQTTPort() const {
     return mqttPort;
 }
 
-void ConfigManager::setMQTTUser(const char* user) {
-    strlcpy(mqttUser, user, sizeof(mqttUser));
+void ConfigManager::setMQTTPort(uint16_t port) {
+    mqttPort = port;
 }
 
 const char* ConfigManager::getMQTTUser() const {
     return mqttUser;
 }
 
-void ConfigManager::setMQTTPassword(const char* password) {
-    strlcpy(mqttPassword, password, sizeof(mqttPassword));
-}
-
 const char* ConfigManager::getMQTTPassword() const {
     return mqttPassword;
-}
-
-void ConfigManager::setMQTTClientId(const char* clientId) {
-    strlcpy(mqttClientId, clientId, sizeof(mqttClientId));
 }
 
 const char* ConfigManager::getMQTTClientId() const {
     return mqttClientId;
 }
 
-// Thermostat settings
-void ConfigManager::setSetpoint(float value) {
-    setpoint = value;
+const char* ConfigManager::getMQTTTopicPrefix() const {
+    return mqttTopicPrefix;
 }
 
-float ConfigManager::getSetpoint() const {
-    return setpoint;
+const PIDConfig& ConfigManager::getPidConfig() const {
+    return pidConfig;
+}
+
+void ConfigManager::setPidConfig(const PIDConfig& config) {
+    pidConfig = config;
 }
