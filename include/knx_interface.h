@@ -2,11 +2,20 @@
 #define KNX_INTERFACE_H
 
 #include <Arduino.h>
-#include "esp-knx-ip.h"
-#include "thermostat_state.h"
+#include <esp-knx-ip.h>
 
-// Forward declaration to resolve circular dependency
-class ProtocolManager;
+// Forward declaration to avoid circular dependencies
+class ThermostatState;
+
+// Enum for thermostat modes
+enum ThermostatMode {
+  MODE_OFF = 0,
+  MODE_COMFORT = 1,
+  MODE_ECO = 2,
+  MODE_AWAY = 3,
+  MODE_BOOST = 4,
+  MODE_ANTIFREEZE = 5
+};
 
 class KNXInterface {
 public:
@@ -16,8 +25,8 @@ public:
   // Initialize KNX communication
   bool begin(int area = 1, int line = 1, int member = 201);
   
-  // Register with thermostat state and protocol manager
-  void registerCallbacks(ThermostatState* state, ProtocolManager* protocolManager);
+  // Register with thermostat state
+  void registerCallbacks(ThermostatState* state);
   
   // Set group addresses for different datapoints
   void setTemperatureGA(int area, int line, int member);
@@ -35,26 +44,28 @@ public:
   bool sendMode(ThermostatMode mode);
   
 private:
-  // Helper to convert our GA format to knx library format
-  address_t convertToKnxGA(int area, int line, int member);
+  // Helper to calculate group address
+  address_t calculateGA(int area, int line, int member);
   
-  // Store GA values
+  // KNX callbacks
+  static void handleSetpointCallback(message_t const &msg, void *arg);
+  static void handleModeCallback(message_t const &msg, void *arg);
+  
+  // Group addresses
   address_t temperatureGA;
   address_t setpointGA;
   address_t valvePositionGA;
   address_t modeGA;
   
-  // References to other components
+  // Thermostat state reference
   ThermostatState* thermostatState;
-  ProtocolManager* protocolManager;
   
-  // KNX callback IDs for the knx library
+  // Callback IDs
   callback_id_t setpointCallbackId;
   callback_id_t modeCallbackId;
   
-  // Static callback handlers
-  static void handleSetpointCallback(message_t const &msg, void *arg);
-  static void handleModeCallback(message_t const &msg, void *arg);
+  // Helper for registering with KNX callbacks
+  void registerKNXCallbacks();
 };
 
 #endif // KNX_INTERFACE_H

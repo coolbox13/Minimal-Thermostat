@@ -1,27 +1,22 @@
-
 #ifndef PROTOCOL_MANAGER_H
 #define PROTOCOL_MANAGER_H
 
+#include <Arduino.h>
 #include "thermostat_state.h"
+#include "knx_interface.h"
 
-// Forward declaration to resolve circular dependency
-class KNXInterface;
+// Source definitions
+#define SOURCE_WEB_API 1
+#define SOURCE_KNX 2
+#define SOURCE_MQTT 3
 
-// Different command sources to handle priority
-enum CommandSource {
-  SOURCE_LOCAL = 0,    // UI or button on device
-  SOURCE_KNX = 1,      // KNX bus command
-  SOURCE_MQTT = 2,     // MQTT command
-  SOURCE_SCHEDULE = 3, // Scheduled change
-  SOURCE_WEB_API = 4   // Web API call
-};
+// Command definitions
+#define CMD_SET_TEMPERATURE 1
+#define CMD_SET_MODE 2
+#define CMD_SET_VALVE 3
 
-// Types of commands that can be received
-enum CommandType {
-  CMD_SET_TEMPERATURE = 0,
-  CMD_SET_MODE = 1,
-  CMD_SET_VALVE_POSITION = 2
-};
+// Forward declarations if needed
+class MQTTInterface;
 
 class ProtocolManager {
 public:
@@ -31,31 +26,35 @@ public:
   // Initialize with thermostat state
   void begin(ThermostatState* state);
   
-  // Register protocol interfaces
+  // Register protocols
   void registerProtocols(KNXInterface* knx);
   
-  // Handle incoming commands from various sources
-  void handleIncomingCommand(CommandSource source, CommandType cmd, float value);
+  // Optional MQTT registration
+  void registerMQTT(MQTTInterface* mqtt);
   
-  // Update a specific property across all protocols
-  void broadcastState(ThermostatState* state);
-  
-  // Process loop (call in main loop)
+  // Process communications
   void loop();
-
+  
+  // Handle incoming commands from any source
+  bool handleIncomingCommand(int source, int command, float value);
+  
+  // Send updates
+  void sendTemperature(float temperature);
+  void sendSetpoint(float setpoint);
+  void sendValvePosition(float position);
+  void sendMode(ThermostatMode mode);
+  
 private:
-  ThermostatState* thermostatState;
+  // References to interfaces
   KNXInterface* knxInterface;
+  MQTTInterface* mqttInterface;
   
-  // Last command source for conflict resolution
-  CommandSource lastCommandSource;
-  unsigned long lastCommandTime;
+  // Thermostat state reference
+  ThermostatState* thermostatState;
   
-  // Conflict resolution - return true if source a has higher priority than b
-  bool hasPriority(CommandSource a, CommandSource b);
-  
-  // Command cooldown time in ms (prevents command loops)
-  static constexpr unsigned long COMMAND_COOLDOWN = 1000;
+  // Latest send time
+  unsigned long lastSendTime;
+  unsigned long sendInterval;
 };
 
 #endif // PROTOCOL_MANAGER_H

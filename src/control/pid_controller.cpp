@@ -1,3 +1,12 @@
+// Basic includes
+#include <Arduino.h>
+
+// Include the ThermostatState first since other components depend on it
+#include "thermostat_state.h"
+
+// Then include your component headers
+#include "knx_interface.h"
+#include "config_manager.h"
 #include "pid_controller.h"
 
 PIDController::PIDController() :

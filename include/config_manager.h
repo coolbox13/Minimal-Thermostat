@@ -2,64 +2,55 @@
 #define CONFIG_MANAGER_H
 
 #include <Arduino.h>
-
-// Determine which file system to use based on platform
-#include <LittleFS.h>
-#define FileFS LittleFS
-
 #include <ArduinoJson.h>
+#include <WiFiManager.h>
 
-// Default device name
-#define DEFAULT_DEVICE_NAME "KNX-Thermostat"
+// Define the appropriate file system
+#ifdef ESP32
+  #include <LITTLEFS.h>
+  #define FileFS LITTLEFS
+#elif defined(ESP8266)
+  #include <LittleFS.h>
+  #define FileFS LittleFS
+#endif
+
 #define CONFIG_FILE "/config.json"
+#define DEFAULT_DEVICE_NAME "KNX-Thermostat"
 
 class ConfigManager {
 public:
   // Constructor
   ConfigManager();
   
-  // Initialize configuration
+  // Initialize configuration and file system
   bool begin();
   
-  // WiFi setup with WiFiManager
+  // Setup WiFi using WiFiManager
   bool setupWiFi();
   
   // Save and load configuration
   bool saveConfig();
   bool loadConfig();
   
-  // Set defaults
-  void setDefaults();
-  
-  // Factory reset (clear all settings)
+  // Reset to factory defaults
   void factoryReset();
   
   // Setters
   void setDeviceName(const char* name);
   void setSendInterval(int interval);
   void setPidInterval(int interval);
-  
-  // KNX physical address
+  void setKnxEnabled(bool enabled);
   void setKnxPhysicalAddress(int area, int line, int member);
-  
-  // KNX group addresses
   void setKnxTemperatureGA(int area, int line, int member);
   void setKnxSetpointGA(int area, int line, int member);
   void setKnxValveGA(int area, int line, int member);
   void setKnxModeGA(int area, int line, int member);
-  
-  // KNX general settings
-  void setKnxEnabled(bool enabled);
-  
-  // MQTT settings
+  void setMqttEnabled(bool enabled);
   void setMqttServer(const char* server);
   void setMqttPort(int port);
   void setMqttUser(const char* user);
   void setMqttPassword(const char* password);
   void setMqttClientId(const char* clientId);
-  void setMqttEnabled(bool enabled);
-  
-  // PID settings
   void setKp(float value);
   void setKi(float value);
   void setKd(float value);
@@ -69,93 +60,77 @@ public:
   const char* getDeviceName() const;
   int getSendInterval() const;
   int getPidInterval() const;
-  
-  // KNX physical address
+  bool getKnxEnabled() const;
   int getKnxPhysicalArea() const;
   int getKnxPhysicalLine() const;
   int getKnxPhysicalMember() const;
-  
-  // KNX group addresses
   int getKnxTempArea() const;
   int getKnxTempLine() const;
   int getKnxTempMember() const;
-  
   int getKnxSetpointArea() const;
   int getKnxSetpointLine() const;
   int getKnxSetpointMember() const;
-  
   int getKnxValveArea() const;
   int getKnxValveLine() const;
   int getKnxValveMember() const;
-  
   int getKnxModeArea() const;
   int getKnxModeLine() const;
   int getKnxModeMember() const;
-  
-  // KNX general settings
-  bool getKnxEnabled() const;
-  
-  // MQTT settings
+  bool getMqttEnabled() const;
   const char* getMqttServer() const;
   int getMqttPort() const;
   const char* getMqttUser() const;
   const char* getMqttPassword() const;
   const char* getMqttClientId() const;
-  bool getMqttEnabled() const;
-  
-  // PID settings
   float getKp() const;
   float getKi() const;
   float getKd() const;
   float getSetpoint() const;
-
+  
 private:
-  // Device settings
+  // Configuration values
   char deviceName[32];
   int sendInterval;
   int pidInterval;
   
-  // KNX physical address
+  // KNX settings
+  bool knxEnabled;
   int knxPhysicalArea;
   int knxPhysicalLine;
   int knxPhysicalMember;
   
-  // KNX enabled flag
-  bool knxEnabled;
-  
-  // KNX temperature group address
   int knxTempArea;
   int knxTempLine;
   int knxTempMember;
   
-  // KNX setpoint group address
   int knxSetpointArea;
   int knxSetpointLine;
   int knxSetpointMember;
   
-  // KNX valve position group address
   int knxValveArea;
   int knxValveLine;
   int knxValveMember;
   
-  // KNX operating mode group address
   int knxModeArea;
   int knxModeLine;
   int knxModeMember;
   
   // MQTT settings
+  bool mqttEnabled;
   char mqttServer[40];
   int mqttPort;
   char mqttUser[24];
   char mqttPassword[24];
   char mqttClientId[24];
-  bool mqttEnabled;
   
   // PID settings
   float kp;
   float ki;
   float kd;
   float setpoint;
+  
+  // Set default values
+  void setDefaults();
 };
 
 #endif // CONFIG_MANAGER_H

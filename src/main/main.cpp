@@ -58,6 +58,19 @@ void setup() {
   
   Serial.begin(115200);
   Serial.println("\n\nStarting ESP32-KNX-Thermostat...");
+
+    
+  // Initialize file system early
+#ifdef ESP32
+if (!LITTLEFS.begin(true)) {
+  Serial.println("LittleFS mount failed! Formatting...");
+  LITTLEFS.format();
+}
+#else
+if (!LittleFS.begin()) {
+  Serial.println("LittleFS mount failed!");
+}
+#endif
   
   // Initialize I2C for sensors
   Wire.begin();

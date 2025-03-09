@@ -1,6 +1,13 @@
+#include "thermostat_state.h"  // Include this first
+#include "knx_interface.h"     // Then include this
 
-#include "knx_interface.h"
-#include "protocol_manager.h"
+// Basic includes
+#include <Arduino.h>
+
+// Then include your component headers
+#include "config_manager.h"
+
+// Use ThermostatState methods directly since the class is now fully defined
 
 KNXInterface::KNXInterface() : 
   thermostatState(nullptr),
