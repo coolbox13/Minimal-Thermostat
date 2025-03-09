@@ -3,55 +3,42 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
-#include <AsyncTCP.h>
 #include <LittleFS.h>
-#include <ESPmDNS.h>
-#include "base64.h"
-
-#include "config_manager.h"
-#include "interfaces/sensor_interface.h"
-#include "pid_controller.h"
 #include "thermostat_state.h"
-#include "protocol_manager.h"
+#include "config_manager.h"
+#include "control/pid_controller.h"
 
 class WebInterface {
 public:
-    WebInterface(ConfigManager* configManager, SensorInterface* sensorInterface,
-                PIDController* pidController, ThermostatState* thermostatState,
-                ProtocolManager* protocolManager = nullptr);
-    ~WebInterface();
+    WebInterface(ConfigManager* configManager, ThermostatState* state);
+    virtual ~WebInterface() = default;
 
-    void begin();
-    void end();
-    void loop();
+    bool begin();
+    void stop();
+    bool isConnected() const;
+    void setPort(uint16_t port);
+    void setCredentials(const char* username, const char* password);
+    void setHostname(const char* hostname);
+    ThermostatStatus getLastError() const;
 
-private:
+protected:
+    void setupRoutes();
+    void handleGetStatus(AsyncWebServerRequest* request);
+    void handleSaveConfig(AsyncWebServerRequest* request);
+    void handleNotFound(AsyncWebServerRequest* request);
+    bool handleFileRead(String path);
+    void handleJsonResponse(String& json);
+    void handleError(const char* message, int code = 500);
+    String generateHtml();
+    String generateStatusJson();
+    String generateConfigJson();
+
     AsyncWebServer server;
     ConfigManager* configManager;
-    SensorInterface* sensorInterface;
-    PIDController* pidController;
-    ThermostatState* thermostatState;
-    ProtocolManager* protocolManager;
-
-    // Request handlers
-    void handleRoot(AsyncWebServerRequest* request);
-    void handleSave(AsyncWebServerRequest* request);
-    void handleGetStatus(AsyncWebServerRequest* request);
-    void handleSetpoint(AsyncWebServerRequest* request);
-    void handleSaveConfig(AsyncWebServerRequest* request);
-    void handleGetConfig(AsyncWebServerRequest* request);
-    void handleReboot(AsyncWebServerRequest* request);
-    void handleFactoryReset(AsyncWebServerRequest* request);
-    void handleNotFound(AsyncWebServerRequest* request);
-    bool handleFileRead(AsyncWebServerRequest* request, String path);
-
-    // Helper functions
-    bool isAuthenticated(AsyncWebServerRequest* request);
-    void requestAuthentication(AsyncWebServerRequest* request);
-    String getContentType(String filename);
-    void addSecurityHeaders(AsyncWebServerResponse* response);
-    bool validateCSRFToken(AsyncWebServerRequest* request);
-    String generateCSRFToken(AsyncWebServerRequest* request);
-    String generateHtml();
-    void setupMDNS();
+    ThermostatState* state;
+    uint16_t port;
+    char username[32];
+    char password[32];
+    char hostname[32];
+    ThermostatStatus lastError;
 }; 

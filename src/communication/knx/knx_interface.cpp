@@ -1,11 +1,14 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include "esp-knx-ip.h"
 #include "communication/knx/knx_interface.h"
 #include "protocol_manager.h"
 #include "thermostat_state.h"
 #include <esp_log.h>
 
 static const char* TAG = "KNXInterface";
+
+ESPKNXIP knx;
 
 // Simple implementation class to avoid EspKnxIp errors
 class KNXInterface::Impl {
@@ -158,7 +161,7 @@ bool KNXInterface::sendHeatingState(bool isHeating) {
 
 // Error handling
 ThermostatStatus KNXInterface::getLastError() const {
-    return pimpl ? pimpl->lastError : ThermostatStatus::ERROR_INITIALIZATION;
+    return pimpl ? pimpl->lastError : ThermostatStatus::ERROR_CONFIGURATION;
 }
 
 const char* KNXInterface::getLastErrorMessage() const {
