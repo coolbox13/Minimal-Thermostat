@@ -7,19 +7,11 @@
 #include "interfaces/protocol_interface.h"
 #include "thermostat_state.h"
 
-#ifdef ESP32
-  #include <WebServer.h>
-  #include <ESPmDNS.h>
-  #include <LITTLEFS.h>
-  #define WebServerClass WebServer
-  #define FileFS LITTLEFS
-#elif defined(ESP8266)
-  #include <ESP8266WebServer.h>
-  #include <ESP8266mDNS.h>
-  #include <LittleFS.h>
-  #define WebServerClass ESP8266WebServer
-  #define FileFS LittleFS
-#endif
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <LITTLEFS.h>
+#define WebServerClass WebServer
+#define FileFS LITTLEFS
 
 class ESPWebServer : public WebInterface {
 public:

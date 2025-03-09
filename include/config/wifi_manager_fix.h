@@ -25,4 +25,6 @@
 // Now include WiFiManager
 #include <WiFiManager.h>
 
+#define WM_WebServer WebServer
+
 #endif // WIFI_MANAGER_FIX_H 
