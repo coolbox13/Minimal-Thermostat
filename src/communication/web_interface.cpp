@@ -28,32 +28,39 @@ bool WebInterface::begin(ThermostatState* state,
   pidController = pid;
   protocolManager = protocol;
   
-  // Set up web server routes
-  server.on("/", HTTP_GET, [this](){ this->handleRoot(); });
-  server.on("/save", HTTP_POST, [this](){ this->handleSave(); });
-  server.on("/api/save-config", HTTP_POST, [this](){ this->handleSaveConfig(); });
-  server.on("/api/setpoint", HTTP_GET, [this](){ this->handleSetpoint(); });
-  server.on("/reboot", HTTP_GET, [this](){ this->handleReboot(); });
-  server.on("/factory-reset", HTTP_GET, [this](){ this->handleFactoryReset(); });
-  server.on("/api/status", HTTP_GET, [this](){ this->handleGetStatus(); });
+  // Initialize SPIFFS/LittleFS
+  if (!LittleFS.begin()) {
+    Serial.println("An error occurred while mounting LittleFS");
+    return false;
+  }
   
-  // For static files from LittleFS
-  server.onNotFound([this](){
-    if(!handleFileRead(server.uri())) {
-      this->handleNotFound();
+  // Setup MDNS
+  setupMDNS();
+  
+  // Setup server routes with proper lambda return types
+  server.on("/", HTTP_GET, std::bind(&WebInterface::handleRoot, this));
+  server.on("/save", HTTP_POST, std::bind(&WebInterface::handleSave, this));
+  server.on("/saveconfig", HTTP_POST, std::bind(&WebInterface::handleSaveConfig, this));
+  server.on("/setpoint", HTTP_POST, std::bind(&WebInterface::handleSetpoint, this));
+  server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this));
+  server.on("/factory_reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this));
+  server.on("/status", HTTP_GET, std::bind(&WebInterface::handleGetStatus, this));
+  
+  // Handle not found - needs special handling for file serving
+  server.onNotFound([this]() {
+    if (!handleFileRead(server.uri())) {
+      handleNotFound();
     }
   });
   
-  // Start the web server
+  // Start server
   server.begin();
+  Serial.println("HTTP server started");
   
-  // Set up mDNS
-  setupMDNS();
-  
-  Serial.println("Web server started");
   return true;
 }
 
 void WebInterface::handle() {
   server.handleClient();
+  MDNS.update();
 }

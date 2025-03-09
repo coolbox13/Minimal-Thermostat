@@ -2,15 +2,13 @@
 #define WEB_INTERFACE_H
 
 #include <Arduino.h>
-
-// Forward declarations
-class ThermostatState;
-class ConfigManager;
-class SensorInterface;
-class KNXInterface;
-class MQTTInterface;
-class PIDController;
-class ProtocolManager;
+#include "thermostat_state.h"
+#include "config_manager.h"
+#include "sensor_interface.h"
+#include "knx_interface.h"
+#include "mqtt_interface.h"
+#include "pid_controller.h"
+#include "protocol_manager.h"
 
 #ifdef ESP32
   #include <WebServer.h>
