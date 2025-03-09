@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <ArduinoJson.h>
-#include <esp-knx-ip.h>
+#include "knx_interface_fix.h"
 #include "interfaces/protocol_interface.h"
 #include "protocol_types.h"
 #include "thermostat_types.h"
@@ -73,6 +73,9 @@ public:
     void setValvePositionGA(const KnxGroupAddress& ga);
     void setModeGA(const KnxGroupAddress& ga);
     void setHeatingStateGA(const KnxGroupAddress& ga);
+    
+    // Protocol manager registration
+    void registerProtocolManager(ProtocolManager* manager);
     
 private:
     // Private implementation

@@ -159,11 +159,7 @@ void ProtocolManager::sendHeatingState(bool isHeating) {
 }
 
 bool ProtocolManager::hasHigherPriority(CommandSource newSource, CommandSource currentSource) {
-    // If enough time has passed, any source can take control
-    if (millis() - lastCommandTime > PRIORITY_TIMEOUT) {
-        return true;
-    }
-    
-    // Priority order: KNX > MQTT > WEB_API > INTERNAL
+    // Simple priority check without timeout
+    // Priority order: KNX > MQTT > WEB_API > WEB > INTERNAL
     return static_cast<uint8_t>(newSource) <= static_cast<uint8_t>(currentSource);
 }

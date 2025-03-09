@@ -5,18 +5,11 @@
 #include <map>
 #include <vector>
 #include "config_manager.h"
-
-#ifdef ESP32
-  #include <WebServer.h>
-  #define WebServerClass WebServer
-#elif defined(ESP8266)
-  #include <ESP8266WebServer.h>
-  #define WebServerClass ESP8266WebServer
-#endif
+#include "../config/wifi_manager_fix.h"
 
 class WebAuthManager {
 public:
-    WebAuthManager(WebServerClass& server, ConfigManager& config);
+    WebAuthManager(WebServer& server, ConfigManager& config);
     
     // Authentication methods
     bool isAuthenticated();
@@ -32,7 +25,7 @@ public:
     void addSecurityHeaders();
     
 private:
-    WebServerClass& server;
+    WebServer& server;
     ConfigManager& config;
     
     // Session management

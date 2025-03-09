@@ -5,7 +5,7 @@
 #include "pid_controller.h"
 #include "protocol_manager.h"
 #include "communication/knx/knx_interface.h"
-#include "communication/mqtt/mqtt_interface.h"
+#include "mqtt_interface.h"
 #include <ArduinoJson.h>
 
 void WebInterface::handleRoot() {

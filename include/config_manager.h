@@ -3,8 +3,17 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <WiFiManager.h>
-#include <LittleFS.h>
+#include "config/wifi_manager_fix.h"
+
+// Fix for LittleFS
+#ifdef ESP32
+  #include <LITTLEFS.h>
+  #define FileFS LITTLEFS
+#elif defined(ESP8266)
+  #include <LittleFS.h>
+  #define FileFS LittleFS
+#endif
+
 #include "thermostat_types.h"
 #include "protocol_types.h"
 

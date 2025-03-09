@@ -66,7 +66,7 @@ void WebInterface::handle() {
     
 #ifdef ESP32
     // ESP32 MDNS needs to be updated in the loop
-    MDNS.update();
+    // MDNS.update(); // This is not available in ESP32 MDNS library
 #endif
 }
 

@@ -39,6 +39,9 @@ private:
     
     // Helper to propagate commands to other interfaces
     void propagateCommand(CommandSource source, CommandType cmd, float value);
+    
+    // Helper to determine command priority
+    bool hasHigherPriority(CommandSource newSource, CommandSource currentSource);
 };
 
 #endif // PROTOCOL_MANAGER_H

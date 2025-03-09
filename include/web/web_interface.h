@@ -3,18 +3,17 @@
 
 #include <Arduino.h>
 
+// Include our fixed WebServer definitions
+#include "../config/wifi_manager_fix.h"
+
 #ifdef ESP32
-  #include <WebServer.h>
   #include <ESPmDNS.h>
   #include <FS.h>
-  #include <LittleFS.h>
-  #define WebServerClass WebServer
-  #define FileFS LittleFS
+  #include <LITTLEFS.h>
+  #define FileFS LITTLEFS
 #elif defined(ESP8266)
-  #include <ESP8266WebServer.h>
   #include <ESP8266mDNS.h>
   #include <LittleFS.h>
-  #define WebServerClass ESP8266WebServer
   #define FileFS LittleFS
 #endif
 
@@ -61,7 +60,7 @@ public:
 
 private:
   // Web server
-  WebServerClass server;
+  WebServer server;
   std::unique_ptr<WebAuthManager> authManager;
   
   // References to components

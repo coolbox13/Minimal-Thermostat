@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include "thermostat_types.h"
+#include "protocol_types.h"
 #include <PubSubClient.h>
 #include <WiFiClient.h>
 #include <memory>
@@ -58,6 +60,9 @@ public:
     void setCredentials(const char* username, const char* password);
     void setClientId(const char* clientId);
     void setTopicPrefix(const char* prefix);
+
+    // Protocol manager registration
+    void registerProtocolManager(ProtocolManager* manager);
 
 private:
     // Forward declare private implementation

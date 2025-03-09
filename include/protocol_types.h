@@ -22,6 +22,7 @@ inline const char* getCommandSourceName(CommandSource source) {
         case CommandSource::SOURCE_KNX: return "KNX";
         case CommandSource::SOURCE_MQTT: return "MQTT";
         case CommandSource::SOURCE_WEB: return "Web";
+        case CommandSource::SOURCE_WEB_API: return "Web API";
         case CommandSource::SOURCE_NONE: return "None";
         default: return "Unknown";
     }
@@ -34,6 +35,7 @@ inline const char* getCommandTypeName(CommandType cmd) {
         case CommandType::CMD_MODE: return "Set Mode";
         case CommandType::CMD_VALVE: return "Set Valve Position";
         case CommandType::CMD_HEATING: return "Set Heating State";
+        case CommandType::CMD_SET_TEMPERATURE: return "Set Temperature";
         default: return "Unknown";
     }
 }

@@ -1,0 +1,159 @@
+Warning! Could not find the package with 'ESP32 ESP32S2 FS Plugin' requirements for your system 'darwin_arm64'
+Warning! Could not find the package with 'ESP32 ESP32S2 SPIFFS Upload Tool' requirements for your system 'darwin_arm64'
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+include/web/../config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+include/web/../config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+include/web/../config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+include/web/../config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+src/communication/mqtt_interface.cpp:99:1: error: definition of explicitly-defaulted 'MQTTInterface::~MQTTInterface()'
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+include/config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+src/communication/mqtt_interface.cpp:302:6: error: no declaration matches 'void MQTTInterface::setServer(const char*)'
+src/communication/mqtt_interface.cpp:306:6: error: no declaration matches 'void MQTTInterface::setPort(uint16_t)'
+src/communication/mqtt_interface.cpp:310:6: error: no declaration matches 'void MQTTInterface::setUsername(const char*)'
+src/communication/mqtt_interface.cpp:314:6: error: no declaration matches 'void MQTTInterface::setPassword(const char*)'
+src/communication/mqtt_interface.cpp:378:117: error: no matching function for call to 'ProtocolManager::handleIncomingCommand(CommandType, float&, CommandSource)'
+lib/esp-knx-ip/esp-knx-ip.h:313:16: error: 'AsyncWebServer' has not been declared
+src/communication/mqtt_interface.cpp:381:68: error: 'CMD_SET_MODE' is not a member of 'CommandType'
+src/communication/mqtt_interface.cpp:400:6: error: no declaration matches 'void MQTTInterface::setEnabled(bool)'
+src/communication/mqtt_interface.cpp:411:6: error: no declaration matches 'bool MQTTInterface::isEnabled() const'
+lib/esp-knx-ip/esp-knx-ip.h:470:5: error: 'AsyncWebServer' does not name a type; did you mean 'WM_WebServer'?
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+src/communication/knx/knx_interface.cpp:27:21: error: 'EspKnxIp' was not declared in this scope
+src/communication/knx/knx_interface.cpp:27:29: error: template argument 1 is invalid
+src/communication/knx/knx_interface.cpp:27:29: error: template argument 2 is invalid
+src/communication/knx/knx_interface.cpp:22:23: error: 'make_unique' is not a member of 'std'
+src/communication/knx/knx_interface.cpp:22:35: error: 'EspKnxIp' was not declared in this scope
+src/communication/knx/knx_interface.cpp:22:45: error: expected primary-expression before ')' token
+src/communication/knx/knx_interface.cpp:23:12: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:75:43: error: 'make_unique' is not a member of 'std'
+src/communication/knx/knx_interface.cpp:75:59: error: expected primary-expression before '>' token
+src/communication/knx/knx_interface.cpp:75:61: error: expected primary-expression before ')' token
+src/communication/knx/knx_interface.cpp:86:20: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:99:19: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:104:45: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:109:19: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:174:69: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:174:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:174:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:175:63: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:175:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:175:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:176:63: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:176:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:176:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:177:63: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:177:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:177:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:178:57: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:178:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:178:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:179:55: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:179:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:179:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:180:61: error: no match for call to '(KNXInterface::getConfig(ArduinoJson::V6215PB2::JsonDocument&) const::<lambda(ArduinoJson::V6215PB2::JsonObject&, const KnxGroupAddress&)>) (ArduinoJson::V6215PB2::JsonObject, KnxGroupAddress&)'
+src/communication/knx/knx_interface.cpp:180:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:180:32: error: cannot bind non-const lvalue reference of type 'ArduinoJson::V6215PB2::JsonObject&' to an rvalue of type 'ArduinoJson::V6215PB2::JsonObject'
+src/communication/knx/knx_interface.cpp:186:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:193:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:200:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:207:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:215:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:223:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:230:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:272:23: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:314:43: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:317:44: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:326:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:330:39: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:333:47: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:343:15: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:350:19: error: base operand of '->' is not a pointer
+src/communication/knx/knx_interface.cpp:355:19: error: base operand of '->' is not a pointer
+include/config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+.pio/libdeps/esp32/ArduinoJson/src/ArduinoJson/Variant/JsonVariantConst.hpp:75:34: error: invalid use of incomplete type 'class ArduinoJson::V6215PB2::detail::InvalidConversion<ArduinoJson::V6215PB2::JsonVariantConst, ArduinoJson::V6215PB2::JsonObject>'
+ class InvalidConversion;  // Error here? See https://arduinojson.org/v6/invalid-conversion/
+src/communication/protocol_manager.cpp:22:23: error: 'class KNXInterface' has no member named 'registerProtocolManager'; did you mean 'protocolManager'?
+src/communication/protocol_manager.cpp:163:20: error: 'lastCommandTime' was not declared in this scope
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:510:30: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+include/web/web_auth_manager.h:21:34: error: expected ')' before '&' token
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+src/communication/protocol_manager.cpp:163:38: error: 'PRIORITY_TIMEOUT' was not declared in this scope
+include/config/wifi_manager_fix.h:15:24: error: 'WebServer' was not declared in this scope
+include/web/web_auth_manager.h:21:34: error: expected ')' before '&' token
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 1 is invalid
+.pio/libdeps/esp32/WiFiManager/WiFiManager.h:515:33: error: template argument 2 is invalid
+include/web/web_auth_manager.h:21:34: error: expected ')' before '&' token
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+include/web/web_auth_manager.h:21:34: error: expected ')' before '&' token
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+*** [.pio/build/esp32/src/communication/mqtt_interface.cpp.o] Error 1
+src/communication/web_interface.cpp:22:32: error: class 'WebInterface' does not have any field named 'server'
+src/communication/web_interface.cpp:41:52: error: 'server' was not declared in this scope
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+src/communication/web_interface.cpp:65:5: error: 'server' was not declared in this scope
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+src/communication/web_interface.cpp:69:10: error: 'class MDNSResponder' has no member named 'update'
+src/communication/web_interface.cpp:81:5: error: 'server' was not declared in this scope
+include/web/web_auth_manager.h:14:26: error: 'WebServer' does not name a type; did you mean 'DNSServer'?
+src/communication/web_interface.cpp:91:9: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:107:9: error: 'server' was not declared in this scope
+src/communication/web_interface_utils.cpp:26:5: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:123:9: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:139:9: error: 'server' was not declared in this scope
+src/communication/web_interface_utils.cpp:46:18: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:155:9: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:17:3: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:27:5: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:32:7: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:176:25: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:36:7: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:45:7: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:55:7: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:241:10: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:244:43: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:65:32: error: 'server' was not declared in this scope
+src/communication/web_interface.cpp:249:5: error: 'server' was not declared in this scope
+*** [.pio/build/esp32/src/communication/knx/knx_interface.cpp.o] Error 1
+src/communication/web_interface_handlers.cpp:195:5: error: 'server' was not declared in this scope
+*** [.pio/build/esp32/src/communication/protocol_manager.cpp.o] Error 1
+src/communication/web_interface_handlers.cpp:213:3: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:222:7: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:228:5: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:234:17: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:267:7: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:273:5: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:280:5: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:286:20: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:314:3: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:325:7: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:331:5: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:340:5: error: 'server' was not declared in this scope
+*** [.pio/build/esp32/src/communication/web_interface_utils.cpp.o] Error 1
+src/communication/web_interface_handlers.cpp:346:5: error: 'server' was not declared in this scope
+src/communication/web_interface_handlers.cpp:353:14: error: 'server' was not declared in this scope
+*** [.pio/build/esp32/src/communication/web_interface_html.cpp.o] Error 1
+*** [.pio/build/esp32/src/communication/web_interface.cpp.o] Error 1
+.pio/libdeps/esp32/ArduinoJson/src/ArduinoJson/Variant/ConverterImpl.hpp:25:18: error: no matching function for call to 'convertToJson(const ThermostatMode&, ArduinoJson::V6215PB2::JsonVariant&)'
+     convertToJson(src, dst); // Error here? See https://arduinojson.org/v6/unsupported-set/
+*** [.pio/build/esp32/src/config/config_manager.cpp.o] Error 1
+.pio/libdeps/esp32/ArduinoJson/src/ArduinoJson/Variant/ConverterImpl.hpp:164:1: error: no type named 'type' in 'struct ArduinoJson::V6215PB2::detail::enable_if<false, bool>'
+     convertToJson(src, dst); // Error here? See https://arduinojson.org/v6/unsupported-set/
+*** [.pio/build/esp32/src/communication/web_interface_handlers.cpp.o] Error 1

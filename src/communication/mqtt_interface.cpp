@@ -16,6 +16,9 @@ namespace std {
 }
 #endif
 
+// Static instance pointer for callbacks
+static MQTTInterface* instance = nullptr;
+
 // Implementation class
 class MQTTInterface::Impl {
 public:
@@ -28,26 +31,27 @@ public:
     uint16_t port = 1883;
     char username[32] = {0};
     char password[32] = {0};
-    char clientId[32] = {0};
-    char topicPrefix[32] = {0};
+    char clientId[32] = "esp32_thermostat";
+    char topicPrefix[64] = "esp32/thermostat/";
     
     // State
     bool connected = false;
     ThermostatStatus lastError = ThermostatStatus::OK;
-    const char* lastErrorMsg = nullptr;
+    char lastErrorMessage[128] = {0};
     unsigned long lastReconnectAttempt = 0;
     ThermostatState* thermostatState = nullptr;
     ProtocolManager* protocolManager = nullptr;
     
     // Topics
-    static constexpr const char* TOPIC_TEMPERATURE = "/temperature";
-    static constexpr const char* TOPIC_HUMIDITY = "/humidity";
-    static constexpr const char* TOPIC_PRESSURE = "/pressure";
-    static constexpr const char* TOPIC_SETPOINT = "/setpoint";
-    static constexpr const char* TOPIC_VALVE = "/valve";
-    static constexpr const char* TOPIC_MODE = "/mode";
-    static constexpr const char* TOPIC_HEATING = "/heating";
-
+    char temperatureTopic[128] = {0};
+    char humidityTopic[128] = {0};
+    char pressureTopic[128] = {0};
+    char setpointTopic[128] = {0};
+    char modeTopic[128] = {0};
+    char valveTopic[128] = {0};
+    char heatingTopic[128] = {0};
+    char statusTopic[128] = {0};
+    
     Impl() : client(espClient) {
         client.setBufferSize(512); // Increase buffer size for larger messages
         // Initialize with default values
@@ -66,40 +70,34 @@ public:
         strcpy(statusTopic, "status");
         
         // Set callback
-        client.setCallback([this](char* topic, byte* payload, unsigned int length) {
-            this->handleMessage(topic, payload, length);
+        client.setCallback([](char* topic, byte* payload, unsigned int length) {
+            if (instance) {
+                instance->handleMessage(topic, payload, length);
+            }
         });
     }
 
-    // Helper to store instance pointer for callbacks
-    static MQTTInterface* instance;
-
     // Configuration
     bool enabled;
-    char temperatureTopic[32];
-    char humidityTopic[32];
-    char setpointTopic[32];
-    char modeTopic[32];
-    char valveTopic[32];
-    char heatingTopic[32];
-    char statusTopic[32];
     
     // Message handler
     void handleMessage(char* topic, byte* payload, unsigned int length);
 };
 
-// Static instance pointer initialization
-MQTTInterface* MQTTInterface::Impl::instance = nullptr;
-
 // Constructor
 MQTTInterface::MQTTInterface() : pimpl(std::make_unique<Impl>()) {
-    Impl::instance = this;
+    // Set static instance pointer for callbacks
+    instance = this;
 }
 
 MQTTInterface::~MQTTInterface() {
     // Disconnect if connected
     if (pimpl->connected) {
         pimpl->client.disconnect();
+    }
+    // Clean up static instance pointer
+    if (instance == this) {
+        instance = nullptr;
     }
 }
 
@@ -249,7 +247,7 @@ bool MQTTInterface::sendHumidity(float humidity) {
 bool MQTTInterface::sendPressure(float value) {
     char payload[16];
     snprintf(payload, sizeof(payload), "%.2f", value);
-    return publish(getFullTopic(Impl::TOPIC_PRESSURE).c_str(), payload);
+    return publish(getFullTopic("pressure").c_str(), payload);
 }
 
 bool MQTTInterface::sendSetpoint(float setpoint) {
@@ -279,12 +277,12 @@ ThermostatStatus MQTTInterface::getLastError() const {
 }
 
 const char* MQTTInterface::getLastErrorMessage() const {
-    return pimpl->lastErrorMsg;
+    return pimpl->lastErrorMessage;
 }
 
 void MQTTInterface::clearError() {
     pimpl->lastError = ThermostatStatus::OK;
-    pimpl->lastErrorMsg = nullptr;
+    pimpl->lastErrorMessage[0] = '\0';
 }
 
 // Protocol registration
@@ -360,34 +358,26 @@ bool MQTTInterface::publish(const char* topic, const char* payload, bool retain)
 }
 
 void MQTTInterface::handleMessage(char* topic, byte* payload, unsigned int length) {
-    if (!pimpl->protocolManager) {
-        return;
-    }
-
-    // Null terminate the payload
-    char* payloadStr = new char[length + 1];
-    memcpy(payloadStr, payload, length);
-    payloadStr[length] = '\0';
-
+    if (!pimpl->protocolManager) return;
+    
     String topicStr(topic);
-    String setpointTopic = getFullTopic(Impl::TOPIC_SETPOINT);
-    String modeTopic = getFullTopic(Impl::TOPIC_MODE);
-
+    String setpointTopic = getFullTopic("setpoint");
+    String modeTopic = getFullTopic("mode");
+    
     if (topicStr == setpointTopic) {
-        float setpoint = atof(payloadStr);
-        pimpl->protocolManager->handleIncomingCommand(CommandType::CMD_SET_TEMPERATURE, setpoint, getCommandSource());
+        float setpoint = atof(String((char*)payload, length).c_str());
+        pimpl->protocolManager->handleIncomingCommand(
+            getCommandSource(),
+            CommandType::CMD_SETPOINT,
+            setpoint
+        );
     } else if (topicStr == modeTopic) {
-        int mode = atoi(payloadStr);
-        pimpl->protocolManager->handleIncomingCommand(CommandType::CMD_SET_MODE, mode, getCommandSource());
-    }
-
-    delete[] payloadStr;
-}
-
-void MQTTInterface::mqttCallback(char* topic, uint8_t* payload, unsigned int length) {
-    // Use the static instance pointer to route the callback
-    if (Impl::instance) {
-        Impl::instance->handleMessage(topic, payload, length);
+        int mode = atoi(String((char*)payload, length).c_str());
+        pimpl->protocolManager->handleIncomingCommand(
+            getCommandSource(),
+            CommandType::CMD_MODE,
+            static_cast<float>(mode)
+        );
     }
 }
 

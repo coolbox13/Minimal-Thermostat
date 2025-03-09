@@ -39,6 +39,7 @@ enum class CommandSource : uint8_t {
     SOURCE_KNX,
     SOURCE_MQTT,
     SOURCE_WEB,
+    SOURCE_WEB_API,  // Added for web API commands
     SOURCE_INTERNAL
 };
 
@@ -48,7 +49,8 @@ enum class CommandType : uint8_t {
     CMD_SETPOINT,
     CMD_MODE,
     CMD_VALVE,
-    CMD_HEATING
+    CMD_HEATING,
+    CMD_SET_TEMPERATURE  // Added for temperature setting commands
 };
 
 // Helper functions
@@ -72,6 +74,39 @@ inline const char* getThermostatStatusString(ThermostatStatus status) {
         case ThermostatStatus::ERROR_INITIALIZATION: return "Initialization Error";
         default: return "Unknown Error";
     }
+}
+
+// Simple helper functions for JSON conversion
+inline int thermostatModeToInt(ThermostatMode mode) {
+    return static_cast<int>(mode);
+}
+
+inline ThermostatMode intToThermostatMode(int value) {
+    return static_cast<ThermostatMode>(value);
+}
+
+inline int commandSourceToInt(CommandSource source) {
+    return static_cast<int>(source);
+}
+
+inline CommandSource intToCommandSource(int value) {
+    return static_cast<CommandSource>(value);
+}
+
+inline int commandTypeToInt(CommandType type) {
+    return static_cast<int>(type);
+}
+
+inline CommandType intToCommandType(int value) {
+    return static_cast<CommandType>(value);
+}
+
+inline int thermostatStatusToInt(ThermostatStatus status) {
+    return static_cast<int>(status);
+}
+
+inline ThermostatStatus intToThermostatStatus(int value) {
+    return static_cast<ThermostatStatus>(value);
 }
 
 #endif // THERMOSTAT_TYPES_H 
