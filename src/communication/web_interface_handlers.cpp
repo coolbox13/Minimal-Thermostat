@@ -124,24 +124,32 @@ void WebInterface::handleSave() {
   // MQTT settings
   configManager->setMqttEnabled(server.hasArg("mqttEnabled"));
   
-  if (server.hasArg("mqttServer")) {
-    configManager->setMqttServer(server.arg("mqttServer").c_str());
+  if (server.hasArg("mqttServer") && server.hasArg("mqttPort")) {
+    const char* mqttServer = server.arg("mqttServer").c_str();
+    uint16_t mqttPort = server.arg("mqttPort").toInt();
+    configManager->setMqttServer(mqttServer);
+    configManager->setMqttPort(mqttPort);
+    if (mqttInterface) {
+      mqttInterface->setServer(mqttServer, mqttPort);
+    }
   }
   
-  if (server.hasArg("mqttPort")) {
-    configManager->setMqttPort(server.arg("mqttPort").toInt());
-  }
-  
-  if (server.hasArg("mqttUser")) {
-    configManager->setMqttUser(server.arg("mqttUser").c_str());
-  }
-  
-  if (server.hasArg("mqttPassword")) {
-    configManager->setMqttPassword(server.arg("mqttPassword").c_str());
+  if (server.hasArg("mqttUser") && server.hasArg("mqttPassword")) {
+    const char* mqttUser = server.arg("mqttUser").c_str();
+    const char* mqttPassword = server.arg("mqttPassword").c_str();
+    configManager->setMqttUser(mqttUser);
+    configManager->setMqttPassword(mqttPassword);
+    if (mqttInterface) {
+      mqttInterface->setCredentials(mqttUser, mqttPassword);
+    }
   }
   
   if (server.hasArg("mqttClientId")) {
-    configManager->setMqttClientId(server.arg("mqttClientId").c_str());
+    const char* mqttClientId = server.arg("mqttClientId").c_str();
+    configManager->setMqttClientId(mqttClientId);
+    if (mqttInterface) {
+      mqttInterface->setClientId(mqttClientId);
+    }
   }
   
   // PID settings

@@ -60,6 +60,8 @@ public:
     void setCredentials(const char* username, const char* password);
     void setClientId(const char* clientId);
     void setTopicPrefix(const char* prefix);
+    void setEnabled(bool enabled);
+    bool isEnabled() const;
 
     // Protocol manager registration
     void registerProtocolManager(ProtocolManager* manager);

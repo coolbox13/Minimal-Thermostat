@@ -297,19 +297,13 @@ void MQTTInterface::unregisterCallbacks() {
 }
 
 // MQTT specific configuration
-void MQTTInterface::setServer(const char* server) {
+void MQTTInterface::setServer(const char* server, uint16_t port) {
     strlcpy(pimpl->server, server, sizeof(pimpl->server));
-}
-
-void MQTTInterface::setPort(uint16_t port) {
     pimpl->port = port;
 }
 
-void MQTTInterface::setUsername(const char* username) {
+void MQTTInterface::setCredentials(const char* username, const char* password) {
     strlcpy(pimpl->username, username, sizeof(pimpl->username));
-}
-
-void MQTTInterface::setPassword(const char* password) {
     strlcpy(pimpl->password, password, sizeof(pimpl->password));
 }
 
@@ -400,4 +394,28 @@ void MQTTInterface::setEnabled(bool enabled) {
 
 bool MQTTInterface::isEnabled() const {
     return pimpl->enabled;
+}
+
+bool MQTTInterface::validateConfig() const {
+    if (!pimpl->enabled) {
+        return true;  // If disabled, config is valid
+    }
+    
+    // Check required fields
+    if (strlen(pimpl->server) == 0) {
+        return false;
+    }
+    if (pimpl->port == 0) {
+        return false;
+    }
+    if (strlen(pimpl->clientId) == 0) {
+        return false;
+    }
+    
+    // Optional fields don't need validation
+    return true;
+}
+
+void MQTTInterface::registerProtocolManager(ProtocolManager* manager) {
+    pimpl->protocolManager = manager;
 }

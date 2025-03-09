@@ -9,6 +9,8 @@
 #include "config_manager.h"
 #include <WiFiManager.h>
 #include <LittleFS.h>
+#include <ArduinoJson.h>
+#include <ESPAsyncWiFiManager.h>
 
 ConfigManager::ConfigManager() {
   // Initialize with default values
@@ -40,22 +42,24 @@ void ConfigManager::end() {
 }
 
 bool ConfigManager::setupWiFi() {
-  WiFiManager wifiManager;
-  wifiManager.setConfigPortalTimeout(180); // Auto-exit config portal after 3 minutes
-  
-  // Try to connect to WiFi
-  if (!wifiManager.autoConnect(deviceName)) {
-    Serial.println("Failed to connect to WiFi - restarting");
-    delay(1000);
-    ESP.restart();
-    return false;
-  }
-  
-  Serial.println("Connected to WiFi");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-  
-  return true;
+    AsyncWebServer server(80);
+    DNSServer dns;
+    AsyncWiFiManager wifiManager(&server, &dns);
+    
+    // Set config portal timeout
+    wifiManager.setConfigPortalTimeout(180);
+    
+    // Try to connect using saved credentials
+    if (!wifiManager.autoConnect(deviceName)) {
+        Serial.println("Failed to connect and hit timeout");
+        delay(3000);
+        ESP.restart();
+        return false;
+    }
+    
+    Serial.print("Connected to WiFi, IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
 }
 
 bool ConfigManager::saveConfig() {

@@ -140,6 +140,17 @@ void setup() {
     
     // Initialize MQTT interface if enabled
     if (configManager.getMqttEnabled()) {
+        mqttInterface.setEnabled(true);
+        mqttInterface.setServer(
+            configManager.getMqttServer(),
+            configManager.getMqttPort()
+        );
+        mqttInterface.setCredentials(
+            configManager.getMqttUser(),
+            configManager.getMqttPassword()
+        );
+        mqttInterface.setClientId(configManager.getMqttClientId());
+        
         if (mqttInterface.begin()) {
             Serial.println("MQTT interface initialized");
             mqttInterface.registerCallbacks(&thermostatState, &protocolManager);
@@ -148,6 +159,7 @@ void setup() {
         }
     } else {
         Serial.println("MQTT interface disabled in config");
+        mqttInterface.setEnabled(false);
     }
     
     // Register protocols with protocol manager

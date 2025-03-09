@@ -8,6 +8,7 @@
 #include "protocol_manager.h"
 #include <ArduinoJson.h>
 #include <memory>
+#include <AsyncElegantOTA.h>
 
 // Define make_unique for C++11 compatibility
 #if __cplusplus < 201402L
@@ -19,16 +20,19 @@ namespace std {
 }
 #endif
 
-WebInterface::WebInterface() : server(80) {
+WebInterface::WebInterface() 
+    : server(80)
+    , wifiManager(&server, &dns) {
 }
 
-bool WebInterface::begin(ThermostatState* state, 
-                        ConfigManager* config, 
-                        SensorInterface* sensor,
-                        KNXInterface* knx,
-                        MQTTInterface* mqtt,
-                        PIDController* pid,
-                        ProtocolManager* protocol) {
+bool WebInterface::begin(ThermostatState* state,
+                       ConfigManager* config,
+                       SensorInterface* sensor,
+                       KNXInterface* knx,
+                       MQTTInterface* mqtt,
+                       PIDController* pid,
+                       ProtocolManager* protocol) {
+    
     thermostatState = state;
     configManager = config;
     sensorInterface = sensor;
@@ -36,146 +40,326 @@ bool WebInterface::begin(ThermostatState* state,
     mqttInterface = mqtt;
     pidController = pid;
     protocolManager = protocol;
+
+    // Setup handlers
+    server.on("/", HTTP_GET, std::bind(&WebInterface::handleRoot, this, std::placeholders::_1));
+    server.on("/save", HTTP_POST, std::bind(&WebInterface::handleSave, this, std::placeholders::_1));
+    server.on("/config", HTTP_POST, std::bind(&WebInterface::handleSaveConfig, this, std::placeholders::_1));
+    server.on("/setpoint", HTTP_POST, std::bind(&WebInterface::handleSetpoint, this, std::placeholders::_1));
+    server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this, std::placeholders::_1));
+    server.on("/factory_reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
+    server.on("/status", HTTP_GET, std::bind(&WebInterface::handleGetStatus, this, std::placeholders::_1));
     
-    // Create auth manager
-    authManager = std::make_unique<WebAuthManager>(server, *configManager);
-    
-    // Setup routes
-    server.on("/", HTTP_GET, [this]() { handleRoot(); });
-    server.on("/save", HTTP_POST, [this]() { handleSave(); });
-    server.on("/config", HTTP_POST, [this]() { handleSaveConfig(); });
-    server.on("/setpoint", HTTP_POST, [this]() { handleSetpoint(); });
-    server.on("/reboot", HTTP_POST, [this]() { handleReboot(); });
-    server.on("/factory_reset", HTTP_POST, [this]() { handleFactoryReset(); });
-    server.on("/status", HTTP_GET, [this]() { handleGetStatus(); });
-    
-    // Handle file not found
-    server.onNotFound([this]() { handleNotFound(); });
-    
+    server.onNotFound(std::bind(&WebInterface::handleNotFound, this, std::placeholders::_1));
+
+    // Initialize OTA updates
+    AsyncElegantOTA.begin(&server);
+
     // Start server
     server.begin();
-    
-    // Setup MDNS
-    setupMDNS();
     
     return true;
 }
 
 void WebInterface::handle() {
-    server.handleClient();
-    
-#ifdef ESP32
-    // ESP32 MDNS needs to be updated in the loop
-    // MDNS.update(); // This is not available in ESP32 MDNS library
-#endif
+    // AsyncWebServer doesn't need explicit handling
 }
 
-void WebInterface::handleRoot() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleRoot(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
-    
-    addSecurityHeaders();
+
     String html = generateHtml();
-    server.send(200, "text/html", html);
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", html);
+    addSecurityHeaders(response);
+    request->send(response);
 }
 
-void WebInterface::handleSave() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleSave(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
-    
-    if (!validateCSRFToken()) {
-        server.send(403, "text/plain", "Invalid CSRF token");
+
+    if (!validateCSRFToken(request)) {
+        request->send(403, "text/plain", "Invalid CSRF token");
         return;
     }
-    
-    addSecurityHeaders();
-    
-    // ... rest of handleSave implementation ...
+
+    // Process form data
+    if (request->hasParam("deviceName", true)) {
+        configManager->setDeviceName(request->getParam("deviceName", true)->value().c_str());
+    }
+
+    // Save configuration
+    configManager->saveConfig();
+
+    // Redirect back to root
+    AsyncWebServerResponse *response = request->beginResponse(302);
+    response->addHeader("Location", "/");
+    addSecurityHeaders(response);
+    request->send(response);
 }
 
-void WebInterface::handleSaveConfig() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleSaveConfig(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
-    
-    if (!validateCSRFToken()) {
-        server.send(403, "text/plain", "Invalid CSRF token");
+
+    if (!validateCSRFToken(request)) {
+        request->send(403, "text/plain", "Invalid CSRF token");
         return;
     }
-    
-    addSecurityHeaders();
-    
-    // ... rest of handleSaveConfig implementation ...
+
+    // Process JSON data
+    if (request->hasParam("plain", true)) {
+        String jsonStr = request->getParam("plain", true)->value();
+        StaticJsonDocument<1024> doc;
+        DeserializationError error = deserializeJson(doc, jsonStr);
+
+        if (error) {
+            request->send(400, "text/plain", "Invalid JSON");
+            return;
+        }
+
+        // Update configuration
+        if (doc.containsKey("webUsername")) {
+            configManager->setWebUsername(doc["webUsername"].as<const char*>());
+        }
+
+        if (doc.containsKey("webPassword")) {
+            configManager->setWebPassword(doc["webPassword"].as<const char*>());
+        }
+
+        // Save configuration
+        configManager->saveConfig();
+        request->send(200, "application/json", "{\"status\":\"success\"}");
+    } else {
+        request->send(400, "text/plain", "Missing configuration data");
+    }
 }
 
-void WebInterface::handleSetpoint() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleSetpoint(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
-    
-    if (!validateCSRFToken()) {
-        server.send(403, "text/plain", "Invalid CSRF token");
+
+    if (!validateCSRFToken(request)) {
+        request->send(403, "text/plain", "Invalid CSRF token");
         return;
     }
-    
-    addSecurityHeaders();
-    
-    // ... rest of handleSetpoint implementation ...
+
+    if (request->hasParam("plain", true)) {
+        String jsonStr = request->getParam("plain", true)->value();
+        StaticJsonDocument<200> doc;
+        DeserializationError error = deserializeJson(doc, jsonStr);
+
+        if (error) {
+            request->send(400, "text/plain", "Invalid JSON");
+            return;
+        }
+
+        if (!doc.containsKey("setpoint")) {
+            request->send(400, "text/plain", "Missing setpoint value");
+            return;
+        }
+
+        float setpoint = doc["setpoint"];
+        if (protocolManager) {
+            protocolManager->handleIncomingCommand(
+                CommandSource::SOURCE_WEB_API,
+                CommandType::CMD_SETPOINT,
+                setpoint
+            );
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(500, "text/plain", "Protocol manager not initialized");
+        }
+    } else {
+        request->send(400, "text/plain", "Missing request data");
+    }
 }
 
-void WebInterface::handleReboot() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleReboot(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
-    
-    if (!validateCSRFToken()) {
-        server.send(403, "text/plain", "Invalid CSRF token");
+
+    if (!validateCSRFToken(request)) {
+        request->send(403, "text/plain", "Invalid CSRF token");
         return;
     }
-    
-    addSecurityHeaders();
-    
-    // ... rest of handleReboot implementation ...
+
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Device is rebooting...");
+    addSecurityHeaders(response);
+    request->send(response);
+
+    // Schedule reboot
+    delay(500);
+    ESP.restart();
 }
 
-void WebInterface::handleFactoryReset() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleFactoryReset(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
-    
-    if (!validateCSRFToken()) {
-        server.send(403, "text/plain", "Invalid CSRF token");
+
+    if (!validateCSRFToken(request)) {
+        request->send(403, "text/plain", "Invalid CSRF token");
         return;
     }
-    
-    addSecurityHeaders();
-    
-    // ... rest of handleFactoryReset implementation ...
+
+    if (configManager) {
+        configManager->factoryReset();
+        configManager->saveConfig();
+        
+        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", 
+            "{\"status\":\"ok\",\"message\":\"Factory reset complete\"}");
+        addSecurityHeaders(response);
+        request->send(response);
+
+        // Schedule reboot
+        delay(500);
+        ESP.restart();
+    } else {
+        request->send(500, "text/plain", "Configuration manager not available");
+    }
 }
 
-void WebInterface::handleGetStatus() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
+void WebInterface::handleGetStatus(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
         return;
     }
+
+    if (!thermostatState || !sensorInterface) {
+        request->send(500, "text/plain", "Thermostat state or sensor interface not available");
+        return;
+    }
+
+    StaticJsonDocument<512> doc;
     
-    addSecurityHeaders();
+    doc["currentTemp"] = sensorInterface->getTemperature();
+    doc["targetTemp"] = thermostatState->getTargetTemperature();
+    doc["humidity"] = sensorInterface->getHumidity();
+    doc["heating"] = thermostatState->isHeating();
+    doc["mode"] = thermostatState->getMode();
     
-    // ... rest of handleGetStatus implementation ...
+    if (pidController) {
+        doc["pidOutput"] = pidController->getOutput();
+    }
+
+    String response;
+    serializeJson(doc, response);
+    
+    AsyncWebServerResponse *jsonResponse = request->beginResponse(200, "application/json", response);
+    addSecurityHeaders(jsonResponse);
+    request->send(jsonResponse);
 }
 
-void WebInterface::handleNotFound() {
-    if (!handleFileRead(server.uri())) {
-        server.send(404, "text/plain", "File Not Found");
+void WebInterface::handleNotFound(AsyncWebServerRequest *request) {
+    String message = "File Not Found\n\n";
+    message += "URI: ";
+    message += request->url();
+    message += "\nMethod: ";
+    message += (request->method() == HTTP_GET) ? "GET" : "POST";
+    message += "\nArguments: ";
+    message += request->args();
+    message += "\n";
+    
+    for (uint8_t i = 0; i < request->args(); i++) {
+        message += " " + request->argName(i) + ": " + request->arg(i) + "\n";
     }
+    
+    AsyncWebServerResponse *response = request->beginResponse(404, "text/plain", message);
+    addSecurityHeaders(response);
+    request->send(response);
+}
+
+bool WebInterface::handleFileRead(AsyncWebServerRequest *request, String path) {
+    if (path.endsWith("/")) {
+        path += "index.html";
+    }
+    
+    String contentType = getContentType(path);
+    
+    if (LittleFS.exists(path)) {
+        AsyncWebServerResponse *response = request->beginResponse(LittleFS, path, contentType);
+        addSecurityHeaders(response);
+        request->send(response);
+        return true;
+    }
+    return false;
+}
+
+String WebInterface::getContentType(String filename) {
+    if (filename.endsWith(".html")) return "text/html";
+    else if (filename.endsWith(".css")) return "text/css";
+    else if (filename.endsWith(".js")) return "application/javascript";
+    else if (filename.endsWith(".ico")) return "image/x-icon";
+    else if (filename.endsWith(".gz")) return "application/x-gzip";
+    return "text/plain";
+}
+
+bool WebInterface::isAuthenticated(AsyncWebServerRequest *request) {
+    if (!configManager) return true;
+    
+    if (request->hasHeader("Authorization")) {
+        String authHeader = request->header("Authorization");
+        if (authHeader.startsWith("Basic ")) {
+            String expectedAuth = String(configManager->getWebUsername()) + ":" + 
+                                String(configManager->getWebPassword());
+            String expectedBase64 = base64::encode(expectedAuth);
+            String receivedBase64 = authHeader.substring(6);
+            return expectedBase64 == receivedBase64;
+        }
+    }
+    return false;
+}
+
+void WebInterface::requestAuthentication(AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(401);
+    response->addHeader("WWW-Authenticate", "Basic realm=\"Login Required\"");
+    addSecurityHeaders(response);
+    request->send(response);
+}
+
+void WebInterface::addSecurityHeaders(AsyncWebServerResponse *response) {
+    response->addHeader("X-Content-Type-Options", "nosniff");
+    response->addHeader("X-XSS-Protection", "1; mode=block");
+    response->addHeader("X-Frame-Options", "DENY");
+    response->addHeader("Content-Security-Policy", "default-src 'self'");
+    response->addHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    response->addHeader("X-CSRF-Token", csrfToken);
+}
+
+bool WebInterface::validateCSRFToken(AsyncWebServerRequest *request) {
+    if (request->hasHeader("X-CSRF-Token")) {
+        return request->header("X-CSRF-Token") == csrfToken;
+    }
+    return false;
+}
+
+String WebInterface::generateCSRFToken() {
+    const char charset[] = "0123456789"
+                         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                         "abcdefghijklmnopqrstuvwxyz";
+    const int len = 32;
+    String token;
+    
+    for (int i = 0; i < len; i++) {
+        int index = random(0, sizeof(charset) - 1);
+        token += charset[index];
+    }
+    
+    csrfToken = token;
+    return token;
 }
 
 String WebInterface::generateHtml() {
@@ -223,31 +407,6 @@ String WebInterface::generateHtml() {
     
     html += "</div></body></html>";
     return html;
-}
-
-bool WebInterface::isAuthenticated() {
-    return authManager->isAuthenticated();
-}
-
-void WebInterface::requestAuthentication() {
-    authManager->requestAuthentication();
-}
-
-void WebInterface::addSecurityHeaders() {
-    authManager->addSecurityHeaders();
-}
-
-bool WebInterface::validateCSRFToken() {
-    if (!server.hasHeader("X-CSRF-Token")) {
-        return false;
-    }
-    return authManager->validateCSRFToken(server.header("X-CSRF-Token"));
-}
-
-String WebInterface::generateCSRFToken() {
-    String token = authManager->generateCSRFToken();
-    server.sendHeader("X-CSRF-Token", token);
-    return token;
 }
 
 void WebInterface::setupMDNS() {

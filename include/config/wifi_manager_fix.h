@@ -5,8 +5,9 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WebServer.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 #include <DNSServer.h>
-#include <WiFiManager.h>
 
 #endif // WIFI_MANAGER_FIX_H 
