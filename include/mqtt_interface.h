@@ -2,23 +2,36 @@
 #define MQTT_INTERFACE_H
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFiClient.h>
+#include <memory>
 #include "interfaces/protocol_interface.h"
 #include "protocol_manager.h"
 
 // Forward declarations
+class ThermostatState;
 class ProtocolManager;
 
 class MQTTInterface : public ProtocolInterface {
 public:
-    // Constructor
+    // Constructor and destructor
     MQTTInterface();
+    virtual ~MQTTInterface() = default;
 
     // ProtocolInterface implementation
     bool begin() override;
     void loop() override;
     bool isConnected() const override;
+    void disconnect() override;
+    bool reconnect() override;
+
+    // Connection configuration
+    bool configure(const JsonDocument& config) override;
+    bool validateConfig() const override;
+    void getConfig(JsonDocument& config) const override;
+
+    // Data transmission
     bool sendTemperature(float value) override;
     bool sendHumidity(float value) override;
     bool sendPressure(float value) override;
@@ -26,50 +39,39 @@ public:
     bool sendValvePosition(float value) override;
     bool sendMode(ThermostatMode mode) override;
     bool sendHeatingState(bool isHeating) override;
+
+    // Error handling
     ThermostatStatus getLastError() const override;
+    const char* getLastErrorMessage() const override;
+    void clearError() override;
+
+    // Protocol registration
+    void registerCallbacks(ThermostatState* state, ProtocolManager* manager) override;
+    void unregisterCallbacks() override;
+
+    // Protocol identification
+    const char* getProtocolName() const override { return "MQTT"; }
+    CommandSource getCommandSource() const override { return CommandSource::SOURCE_MQTT; }
 
     // MQTT specific configuration
     void setServer(const char* server, uint16_t port = 1883);
     void setCredentials(const char* username, const char* password);
     void setClientId(const char* clientId);
     void setTopicPrefix(const char* prefix);
-    void registerProtocolManager(ProtocolManager* manager) { protocolManager = manager; }
 
 private:
-    // MQTT client
-    WiFiClient wifiClient;
-    PubSubClient mqttClient;
-    
-    // Connection settings
-    char server[64];
-    uint16_t port;
-    char username[32];
-    char password[32];
-    char clientId[32];
-    char topicPrefix[32];
-    
-    // State
-    bool connected;
-    ThermostatStatus lastError;
-    unsigned long lastReconnectAttempt;
-    ProtocolManager* protocolManager;
-    
-    // Topics
-    static constexpr const char* TOPIC_TEMPERATURE = "/temperature";
-    static constexpr const char* TOPIC_HUMIDITY = "/humidity";
-    static constexpr const char* TOPIC_PRESSURE = "/pressure";
-    static constexpr const char* TOPIC_SETPOINT = "/setpoint";
-    static constexpr const char* TOPIC_VALVE = "/valve";
-    static constexpr const char* TOPIC_MODE = "/mode";
-    static constexpr const char* TOPIC_HEATING = "/heating";
-    
+    // Forward declare private implementation
+    class Impl;
+    std::unique_ptr<Impl> pimpl;
+
     // Internal helpers
-    bool connect();
-    bool publish(const char* topic, const char* payload);
+    bool validateConnection() const;
+    bool validateTopics() const;
+    bool publish(const char* topic, const char* payload, bool retain = true);
+    void setupSubscriptions();
+    void cleanupSubscriptions();
     void handleMessage(char* topic, uint8_t* payload, unsigned int length);
     static void mqttCallback(char* topic, uint8_t* payload, unsigned int length);
-    
-    // Topic management
     String getFullTopic(const char* suffix) const;
 };
 
