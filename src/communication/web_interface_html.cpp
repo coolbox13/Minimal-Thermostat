@@ -1,4 +1,5 @@
 #include "web/web_interface.h"
+#include <ESPmDNS.h>
 
 String WebInterface::generateHtml() {
     return R"rawliteral(

@@ -2,6 +2,9 @@
 #include <LittleFS.h>
 #include "web/elegant_ota_async.h"
 #include "esp_log.h"
+#include <ESPmDNS.h>
+#include "web/base64.h"
+#include "interfaces/sensor_interface.h"
 
 static const char* TAG = "WebInterface";
 
