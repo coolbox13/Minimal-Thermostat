@@ -1,13 +1,6 @@
-// Basic includes
-#include <Arduino.h>
-
-// Include the ThermostatState first since other components depend on it
-#include "thermostat_state.h"
-
-// Then include your component headers
-#include "knx_interface.h"
-#include "config_manager.h"
 #include "pid_controller.h"
+#include <Arduino.h>
+#include "thermostat_state.h"
 #include <esp_log.h>
 
 static const char* TAG = "PIDController";
@@ -18,7 +11,7 @@ PIDController::PIDController() {
     config.kd = 0.0f;
     config.outputMin = 0.0f;
     config.outputMax = 100.0f;
-    config.sampleTime = 30000.0f; // 30 seconds
+    config.sampleTime = 30000.0f;
     setpoint = 0.0f;
     input = 0.0f;
     output = 0.0f;
@@ -52,6 +45,10 @@ void PIDController::configure(const void* configData) {
         config = *newConfig;
         resetIntegral();
     }
+}
+
+void PIDController::setUpdateInterval(unsigned long interval) {
+    config.sampleTime = static_cast<float>(interval);
 }
 
 void PIDController::setSetpoint(float value) {
@@ -101,7 +98,6 @@ void PIDController::setOutputLimits(float min, float max) {
     config.outputMin = min;
     config.outputMax = max;
     
-    // Clamp current output to new limits
     if (output > max) {
         output = max;
     } else if (output < min) {
@@ -123,28 +119,20 @@ void PIDController::computePID() {
     float error = setpoint - input;
     float dt = config.sampleTime / 1000.0f;
 
-    // Proportional term
     float proportional = config.kp * error;
-
-    // Integral term
     integral += error * dt;
     float integralTerm = config.ki * integral;
-
-    // Derivative term
     float derivative = (error - prevError) / dt;
     float derivativeTerm = config.kd * derivative;
 
-    // Calculate output
     output = proportional + integralTerm + derivativeTerm;
 
-    // Clamp output
     if (output > config.outputMax) {
         output = config.outputMax;
     } else if (output < config.outputMin) {
         output = config.outputMin;
     }
 
-    // Save error for next iteration
     prevError = error;
 }
 

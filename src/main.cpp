@@ -1,3 +1,4 @@
+#define CORE_DEBUG_LEVEL 5
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -44,12 +45,9 @@ void setup() {
         return;
     }
 
-    // Initialize thermostat state
-    thermostatState.begin();
-
     // Initialize PID controller
     pidController.begin();
-    pidController.configure(configManager.getPidConfig());
+    pidController.configure(static_cast<const void*>(&configManager.getPidConfig()));
 
     // Initialize protocol manager
     if (!protocolManager.begin()) {
@@ -58,13 +56,13 @@ void setup() {
     }
 
     // Configure and add MQTT interface if enabled
-    if (configManager.isMqttEnabled()) {
+    if (configManager.getMQTTEnabled()) {
         StaticJsonDocument<512> mqttConfig;
         mqttConfig["enabled"] = true;
-        mqttConfig["server"] = configManager.getMqttServer();
-        mqttConfig["port"] = configManager.getMqttPort();
-        mqttConfig["username"] = configManager.getMqttUsername();
-        mqttConfig["password"] = configManager.getMqttPassword();
+        mqttConfig["server"] = configManager.getMQTTServer();
+        mqttConfig["port"] = configManager.getMQTTPort();
+        mqttConfig["username"] = configManager.getMQTTUser();
+        mqttConfig["password"] = configManager.getMQTTPassword();
         mqttConfig["clientId"] = configManager.getDeviceName();
         mqttConfig["topicPrefix"] = "esp32/thermostat/";
 
@@ -79,12 +77,12 @@ void setup() {
     }
 
     // Configure and add KNX interface if enabled
-    if (configManager.isKnxEnabled()) {
+    if (configManager.getKnxEnabled()) {
         StaticJsonDocument<512> knxConfig;
         JsonObject physical = knxConfig.createNestedObject("physical");
-        physical["area"] = configManager.getKnxArea();
-        physical["line"] = configManager.getKnxLine();
-        physical["device"] = configManager.getKnxDevice();
+        physical["area"] = configManager.getKnxPhysicalArea();
+        physical["line"] = configManager.getKnxPhysicalLine();
+        physical["device"] = configManager.getKnxPhysicalMember();
 
         auto knxInterface = new KNXInterface(&thermostatState);
         if (knxInterface->configure(knxConfig)) {
@@ -108,9 +106,6 @@ void setup() {
 void loop() {
     // Update sensor readings
     sensorInterface.loop();
-
-    // Update thermostat state
-    thermostatState.loop();
 
     // Update PID controller
     pidController.setInput(sensorInterface.getTemperature());
