@@ -6,16 +6,10 @@
 // Include our fixed WebServer definitions
 #include "../config/wifi_manager_fix.h"
 
-#ifdef ESP32
-  #include <ESPmDNS.h>
-  #include <FS.h>
-  #include <LITTLEFS.h>
-  #define FileFS LITTLEFS
-#elif defined(ESP8266)
-  #include <ESP8266mDNS.h>
-  #include <LittleFS.h>
-  #define FileFS LittleFS
-#endif
+#include <ESPmDNS.h>
+#include <FS.h>
+#include <LITTLEFS.h>
+#define FileFS LITTLEFS
 
 #include <WiFi.h>
 #include "config_manager.h"
