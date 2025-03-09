@@ -3,12 +3,12 @@
 #include "knx_interface.h"
 #include "mqtt_interface.h"
 
-ProtocolManager::ProtocolManager(ThermostatState* state) :
-    thermostatState(state),
-    knxInterface(nullptr),
-    mqttInterface(nullptr),
-    lastCommandSource(SOURCE_INTERNAL),
-    lastCommandTime(0) {
+ProtocolManager::ProtocolManager(ThermostatState* state)
+    : thermostatState(state)
+    , knxInterface(nullptr)
+    , mqttInterface(nullptr)
+    , lastCommandSource(CommandSource::SOURCE_INTERNAL)
+    , lastCommandTime(0) {
 }
 
 void ProtocolManager::registerProtocols(KNXInterface* knx, MQTTInterface* mqtt) {
@@ -26,121 +26,81 @@ void ProtocolManager::registerProtocols(KNXInterface* knx, MQTTInterface* mqtt) 
 }
 
 bool ProtocolManager::handleIncomingCommand(CommandSource source, CommandType cmd, float value) {
-    if (!thermostatState) {
-        return false;
-    }
-    
-    // Check command priority
+    // Check if this source has priority
     if (!hasHigherPriority(source, lastCommandSource)) {
         return false;
     }
-    
+
+    // Update command source and time
+    lastCommandSource = source;
+    lastCommandTime = millis();
+
+    // Process command
     bool success = false;
-    
     switch (cmd) {
-        case CMD_SET_TEMPERATURE:
+        case CommandType::CMD_SET_TEMPERATURE:
             thermostatState->setTargetTemperature(value);
-            // Propagate to other protocols (except the source)
-            if (source != SOURCE_KNX && knxInterface) {
+            // Forward to other protocols
+            if (source != CommandSource::SOURCE_KNX && knxInterface) {
                 knxInterface->sendSetpoint(value);
             }
-            if (source != SOURCE_MQTT && mqttInterface) {
+            if (source != CommandSource::SOURCE_MQTT && mqttInterface) {
                 mqttInterface->sendSetpoint(value);
             }
             success = true;
             break;
             
-        case CMD_SET_MODE:
+        case CommandType::CMD_SET_MODE:
             thermostatState->setMode(static_cast<ThermostatMode>(static_cast<int>(value)));
-            // Propagate to other protocols
-            if (source != SOURCE_KNX && knxInterface) {
+            // Forward to other protocols
+            if (source != CommandSource::SOURCE_KNX && knxInterface) {
                 knxInterface->sendMode(static_cast<ThermostatMode>(static_cast<int>(value)));
             }
-            if (source != SOURCE_MQTT && mqttInterface) {
+            if (source != CommandSource::SOURCE_MQTT && mqttInterface) {
                 mqttInterface->sendMode(static_cast<ThermostatMode>(static_cast<int>(value)));
             }
             success = true;
             break;
             
-        case CMD_SET_VALVE:
+        case CommandType::CMD_SET_VALVE:
             thermostatState->setValvePosition(value);
-            // Propagate to other protocols
-            if (source != SOURCE_KNX && knxInterface) {
+            // Forward to other protocols
+            if (source != CommandSource::SOURCE_KNX && knxInterface) {
                 knxInterface->sendValvePosition(value);
             }
-            if (source != SOURCE_MQTT && mqttInterface) {
+            if (source != CommandSource::SOURCE_MQTT && mqttInterface) {
                 mqttInterface->sendValvePosition(value);
             }
             success = true;
             break;
     }
     
-    if (success) {
-        lastCommandSource = source;
-        lastCommandTime = millis();
-    }
-    
     return success;
 }
 
 void ProtocolManager::sendTemperature(float temperature) {
-    // Send to KNX
-    if (knxInterface) {
-        knxInterface->sendTemperature(temperature);
-    }
-    
-    // Send to MQTT
-    if (mqttInterface) {
-        mqttInterface->sendTemperature(temperature);
-    }
+    if (knxInterface) knxInterface->sendTemperature(temperature);
+    if (mqttInterface) mqttInterface->sendTemperature(temperature);
 }
 
 void ProtocolManager::sendSetpoint(float setpoint) {
-    // Send to KNX
-    if (knxInterface) {
-        knxInterface->sendSetpoint(setpoint);
-    }
-    
-    // Send to MQTT
-    if (mqttInterface) {
-        mqttInterface->sendSetpoint(setpoint);
-    }
+    if (knxInterface) knxInterface->sendSetpoint(setpoint);
+    if (mqttInterface) mqttInterface->sendSetpoint(setpoint);
 }
 
 void ProtocolManager::sendValvePosition(float position) {
-    // Send to KNX
-    if (knxInterface) {
-        knxInterface->sendValvePosition(position);
-    }
-    
-    // Send to MQTT
-    if (mqttInterface) {
-        mqttInterface->sendValvePosition(position);
-    }
+    if (knxInterface) knxInterface->sendValvePosition(position);
+    if (mqttInterface) mqttInterface->sendValvePosition(position);
 }
 
 void ProtocolManager::sendMode(ThermostatMode mode) {
-    // Send to KNX
-    if (knxInterface) {
-        knxInterface->sendMode(mode);
-    }
-    
-    // Send to MQTT
-    if (mqttInterface) {
-        mqttInterface->sendMode(mode);
-    }
+    if (knxInterface) knxInterface->sendMode(mode);
+    if (mqttInterface) mqttInterface->sendMode(mode);
 }
 
 void ProtocolManager::sendHeatingState(bool isHeating) {
-    // Send to KNX
-    if (knxInterface) {
-        knxInterface->sendHeatingState(isHeating);
-    }
-    
-    // Send to MQTT
-    if (mqttInterface) {
-        mqttInterface->sendHeatingState(isHeating);
-    }
+    if (knxInterface) knxInterface->sendHeatingState(isHeating);
+    if (mqttInterface) mqttInterface->sendHeatingState(isHeating);
 }
 
 bool ProtocolManager::hasHigherPriority(CommandSource newSource, CommandSource currentSource) {
@@ -150,5 +110,5 @@ bool ProtocolManager::hasHigherPriority(CommandSource newSource, CommandSource c
     }
     
     // Priority order: KNX > MQTT > WEB_API > INTERNAL
-    return newSource <= currentSource;
+    return static_cast<uint8_t>(newSource) <= static_cast<uint8_t>(currentSource);
 }

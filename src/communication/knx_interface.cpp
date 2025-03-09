@@ -146,7 +146,11 @@ void KNXInterface::registerCallbacks(ThermostatState* state, ProtocolManager* ma
                 if (msg.ct == KNX_CT_WRITE && thermostatState) {
                     float setpoint = pimpl->knx->data_to_2byte_float(msg.data);
                     if (protocolManager) {
-                        protocolManager->handleIncomingCommand(SOURCE_KNX, CMD_SET_TEMPERATURE, setpoint);
+                        protocolManager->handleIncomingCommand(
+                            CommandSource::SOURCE_KNX,
+                            CommandType::CMD_SET_TEMPERATURE,
+                            setpoint
+                        );
                     } else {
                         thermostatState->setTargetTemperature(setpoint);
                     }
@@ -163,7 +167,11 @@ void KNXInterface::registerCallbacks(ThermostatState* state, ProtocolManager* ma
                     uint8_t modeValue = pimpl->knx->data_to_1byte_uint(msg.data);
                     ThermostatMode mode = knxToMode(modeValue);
                     if (protocolManager) {
-                        protocolManager->handleIncomingCommand(SOURCE_KNX, CMD_SET_MODE, static_cast<float>(static_cast<int>(mode)));
+                        protocolManager->handleIncomingCommand(
+                            CommandSource::SOURCE_KNX,
+                            CommandType::CMD_SET_MODE,
+                            static_cast<float>(static_cast<int>(mode))
+                        );
                     } else {
                         thermostatState->setMode(mode);
                     }

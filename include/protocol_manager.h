@@ -3,10 +3,10 @@
 
 #include <Arduino.h>
 #include "thermostat_types.h"
-#include "thermostat_state.h"
-#include "interfaces/protocol_interface.h"
+#include "protocol_types.h"
 
 // Forward declarations
+class ThermostatState;
 class KNXInterface;
 class MQTTInterface;
 

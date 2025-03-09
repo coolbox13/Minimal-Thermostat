@@ -200,24 +200,36 @@ void WebInterface::handleSetpoint() {
     return;
   }
 
-  if (!thermostatState || !protocolManager) {
-    server.send(500, "text/plain", "Thermostat state or protocol manager not available");
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
     return;
   }
 
-  if (!server.hasArg("value")) {
+  String json = server.arg("plain");
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, json);
+
+  if (error) {
+    server.send(400, "text/plain", "Invalid JSON");
+    return;
+  }
+
+  if (!doc.containsKey("setpoint")) {
     server.send(400, "text/plain", "Missing setpoint value");
     return;
   }
 
-  float setpoint = server.arg("value").toFloat();
-  if (setpoint < 5.0 || setpoint > 30.0) { // Basic range check
-    server.send(400, "text/plain", "Invalid setpoint value (must be between 5-30°C)");
-    return;
+  float setpoint = doc["setpoint"];
+  if (protocolManager) {
+    protocolManager->handleIncomingCommand(
+      CommandSource::SOURCE_WEB_API,
+      CommandType::CMD_SET_TEMPERATURE,
+      setpoint
+    );
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(500, "text/plain", "Protocol manager not initialized");
   }
-
-  protocolManager->handleCommand(CMD_SET_TEMPERATURE, setpoint, SOURCE_WEB_API);
-  server.send(200, "text/plain", "Setpoint updated");
 }
 
 void WebInterface::handleSaveConfig() {

@@ -205,11 +205,7 @@ void MQTTInterface::handleMqttMessage(char* topic, byte* payload, unsigned int l
     if (newSetpoint > 0 && newSetpoint < 40) {  // Sanity check
       Serial.printf("MQTT: Received setpoint command: %.2f°C\n", newSetpoint);
       
-      instance->protocolManager->handleIncomingCommand(
-        SOURCE_MQTT, 
-        CMD_SET_TEMPERATURE, 
-        newSetpoint
-      );
+      instance->handleSetpointCallback(topic, payload);
     }
   } else if (strcmp(topic, instance->topicModeSet) == 0) {
     // Process mode command
@@ -217,11 +213,7 @@ void MQTTInterface::handleMqttMessage(char* topic, byte* payload, unsigned int l
     if (modeValue >= 0 && modeValue <= 5) {  // Sanity check
       Serial.printf("MQTT: Received mode command: %d\n", modeValue);
       
-      instance->protocolManager->handleIncomingCommand(
-        SOURCE_MQTT, 
-        CMD_SET_MODE, 
-        (float)modeValue
-      );
+      instance->handleModeCallback(topic, payload);
     }
   }
 }
@@ -246,4 +238,26 @@ int MQTTInterface::extractIntPayload(byte* payload, unsigned int length) {
   
   // Convert to integer
   return atoi(message);
+}
+
+void MQTTInterface::handleSetpointCallback(const char* topic, const char* payload) {
+    float setpoint = atof(payload);
+    if (protocolManager) {
+        protocolManager->handleIncomingCommand(
+            CommandSource::SOURCE_MQTT,
+            CommandType::CMD_SET_TEMPERATURE,
+            setpoint
+        );
+    }
+}
+
+void MQTTInterface::handleModeCallback(const char* topic, const char* payload) {
+    int modeValue = atoi(payload);
+    if (protocolManager) {
+        protocolManager->handleIncomingCommand(
+            CommandSource::SOURCE_MQTT,
+            CommandType::CMD_SET_MODE,
+            static_cast<float>(modeValue)
+        );
+    }
 }
