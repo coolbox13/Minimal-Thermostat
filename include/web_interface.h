@@ -2,17 +2,15 @@
 #define WEB_INTERFACE_H
 
 #include <Arduino.h>
-#include "thermostat_state.h"
-#include "config_manager.h"
-#include "sensor_interface.h"
-#include "knx_interface.h"
-#include "mqtt_interface.h"
-#include "pid_controller.h"
-#include "protocol_manager.h"
 
-// Command and source definitions for protocol manager
-#define CMD_SET_TEMPERATURE 1
-#define SOURCE_WEB_API 1
+// Forward declarations
+class ThermostatState;
+class ConfigManager;
+class SensorInterface;
+class KNXInterface;
+class MQTTInterface;
+class PIDController;
+class ProtocolManager;
 
 #ifdef ESP32
   #include <WebServer.h>
@@ -26,6 +24,10 @@
   #include <LittleFS.h>
   #define WebServerClass ESP8266WebServer
 #endif
+
+// Command and source definitions for protocol manager
+#define CMD_SET_TEMPERATURE 1
+#define SOURCE_WEB_API 1
 
 class WebInterface {
 public:
