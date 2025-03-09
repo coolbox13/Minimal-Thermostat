@@ -6,39 +6,48 @@
 #include <LittleFS.h>
 #include "thermostat_state.h"
 #include "config_manager.h"
-#include "control/pid_controller.h"
+
+// Forward declarations
+class SensorInterface;
+class PIDController;
+class ProtocolManager;
 
 class WebInterface {
 public:
-    WebInterface(ConfigManager* configManager, ThermostatState* state);
-    virtual ~WebInterface() = default;
+    WebInterface(ConfigManager* configManager, SensorInterface* sensorInterface, 
+                PIDController* pidController, ThermostatState* thermostatState,
+                ProtocolManager* protocolManager);
+    virtual ~WebInterface();
 
-    bool begin();
-    void stop();
-    bool isConnected() const;
-    void setPort(uint16_t port);
-    void setCredentials(const char* username, const char* password);
-    void setHostname(const char* hostname);
-    ThermostatStatus getLastError() const;
-
-protected:
-    void setupRoutes();
+    void begin();
+    void end();
+    
+    // Request handlers
+    void handleRoot(AsyncWebServerRequest* request);
+    void handleSave(AsyncWebServerRequest* request);
     void handleGetStatus(AsyncWebServerRequest* request);
+    void handleSetpoint(AsyncWebServerRequest* request);
     void handleSaveConfig(AsyncWebServerRequest* request);
+    void handleReboot(AsyncWebServerRequest* request);
+    void handleFactoryReset(AsyncWebServerRequest* request);
     void handleNotFound(AsyncWebServerRequest* request);
-    bool handleFileRead(String path);
-    void handleJsonResponse(String& json);
-    void handleError(const char* message, int code = 500);
+    
+    // Utility methods
+    bool handleFileRead(AsyncWebServerRequest* request, String path);
+    void addSecurityHeaders(AsyncWebServerResponse* response);
+    bool isAuthenticated(AsyncWebServerRequest* request);
+    void requestAuthentication(AsyncWebServerRequest* request);
+    bool validateCSRFToken(AsyncWebServerRequest* request);
+    String generateCSRFToken(AsyncWebServerRequest* request);
+    String getContentType(String filename);
     String generateHtml();
-    String generateStatusJson();
-    String generateConfigJson();
+    void setupMDNS();
 
+private:
     AsyncWebServer server;
     ConfigManager* configManager;
-    ThermostatState* state;
-    uint16_t port;
-    char username[32];
-    char password[32];
-    char hostname[32];
-    ThermostatStatus lastError;
-}; 
+    SensorInterface* sensorInterface;
+    PIDController* pidController;
+    ThermostatState* thermostatState;
+    ProtocolManager* protocolManager;
+};
