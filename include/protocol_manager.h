@@ -32,11 +32,13 @@ private:
     KNXInterface* knxInterface;
     MQTTInterface* mqttInterface;
 
-    // Command priority handling
-    bool hasHigherPriority(CommandSource newSource, CommandSource currentSource);
+    // Command tracking
     CommandSource lastCommandSource;
-    unsigned long lastCommandTime;
-    static const unsigned long PRIORITY_TIMEOUT = 5000; // 5 seconds
+    CommandType lastCommandType;
+    float lastCommandValue;
+    
+    // Helper to propagate commands to other interfaces
+    void propagateCommand(CommandSource source, CommandType cmd, float value);
 };
 
 #endif // PROTOCOL_MANAGER_H

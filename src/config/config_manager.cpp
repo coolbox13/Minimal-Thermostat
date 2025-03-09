@@ -5,8 +5,7 @@
 #include "thermostat_state.h"
 
 // Then include your component headers
-#include "knx_interface.h"
-#include "config_manager.h"
+#include "communication/knx/knx_interface.h"
 #include "config_manager.h"
 #include <WiFiManager.h>
 #include <LittleFS.h>
@@ -16,9 +15,13 @@ ConfigManager::ConfigManager() {
   setDefaults();
 }
 
+ConfigManager::~ConfigManager() {
+  // Nothing to clean up
+}
+
 bool ConfigManager::begin() {
   // Initialize file system
-  if (!FileFS.begin()) {
+  if (!LittleFS.begin()) {
     Serial.println("Failed to mount file system");
     return false;
   }
@@ -30,6 +33,10 @@ bool ConfigManager::begin() {
   }
   
   return true;
+}
+
+void ConfigManager::end() {
+  // Nothing to clean up
 }
 
 bool ConfigManager::setupWiFi() {
@@ -100,7 +107,7 @@ bool ConfigManager::saveConfig() {
   doc["kd"] = kd;
   doc["setpoint"] = setpoint;
   
-  File configFile = FileFS.open(CONFIG_FILE, "w");
+  File configFile = LittleFS.open(CONFIG_FILE, "w");
   if (!configFile) {
     Serial.println("Failed to open config file for writing");
     return false;
@@ -114,12 +121,12 @@ bool ConfigManager::saveConfig() {
 
 bool ConfigManager::loadConfig() {
   Serial.println("Loading configuration...");
-  if (!FileFS.exists(CONFIG_FILE)) {
+  if (!LittleFS.exists(CONFIG_FILE)) {
     Serial.println("Config file not found");
     return false;
   }
   
-  File configFile = FileFS.open(CONFIG_FILE, "r");
+  File configFile = LittleFS.open(CONFIG_FILE, "r");
   if (!configFile) {
     Serial.println("Failed to open config file for reading");
     return false;
@@ -231,7 +238,7 @@ void ConfigManager::setDefaults() {
 
 void ConfigManager::factoryReset() {
   // Remove config file
-  FileFS.remove(CONFIG_FILE);
+  LittleFS.remove(CONFIG_FILE);
   
   // Reset to defaults
   setDefaults();
@@ -245,39 +252,39 @@ void ConfigManager::setDeviceName(const char* name) {
   strlcpy(deviceName, name, sizeof(deviceName));
 }
 
-void ConfigManager::setSendInterval(int interval) {
+void ConfigManager::setSendInterval(uint32_t interval) {
   sendInterval = interval;
 }
 
-void ConfigManager::setPidInterval(int interval) {
+void ConfigManager::setPidInterval(uint32_t interval) {
   pidInterval = interval;
 }
 
-void ConfigManager::setKnxPhysicalAddress(int area, int line, int member) {
+void ConfigManager::setKnxPhysicalAddress(uint8_t area, uint8_t line, uint8_t member) {
   knxPhysicalArea = area;
   knxPhysicalLine = line;
   knxPhysicalMember = member;
 }
 
-void ConfigManager::setKnxTemperatureGA(int area, int line, int member) {
+void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
   knxTempArea = area;
   knxTempLine = line;
   knxTempMember = member;
 }
 
-void ConfigManager::setKnxSetpointGA(int area, int line, int member) {
+void ConfigManager::setKnxSetpointGA(uint8_t area, uint8_t line, uint8_t member) {
   knxSetpointArea = area;
   knxSetpointLine = line;
   knxSetpointMember = member;
 }
 
-void ConfigManager::setKnxValveGA(int area, int line, int member) {
+void ConfigManager::setKnxValveGA(uint8_t area, uint8_t line, uint8_t member) {
   knxValveArea = area;
   knxValveLine = line;
   knxValveMember = member;
 }
 
-void ConfigManager::setKnxModeGA(int area, int line, int member) {
+void ConfigManager::setKnxModeGA(uint8_t area, uint8_t line, uint8_t member) {
   knxModeArea = area;
   knxModeLine = line;
   knxModeMember = member;
@@ -291,7 +298,7 @@ void ConfigManager::setMqttServer(const char* server) {
   strlcpy(mqttServer, server, sizeof(mqttServer));
 }
 
-void ConfigManager::setMqttPort(int port) {
+void ConfigManager::setMqttPort(uint16_t port) {
   mqttPort = port;
 }
 
@@ -328,11 +335,11 @@ void ConfigManager::setSetpoint(float value) {
 }
 
 void ConfigManager::setWebUsername(const char* username) {
-    strlcpy(webUsername, username, sizeof(webUsername));
+  strlcpy(webUsername, username, sizeof(webUsername));
 }
 
 void ConfigManager::setWebPassword(const char* password) {
-    strlcpy(webPassword, password, sizeof(webPassword));
+  strlcpy(webPassword, password, sizeof(webPassword));
 }
 
 // Getters
@@ -340,71 +347,71 @@ const char* ConfigManager::getDeviceName() const {
   return deviceName;
 }
 
-int ConfigManager::getSendInterval() const {
+uint32_t ConfigManager::getSendInterval() const {
   return sendInterval;
 }
 
-int ConfigManager::getPidInterval() const {
+uint32_t ConfigManager::getPidInterval() const {
   return pidInterval;
 }
 
-int ConfigManager::getKnxPhysicalArea() const {
+uint8_t ConfigManager::getKnxPhysicalArea() const {
   return knxPhysicalArea;
 }
 
-int ConfigManager::getKnxPhysicalLine() const {
+uint8_t ConfigManager::getKnxPhysicalLine() const {
   return knxPhysicalLine;
 }
 
-int ConfigManager::getKnxPhysicalMember() const {
+uint8_t ConfigManager::getKnxPhysicalMember() const {
   return knxPhysicalMember;
 }
 
-int ConfigManager::getKnxTempArea() const {
+uint8_t ConfigManager::getKnxTempArea() const {
   return knxTempArea;
 }
 
-int ConfigManager::getKnxTempLine() const {
+uint8_t ConfigManager::getKnxTempLine() const {
   return knxTempLine;
 }
 
-int ConfigManager::getKnxTempMember() const {
+uint8_t ConfigManager::getKnxTempMember() const {
   return knxTempMember;
 }
 
-int ConfigManager::getKnxSetpointArea() const {
+uint8_t ConfigManager::getKnxSetpointArea() const {
   return knxSetpointArea;
 }
 
-int ConfigManager::getKnxSetpointLine() const {
+uint8_t ConfigManager::getKnxSetpointLine() const {
   return knxSetpointLine;
 }
 
-int ConfigManager::getKnxSetpointMember() const {
+uint8_t ConfigManager::getKnxSetpointMember() const {
   return knxSetpointMember;
 }
 
-int ConfigManager::getKnxValveArea() const {
+uint8_t ConfigManager::getKnxValveArea() const {
   return knxValveArea;
 }
 
-int ConfigManager::getKnxValveLine() const {
+uint8_t ConfigManager::getKnxValveLine() const {
   return knxValveLine;
 }
 
-int ConfigManager::getKnxValveMember() const {
+uint8_t ConfigManager::getKnxValveMember() const {
   return knxValveMember;
 }
 
-int ConfigManager::getKnxModeArea() const {
+uint8_t ConfigManager::getKnxModeArea() const {
   return knxModeArea;
 }
 
-int ConfigManager::getKnxModeLine() const {
+uint8_t ConfigManager::getKnxModeLine() const {
   return knxModeLine;
 }
 
-int ConfigManager::getKnxModeMember() const {
+uint8_t ConfigManager::getKnxModeMember() const {
   return knxModeMember;
 }
 
@@ -416,7 +423,7 @@ const char* ConfigManager::getMqttServer() const {
   return mqttServer;
 }
 
-int ConfigManager::getMqttPort() const {
+uint16_t ConfigManager::getMqttPort() const {
   return mqttPort;
 }
 
@@ -453,9 +460,39 @@ float ConfigManager::getSetpoint() const {
 }
 
 const char* ConfigManager::getWebUsername() const {
-    return webUsername;
+  return webUsername;
 }
 
 const char* ConfigManager::getWebPassword() const {
-    return webPassword;
+  return webPassword;
+}
+
+void ConfigManager::getKnxPhysicalAddress(uint8_t& area, uint8_t& line, uint8_t& member) const {
+  area = knxPhysicalArea;
+  line = knxPhysicalLine;
+  member = knxPhysicalMember;
+}
+
+void ConfigManager::getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+  area = knxTempArea;
+  line = knxTempLine;
+  member = knxTempMember;
+}
+
+void ConfigManager::getKnxSetpointGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+  area = knxSetpointArea;
+  line = knxSetpointLine;
+  member = knxSetpointMember;
+}
+
+void ConfigManager::getKnxValveGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+  area = knxValveArea;
+  line = knxValveLine;
+  member = knxValveMember;
+}
+
+void ConfigManager::getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+  area = knxModeArea;
+  line = knxModeLine;
+  member = knxModeMember;
 }

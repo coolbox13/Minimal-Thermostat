@@ -8,6 +8,10 @@
 #include "thermostat_types.h"
 #include "protocol_types.h"
 
+// Define CONFIG_FILE path
+#define CONFIG_FILE "/config.json"
+#define DEFAULT_DEVICE_NAME "ESP32-Thermostat"
+
 class ConfigManager {
 public:
     ConfigManager();
@@ -16,11 +20,13 @@ public:
     // Initialization
     bool begin();
     void end();
+    bool setupWiFi();
 
     // Configuration management
     bool loadConfig();
     bool saveConfig();
     void factoryReset();
+    void setDefaults();
 
     // Device settings
     void setDeviceName(const char* name);
@@ -48,12 +54,27 @@ public:
     // KNX group addresses
     void setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
+    uint8_t getKnxTempArea() const;
+    uint8_t getKnxTempLine() const;
+    uint8_t getKnxTempMember() const;
+    
     void setKnxSetpointGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxSetpointGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
+    uint8_t getKnxSetpointArea() const;
+    uint8_t getKnxSetpointLine() const;
+    uint8_t getKnxSetpointMember() const;
+    
     void setKnxValveGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxValveGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
+    uint8_t getKnxValveArea() const;
+    uint8_t getKnxValveLine() const;
+    uint8_t getKnxValveMember() const;
+    
     void setKnxModeGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
+    uint8_t getKnxModeArea() const;
+    uint8_t getKnxModeLine() const;
+    uint8_t getKnxModeMember() const;
 
     // MQTT settings
     void setMqttEnabled(bool enabled);
@@ -80,9 +101,50 @@ public:
     float getSetpoint() const;
 
 private:
-    // Private implementation
-    class Impl;
-    std::unique_ptr<Impl> pimpl;
+    // Member variables instead of PIMPL
+    char deviceName[32];
+    uint32_t sendInterval;
+    uint32_t pidInterval;
+    
+    // KNX settings
+    bool knxEnabled;
+    uint8_t knxPhysicalArea;
+    uint8_t knxPhysicalLine;
+    uint8_t knxPhysicalMember;
+    
+    uint8_t knxTempArea;
+    uint8_t knxTempLine;
+    uint8_t knxTempMember;
+    
+    uint8_t knxSetpointArea;
+    uint8_t knxSetpointLine;
+    uint8_t knxSetpointMember;
+    
+    uint8_t knxValveArea;
+    uint8_t knxValveLine;
+    uint8_t knxValveMember;
+    
+    uint8_t knxModeArea;
+    uint8_t knxModeLine;
+    uint8_t knxModeMember;
+    
+    // MQTT settings
+    bool mqttEnabled;
+    char mqttServer[64];
+    uint16_t mqttPort;
+    char mqttUser[32];
+    char mqttPassword[32];
+    char mqttClientId[32];
+    
+    // Web authentication
+    char webUsername[32];
+    char webPassword[32];
+    
+    // PID settings
+    float kp;
+    float ki;
+    float kd;
+    float setpoint;
 };
 
 #endif // CONFIG_MANAGER_H

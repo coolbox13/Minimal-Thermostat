@@ -1,12 +1,23 @@
-#include "web_interface.h"
+#include "web/web_interface.h"
 #include "config_manager.h"
 #include "thermostat_state.h"
-#include "sensor_interface.h"
-#include "knx_interface.h"
+#include "interfaces/sensor_interface.h"
+#include "communication/knx/knx_interface.h"
 #include "mqtt_interface.h"
 #include "pid_controller.h"
 #include "protocol_manager.h"
 #include <ArduinoJson.h>
+#include <memory>
+
+// Define make_unique for C++11 compatibility
+#if __cplusplus < 201402L
+namespace std {
+    template<typename T, typename... Args>
+    std::unique_ptr<T> make_unique(Args&&... args) {
+        return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+}
+#endif
 
 WebInterface::WebInterface() : server(80) {
 }
@@ -52,6 +63,11 @@ bool WebInterface::begin(ThermostatState* state,
 
 void WebInterface::handle() {
     server.handleClient();
+    
+#ifdef ESP32
+    // ESP32 MDNS needs to be updated in the loop
+    MDNS.update();
+#endif
 }
 
 void WebInterface::handleRoot() {
@@ -232,6 +248,18 @@ String WebInterface::generateCSRFToken() {
     String token = authManager->generateCSRFToken();
     server.sendHeader("X-CSRF-Token", token);
     return token;
+}
+
+void WebInterface::setupMDNS() {
+    // Set up mDNS responder
+    String hostname = configManager ? configManager->getDeviceName() : "esp32-thermostat";
+    
+    if (MDNS.begin(hostname.c_str())) {
+        Serial.println("mDNS responder started");
+        MDNS.addService("http", "tcp", 80);
+    } else {
+        Serial.println("Error setting up mDNS responder");
+    }
 }
 
 // ... existing code for other methods ...

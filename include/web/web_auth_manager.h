@@ -4,9 +4,15 @@
 #include <Arduino.h>
 #include <map>
 #include <vector>
+#include "config_manager.h"
 
-class ConfigManager;
-class WebServerClass;
+#ifdef ESP32
+  #include <WebServer.h>
+  #define WebServerClass WebServer
+#elif defined(ESP8266)
+  #include <ESP8266WebServer.h>
+  #define WebServerClass ESP8266WebServer
+#endif
 
 class WebAuthManager {
 public:

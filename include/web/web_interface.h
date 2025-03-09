@@ -19,7 +19,14 @@
 #endif
 
 #include <WiFi.h>
-#include "web_auth_manager.h"
+#include "config_manager.h"
+#include "thermostat_state.h"
+#include "interfaces/sensor_interface.h"
+#include "communication/knx/knx_interface.h"
+#include "mqtt_interface.h"
+#include "pid_controller.h"
+#include "protocol_manager.h"
+#include "web/web_auth_manager.h"
 
 // HTTP method constants
 #ifndef HTTP_GET
@@ -34,15 +41,6 @@
 #ifndef HTTP_DELETE
 #define HTTP_DELETE 3
 #endif
-
-// Forward declarations
-class ThermostatState;
-class ConfigManager;
-class SensorInterface;
-class KNXInterface;
-class MQTTInterface;
-class PIDController;
-class ProtocolManager;
 
 class WebInterface {
 public:

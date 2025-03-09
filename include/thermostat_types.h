@@ -33,6 +33,15 @@ enum class ThermostatStatus : int8_t {
     ERROR_INITIALIZATION = -5    // Initialization error
 };
 
+// Command sources for protocol interfaces
+enum class CommandSource : uint8_t {
+    SOURCE_NONE = 0,
+    SOURCE_KNX,
+    SOURCE_MQTT,
+    SOURCE_WEB,
+    SOURCE_INTERNAL
+};
+
 // Command types for protocol interfaces
 enum class CommandType : uint8_t {
     CMD_NONE = 0,
@@ -40,14 +49,6 @@ enum class CommandType : uint8_t {
     CMD_MODE,
     CMD_VALVE,
     CMD_HEATING
-};
-
-// Command sources for protocol interfaces
-enum class CommandSource : uint8_t {
-    SOURCE_NONE = 0,
-    SOURCE_KNX,
-    SOURCE_MQTT,
-    SOURCE_WEB
 };
 
 // Helper functions
