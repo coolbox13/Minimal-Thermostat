@@ -8,181 +8,159 @@
 #include "mqtt_interface.h"
 #include <ArduinoJson.h>
 
-void WebInterface::handleRoot(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request)) {
-    requestAuthentication(request);
+void WebInterface::handleRoot() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
     return;
   }
   String html = generateHtml();
-  AsyncWebServerResponse* response = request->beginResponse(200, "text/html", html);
-  addSecurityHeaders(response);
-  request->send(response);
+  server.send(200, "text/html", html);
 }
 
-void WebInterface::handleSave(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request) || !validateCSRFToken(request)) {
-    requestAuthentication(request);
+void WebInterface::handleSave() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
+    return;
+  }
+
+  if (!validateCSRFToken()) {
+    server.send(403, "text/plain", "Invalid CSRF token");
     return;
   }
 
   if (!configManager) {
-    AsyncWebServerResponse* response = request->beginResponse(500, "text/plain", "Configuration manager not available");
-    addSecurityHeaders(response);
-    request->send(response);
+    server.send(500, "text/plain", "Configuration manager not available");
     return;
   }
   
   // Device settings
-  if (request->hasParam("deviceName", true)) {
-    configManager->setDeviceName(request->getParam("deviceName", true)->value().c_str());
+  if (server.hasArg("deviceName")) {
+    configManager->setDeviceName(server.arg("deviceName").c_str());
   }
   
-  if (request->hasParam("sendInterval", true)) {
-    int interval = request->getParam("sendInterval", true)->value().toInt();
-    if (interval < 1000) interval = 1000; // Minimum 1 second
+  if (server.hasArg("sendInterval")) {
+    uint32_t interval = server.arg("sendInterval").toInt();
     configManager->setSendInterval(interval);
     if (sensorInterface) {
-      sensorInterface->setUpdateInterval(interval);
+      sensorInterface->setSendInterval(interval);
     }
   }
   
-  if (request->hasParam("pidInterval", true)) {
-    int interval = request->getParam("pidInterval", true)->value().toInt();
-    if (interval < 1000) interval = 1000; // Minimum 1 second
+  if (server.hasArg("pidInterval")) {
+    uint32_t interval = server.arg("pidInterval").toInt();
     configManager->setPidInterval(interval);
     if (pidController) {
-      pidController->setUpdateInterval(interval);
+      pidController->setInterval(interval);
     }
   }
   
   // KNX physical address
-  if (request->hasParam("knxPhysicalArea", true) && request->hasParam("knxPhysicalLine", true) && request->hasParam("knxPhysicalMember", true)) {
-    int area = request->getParam("knxPhysicalArea", true)->value().toInt();
-    int line = request->getParam("knxPhysicalLine", true)->value().toInt();
-    int member = request->getParam("knxPhysicalMember", true)->value().toInt();
+  if (server.hasArg("knxArea") && server.hasArg("knxLine") && server.hasArg("knxMember")) {
+    uint8_t area = server.arg("knxArea").toInt();
+    uint8_t line = server.arg("knxLine").toInt();
+    uint8_t member = server.arg("knxMember").toInt();
     
     configManager->setKnxPhysicalAddress(area, line, member);
     // KNX interface would need to be reinitialized with new address
   }
   
   // KNX enabled/disabled
-  configManager->setKnxEnabled(request->hasParam("knxEnabled", true));
+  configManager->setKnxEnabled(server.hasArg("knxEnabled"));
   
   // KNX group addresses
-  if (request->hasParam("knxTemperatureGA_area", true) && request->hasParam("knxTemperatureGA_line", true) && request->hasParam("knxTemperatureGA_member", true)) {
-    uint8_t area = request->getParam("knxTemperatureGA_area", true)->value().toInt();
-    uint8_t line = request->getParam("knxTemperatureGA_line", true)->value().toInt();
-    uint8_t member = request->getParam("knxTemperatureGA_member", true)->value().toInt();
+  if (server.hasArg("knxTempArea") && server.hasArg("knxTempLine") && server.hasArg("knxTempMember")) {
+    uint8_t area = server.arg("knxTempArea").toInt();
+    uint8_t line = server.arg("knxTempLine").toInt();
+    uint8_t member = server.arg("knxTempMember").toInt();
     configManager->setKnxTemperatureGA(area, line, member);
-    if (knxInterface) {
-      knxInterface->setTemperatureGA({
-        .area = area,
-        .line = line,
-        .member = member
-      });
+    if (protocolManager) {
+      protocolManager->updateKnxTemperatureGA(area, line, member);
     }
   }
   
-  if (request->hasParam("knxSetpointGA_area", true) && request->hasParam("knxSetpointGA_line", true) && request->hasParam("knxSetpointGA_member", true)) {
-    uint8_t area = request->getParam("knxSetpointGA_area", true)->value().toInt();
-    uint8_t line = request->getParam("knxSetpointGA_line", true)->value().toInt();
-    uint8_t member = request->getParam("knxSetpointGA_member", true)->value().toInt();
+  if (server.hasArg("knxSetpointArea") && server.hasArg("knxSetpointLine") && server.hasArg("knxSetpointMember")) {
+    uint8_t area = server.arg("knxSetpointArea").toInt();
+    uint8_t line = server.arg("knxSetpointLine").toInt();
+    uint8_t member = server.arg("knxSetpointMember").toInt();
     configManager->setKnxSetpointGA(area, line, member);
-    if (knxInterface) {
-      knxInterface->setSetpointGA({
-        .area = area,
-        .line = line,
-        .member = member
-      });
+    if (protocolManager) {
+      protocolManager->updateKnxSetpointGA(area, line, member);
     }
   }
   
-  if (request->hasParam("knxValveGA_area", true) && request->hasParam("knxValveGA_line", true) && request->hasParam("knxValveGA_member", true)) {
-    uint8_t area = request->getParam("knxValveGA_area", true)->value().toInt();
-    uint8_t line = request->getParam("knxValveGA_line", true)->value().toInt();
-    uint8_t member = request->getParam("knxValveGA_member", true)->value().toInt();
+  if (server.hasArg("knxValveArea") && server.hasArg("knxValveLine") && server.hasArg("knxValveMember")) {
+    uint8_t area = server.arg("knxValveArea").toInt();
+    uint8_t line = server.arg("knxValveLine").toInt();
+    uint8_t member = server.arg("knxValveMember").toInt();
     configManager->setKnxValveGA(area, line, member);
-    if (knxInterface) {
-      knxInterface->setValvePositionGA({
-        .area = area,
-        .line = line,
-        .member = member
-      });
+    if (protocolManager) {
+      protocolManager->updateKnxValveGA(area, line, member);
     }
   }
   
-  if (request->hasParam("knxModeGA_area", true) && request->hasParam("knxModeGA_line", true) && request->hasParam("knxModeGA_member", true)) {
-    uint8_t area = request->getParam("knxModeGA_area", true)->value().toInt();
-    uint8_t line = request->getParam("knxModeGA_line", true)->value().toInt();
-    uint8_t member = request->getParam("knxModeGA_member", true)->value().toInt();
+  if (server.hasArg("knxModeArea") && server.hasArg("knxModeLine") && server.hasArg("knxModeMember")) {
+    uint8_t area = server.arg("knxModeArea").toInt();
+    uint8_t line = server.arg("knxModeLine").toInt();
+    uint8_t member = server.arg("knxModeMember").toInt();
     configManager->setKnxModeGA(area, line, member);
-    if (knxInterface) {
-      knxInterface->setModeGA({
-        .area = area,
-        .line = line,
-        .member = member
-      });
+    if (protocolManager) {
+      protocolManager->updateKnxModeGA(area, line, member);
     }
   }
   
   // MQTT settings
-  configManager->setMqttEnabled(request->hasParam("mqttEnabled", true));
+  configManager->setMQTTEnabled(server.hasArg("mqttEnabled"));
   
-  if (request->hasParam("mqtt_server", true) && request->hasParam("mqtt_port", true)) {
-    const char* mqttServer = request->getParam("mqtt_server", true)->value().c_str();
-    uint16_t mqttPort = request->getParam("mqtt_port", true)->value().toInt();
-    configManager->setMqttServer(mqttServer);
-    configManager->setMqttPort(mqttPort);
-    if (mqttInterface) {
-      mqttInterface->setServer(mqttServer, mqttPort);
-    }
+  if (server.hasArg("mqttServer")) {
+    const char* mqttServer = server.arg("mqttServer").c_str();
+    configManager->setMQTTServer(mqttServer);
   }
   
-  if (request->hasParam("mqtt_user", true) && request->hasParam("mqtt_pass", true)) {
-    const char* mqttUser = request->getParam("mqtt_user", true)->value().c_str();
-    const char* mqttPassword = request->getParam("mqtt_pass", true)->value().c_str();
-    configManager->setMqttUser(mqttUser);
-    configManager->setMqttPassword(mqttPassword);
-    if (mqttInterface) {
-      mqttInterface->setCredentials(mqttUser, mqttPassword);
-    }
+  if (server.hasArg("mqttPort")) {
+    uint16_t mqttPort = server.arg("mqttPort").toInt();
+    configManager->setMQTTPort(mqttPort);
   }
   
-  if (request->hasParam("mqtt_clientId", true)) {
-    const char* mqttClientId = request->getParam("mqtt_clientId", true)->value().c_str();
-    configManager->setMqttClientId(mqttClientId);
-    if (mqttInterface) {
-      mqttInterface->setClientId(mqttClientId);
-    }
+  if (server.hasArg("mqttUser")) {
+    const char* mqttUser = server.arg("mqttUser").c_str();
+    configManager->setMQTTUser(mqttUser);
   }
   
-  // PID settings
-  if (request->hasParam("kp", true)) {
-    float kp = request->getParam("kp", true)->value().toFloat();
-    configManager->setKp(kp);
+  if (server.hasArg("mqttPassword")) {
+    const char* mqttPassword = server.arg("mqttPassword").c_str();
+    configManager->setMQTTPassword(mqttPassword);
+  }
+  
+  if (server.hasArg("mqttClientId")) {
+    const char* mqttClientId = server.arg("mqttClientId").c_str();
+    configManager->setMQTTClientId(mqttClientId);
+  }
+  
+  // PID parameters
+  if (server.hasArg("pidKp")) {
+    float kp = server.arg("pidKp").toFloat();
     if (pidController) {
-      pidController->setTunings(kp, pidController->getKi(), pidController->getKd());
+      pidController->setKp(kp);
     }
   }
   
-  if (request->hasParam("ki", true)) {
-    float ki = request->getParam("ki", true)->value().toFloat();
-    configManager->setKi(ki);
+  if (server.hasArg("pidKi")) {
+    float ki = server.arg("pidKi").toFloat();
     if (pidController) {
-      pidController->setTunings(pidController->getKp(), ki, pidController->getKd());
+      pidController->setKi(ki);
     }
   }
   
-  if (request->hasParam("kd", true)) {
-    float kd = request->getParam("kd", true)->value().toFloat();
-    configManager->setKd(kd);
+  if (server.hasArg("pidKd")) {
+    float kd = server.arg("pidKd").toFloat();
     if (pidController) {
-      pidController->setTunings(pidController->getKp(), pidController->getKi(), kd);
+      pidController->setKd(kd);
     }
   }
   
-  if (request->hasParam("setpoint", true)) {
-    float setpoint = request->getParam("setpoint", true)->value().toFloat();
+  // Setpoint
+  if (server.hasArg("setpoint")) {
+    float setpoint = server.arg("setpoint").toFloat();
     configManager->setSetpoint(setpoint);
     if (thermostatState) {
       thermostatState->setTargetTemperature(setpoint);
@@ -192,112 +170,81 @@ void WebInterface::handleSave(AsyncWebServerRequest* request) {
   // Save configuration
   configManager->saveConfig();
   
-  request->redirect("/");
+  server.send(200, "text/plain", "Settings saved");
 }
 
-void WebInterface::handleGetStatus(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request)) {
-    requestAuthentication(request);
+void WebInterface::handleGetStatus() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
     return;
   }
 
   if (!thermostatState || !sensorInterface) {
-    AsyncWebServerResponse* response = request->beginResponse(500, "text/plain", "Thermostat state or sensor interface not available");
-    addSecurityHeaders(response);
-    request->send(response);
+    server.send(500, "text/plain", "Internal server error");
     return;
   }
 
-  DynamicJsonDocument doc(1024);
+  StaticJsonDocument<256> doc;
   
   doc["currentTemp"] = sensorInterface->getTemperature();
   doc["targetTemp"] = thermostatState->getTargetTemperature();
-  doc["humidity"] = sensorInterface->getHumidity();
-  doc["heating"] = thermostatState->isHeating();
   doc["mode"] = thermostatState->getMode();
+  doc["output"] = 0.0;
   
   if (pidController) {
-    doc["pidOutput"] = pidController->getOutput();
+    doc["output"] = pidController->getOutput();
   }
 
   String response;
   serializeJson(doc, response);
   
-  AsyncWebServerResponse* jsonResponse = request->beginResponse(200, "application/json", response);
-  addSecurityHeaders(jsonResponse);
-  request->send(jsonResponse);
+  server.send(200, "application/json", response);
 }
 
-void WebInterface::handleSetpoint(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request) || !validateCSRFToken(request)) {
-    requestAuthentication(request);
+void WebInterface::handleSetpoint() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
     return;
   }
 
-  if (request->method() != HTTP_POST) {
-    AsyncWebServerResponse* response = request->beginResponse(405, "text/plain", "Method Not Allowed");
-    addSecurityHeaders(response);
-    request->send(response);
+  if (!validateCSRFToken()) {
+    server.send(403, "text/plain", "Invalid CSRF token");
     return;
   }
 
-  if (!request->hasParam("value", true)) {
-    AsyncWebServerResponse* response = request->beginResponse(400, "text/plain", "Missing setpoint value");
-    addSecurityHeaders(response);
-    request->send(response);
+  if (!server.hasArg("setpoint")) {
+    server.send(400, "text/plain", "Missing setpoint parameter");
     return;
   }
 
-  float setpoint = request->getParam("value", true)->value().toFloat();
+  float setpoint = server.arg("setpoint").toFloat();
   if (protocolManager) {
-    protocolManager->handleIncomingCommand(
-      CommandSource::SOURCE_WEB_API,
-      CommandType::CMD_SET_TEMPERATURE,
-      setpoint
-    );
-    AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"status\":\"success\"}");
-    addSecurityHeaders(response);
-    request->send(response);
-  } else {
-    AsyncWebServerResponse* response = request->beginResponse(500, "text/plain", "Protocol manager not initialized");
-    addSecurityHeaders(response);
-    request->send(response);
+    protocolManager->setSetpoint(setpoint);
   }
+
+  server.send(200, "text/plain", "Setpoint updated");
 }
 
-void WebInterface::handleSaveConfig(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request) || !validateCSRFToken(request)) {
-    requestAuthentication(request);
+void WebInterface::handleSaveConfig() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
     return;
   }
 
-  if (request->method() != HTTP_POST) {
-    AsyncWebServerResponse* response = request->beginResponse(405, "text/plain", "Method Not Allowed");
-    addSecurityHeaders(response);
-    request->send(response);
+  if (!validateCSRFToken()) {
+    server.send(403, "text/plain", "Invalid CSRF token");
     return;
   }
 
-  if (!configManager) {
-    AsyncWebServerResponse* response = request->beginResponse(500, "text/plain", "Configuration manager not available");
-    addSecurityHeaders(response);
-    request->send(response);
-    return;
-  }
-
-  // Parse JSON from POST data
-  StaticJsonDocument<1024> doc;
-  String jsonStr = request->arg("plain");
-  DeserializationError error = deserializeJson(doc, jsonStr);
+  String json = server.arg("plain");
+  StaticJsonDocument<512> doc;
+  DeserializationError error = deserializeJson(doc, json);
 
   if (error) {
-    AsyncWebServerResponse* response = request->beginResponse(400, "text/plain", "Invalid JSON");
-    addSecurityHeaders(response);
-    request->send(response);
+    server.send(400, "text/plain", "Invalid JSON");
     return;
   }
 
-  // Update web authentication
   if (doc.containsKey("webUsername")) {
     configManager->setWebUsername(doc["webUsername"].as<const char*>());
   }
@@ -306,54 +253,43 @@ void WebInterface::handleSaveConfig(AsyncWebServerRequest* request) {
     configManager->setWebPassword(doc["webPassword"].as<const char*>());
   }
 
-  // Save configuration
   configManager->saveConfig();
-  AsyncWebServerResponse* response = request->beginResponse(200, "application/json", "{\"status\":\"success\"}");
-  addSecurityHeaders(response);
-  request->send(response);
+  server.send(200, "text/plain", "Configuration saved");
 }
 
-void WebInterface::handleReboot(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request) || !validateCSRFToken(request)) {
-    requestAuthentication(request);
+void WebInterface::handleReboot() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
     return;
   }
   
-  AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "Device will reboot in 5 seconds...");
-  addSecurityHeaders(response);
-  request->send(response);
+  server.send(200, "text/plain", "Device will reboot in 5 seconds...");
   
   delay(5000);
   ESP.restart();
 }
 
-void WebInterface::handleFactoryReset(AsyncWebServerRequest* request) {
-  if (!isAuthenticated(request) || !validateCSRFToken(request)) {
-    requestAuthentication(request);
+void WebInterface::handleFactoryReset() {
+  if (!isAuthenticated()) {
+    requestAuthentication();
     return;
   }
 
-  if (request->method() != HTTP_POST) {
-    AsyncWebServerResponse* response = request->beginResponse(405, "text/plain", "Method Not Allowed");
-    addSecurityHeaders(response);
-    request->send(response);
+  if (!server.hasArg("plain")) {
+    server.send(400, "text/plain", "Missing CSRF token");
     return;
   }
 
   configManager->resetToDefaults();
   
-  AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "Factory reset complete. Device will reboot in 5 seconds...");
-  addSecurityHeaders(response);
-  request->send(response);
+  server.send(200, "text/plain", "Factory reset complete. Device will reboot in 5 seconds...");
   
   delay(5000);
   ESP.restart();
 }
 
-void WebInterface::handleNotFound(AsyncWebServerRequest* request) {
-  if (!handleFileRead(request, request->url())) {
-    AsyncWebServerResponse* response = request->beginResponse(404, "text/plain", "File Not Found");
-    addSecurityHeaders(response);
-    request->send(response);
+void WebInterface::handleNotFound() {
+  if (!handleFileRead(server.uri())) {
+    server.send(404, "text/plain", "File Not Found");
   }
 }

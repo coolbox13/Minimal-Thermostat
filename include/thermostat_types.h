@@ -106,6 +106,4 @@ inline int thermostatStatusToInt(ThermostatStatus status) {
 
 inline ThermostatStatus intToThermostatStatus(int value) {
     return static_cast<ThermostatStatus>(value);
-}
-
-#endif // THERMOSTAT_TYPES_H 
+} 

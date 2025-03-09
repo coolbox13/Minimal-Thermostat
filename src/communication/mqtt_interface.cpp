@@ -104,15 +104,11 @@ MQTTInterface::~MQTTInterface() {
 // Connection management
 bool MQTTInterface::begin() {
     if (!pimpl->enabled) {
-        Serial.println("MQTT disabled, not connecting");
+        log_i("MQTT disabled, not connecting");
         return false;
     }
     
-    Serial.print("Connecting to MQTT broker at ");
-    Serial.print(pimpl->server);
-    Serial.print(":");
-    Serial.println(pimpl->port);
-    
+    log_i("Connecting to MQTT broker at %s:%d", pimpl->server, pimpl->port);
     pimpl->client.setServer(pimpl->server, pimpl->port);
     
     return reconnect();
@@ -164,7 +160,7 @@ bool MQTTInterface::reconnect() {
     }
     
     if (result) {
-        Serial.println("Connected to MQTT broker");
+        log_i("Connected to MQTT broker");
         pimpl->connected = true;
         
         // Subscribe to topics
@@ -179,8 +175,7 @@ bool MQTTInterface::reconnect() {
         
         return true;
     } else {
-        Serial.print("Failed to connect to MQTT broker, rc=");
-        Serial.println(pimpl->client.state());
+        log_e("Failed to connect to MQTT broker, rc=%d", pimpl->client.state());
         pimpl->connected = false;
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
         return false;
@@ -190,7 +185,7 @@ bool MQTTInterface::reconnect() {
 // Configuration
 bool MQTTInterface::configure(const JsonDocument& config) {
     if (!config.containsKey("server") || !config.containsKey("port")) {
-        Serial.println("Invalid MQTT configuration");
+        log_e("Invalid MQTT configuration");
         pimpl->lastError = ThermostatStatus::ERROR_CONFIGURATION;
         return false;
     }
@@ -335,20 +330,19 @@ bool MQTTInterface::validateTopics() const {
 
 bool MQTTInterface::publish(const char* topic, const char* payload, bool retain) {
     if (!pimpl->enabled || !pimpl->connected) {
-        Serial.println("MQTT not connected, can't publish");
+        log_e("MQTT not connected, can't publish");
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
         return false;
     }
     
     String fullTopic = String(pimpl->topicPrefix) + topic;
-    bool result = pimpl->client.publish(fullTopic.c_str(), payload, retain);
-    if (!result) {
-        Serial.print("Failed to publish to ");
-        Serial.println(fullTopic);
+    if (!pimpl->client.publish(fullTopic.c_str(), payload, retain)) {
+        log_e("Failed to publish to %s", fullTopic.c_str());
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
+        return false;
     }
     
-    return result;
+    return true;
 }
 
 void MQTTInterface::handleMessage(char* topic, byte* payload, unsigned int length) {
