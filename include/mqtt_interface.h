@@ -2,87 +2,75 @@
 #define MQTT_INTERFACE_H
 
 #include <Arduino.h>
-#include <WiFi.h>
 #include <PubSubClient.h>
-#include "thermostat_state.h"
+#include <WiFiClient.h>
+#include "interfaces/protocol_interface.h"
+#include "protocol_manager.h"
 
-// Forward declaration to resolve circular dependency
+// Forward declarations
 class ProtocolManager;
 
-class MQTTInterface {
+class MQTTInterface : public ProtocolInterface {
 public:
-  // Constructor
-  MQTTInterface();
-  
-  // Initialize MQTT communication
-  bool begin(ThermostatState* state, 
-             const char* server, 
-             int port, 
-             const char* user, 
-             const char* password,
-             const char* clientId);
-  
-  // Register with protocol manager
-  void registerProtocolManager(ProtocolManager* manager);
-  
-  // Process MQTT loop
-  void loop();
-  
-  // Check connection status
-  bool isConnected() const;
-  
-  // Reconnect to MQTT broker if connection lost
-  bool reconnect();
-  
-  // Publish values to MQTT topics
-  void publishTemperature(float temperature);
-  void publishHumidity(float humidity);
-  void publishPressure(float pressure);
-  void publishSetpoint(float setpoint);
-  void publishValvePosition(float position);
-  void publishMode(ThermostatMode mode);
-  void publishHeatingStatus(bool isHeating);
-  
+    // Constructor
+    MQTTInterface();
+
+    // ProtocolInterface implementation
+    bool begin() override;
+    void loop() override;
+    bool isConnected() const override;
+    bool sendTemperature(float value) override;
+    bool sendHumidity(float value) override;
+    bool sendPressure(float value) override;
+    bool sendSetpoint(float value) override;
+    bool sendValvePosition(float value) override;
+    bool sendMode(ThermostatMode mode) override;
+    bool sendHeatingState(bool isHeating) override;
+    ThermostatStatus getLastError() const override;
+
+    // MQTT specific configuration
+    void setServer(const char* server, uint16_t port = 1883);
+    void setCredentials(const char* username, const char* password);
+    void setClientId(const char* clientId);
+    void setTopicPrefix(const char* prefix);
+    void registerProtocolManager(ProtocolManager* manager) { protocolManager = manager; }
+
 private:
-  // MQTT client
-  WiFiClient wifiClient;
-  PubSubClient mqttClient;
-  
-  // Connection parameters
-  char server[40];
-  int port;
-  char username[24];
-  char password[24];
-  char clientId[24];
-  bool connectionActive;
-  
-  // References to other components
-  ThermostatState* thermostatState;
-  ProtocolManager* protocolManager;
-  
-  // Last connection attempt time
-  unsigned long lastConnectionAttempt;
-  
-  // Topic strings
-  char topicTemperature[50];
-  char topicHumidity[50];
-  char topicPressure[50];
-  char topicSetpoint[50];
-  char topicSetpointSet[50];
-  char topicValvePosition[50];
-  char topicMode[50];
-  char topicModeSet[50];
-  char topicHeating[50];
-  
-  // Initialize topics
-  void setupTopics();
-  
-  // Callback for receiving messages
-  static void handleMqttMessage(char* topic, byte* payload, unsigned int length);
-  
-  // Helper for payload extraction
-  static float extractFloatPayload(byte* payload, unsigned int length);
-  static int extractIntPayload(byte* payload, unsigned int length);
+    // MQTT client
+    WiFiClient wifiClient;
+    PubSubClient mqttClient;
+    
+    // Connection settings
+    char server[64];
+    uint16_t port;
+    char username[32];
+    char password[32];
+    char clientId[32];
+    char topicPrefix[32];
+    
+    // State
+    bool connected;
+    ThermostatStatus lastError;
+    unsigned long lastReconnectAttempt;
+    ProtocolManager* protocolManager;
+    
+    // Topics
+    static constexpr const char* TOPIC_TEMPERATURE = "/temperature";
+    static constexpr const char* TOPIC_HUMIDITY = "/humidity";
+    static constexpr const char* TOPIC_PRESSURE = "/pressure";
+    static constexpr const char* TOPIC_SETPOINT = "/setpoint";
+    static constexpr const char* TOPIC_VALVE = "/valve";
+    static constexpr const char* TOPIC_MODE = "/mode";
+    static constexpr const char* TOPIC_HEATING = "/heating";
+    
+    // Internal helpers
+    bool connect();
+    bool publish(const char* topic, const char* payload);
+    void handleMessage(char* topic, uint8_t* payload, unsigned int length);
+    static void mqttCallback(char* topic, uint8_t* payload, unsigned int length);
+    
+    // Topic management
+    String getFullTopic(const char* suffix) const;
 };
 
 #endif // MQTT_INTERFACE_H

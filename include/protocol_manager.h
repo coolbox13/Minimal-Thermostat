@@ -2,8 +2,11 @@
 #define PROTOCOL_MANAGER_H
 
 #include <Arduino.h>
-#include "thermostat_state.h"
-#include "knx_interface.h"
+
+// Forward declarations
+class ThermostatState;
+class KNXInterface;
+class MQTTInterface;
 
 // Source definitions
 #define SOURCE_WEB_API 1
@@ -15,8 +18,8 @@
 #define CMD_SET_MODE 2
 #define CMD_SET_VALVE 3
 
-// Forward declarations if needed
-class MQTTInterface;
+// Include after forward declarations to avoid circular dependencies
+#include "thermostat_state.h"
 
 class ProtocolManager {
 public:
@@ -28,14 +31,12 @@ public:
   
   // Register protocols
   void registerProtocols(KNXInterface* knx);
-  
-  // Optional MQTT registration
   void registerMQTT(MQTTInterface* mqtt);
   
-  // Process communications
+  // Process protocol updates (call in loop)
   void loop();
   
-  // Handle incoming commands from any source
+  // Handle incoming commands from any protocol
   bool handleIncomingCommand(int source, int command, float value);
   
   // Send updates
@@ -45,16 +46,20 @@ public:
   void sendMode(ThermostatMode mode);
   
 private:
-  // References to interfaces
+  // Protocol interfaces
   KNXInterface* knxInterface;
   MQTTInterface* mqttInterface;
-  
-  // Thermostat state reference
   ThermostatState* thermostatState;
   
-  // Latest send time
+  // Timing control
   unsigned long lastSendTime;
   unsigned long sendInterval;
+  
+  // Helper functions to send updates to all protocols
+  void sendTemperature(float temperature);
+  void sendSetpoint(float setpoint);
+  void sendValvePosition(float position);
+  void sendMode(ThermostatMode mode);
 };
 
 #endif // PROTOCOL_MANAGER_H

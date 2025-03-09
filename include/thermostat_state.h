@@ -3,11 +3,8 @@
 
 #include <Arduino.h>
 #include <functional>
+#include "thermostat_types.h"
 
-// Include the ThermostatMode enum from knx_interface.h
-#include "knx_interface.h"
-
-// Structure to hold thermostat state
 class ThermostatState {
 public:
   // Constructor with default values
@@ -21,6 +18,7 @@ public:
   float getValvePosition() const { return valvePosition; }
   ThermostatMode getMode() const { return operatingMode; }
   bool isHeating() const { return heatingActive; }
+  ThermostatStatus getStatus() const { return status; }
   
   // Setters
   void setTemperature(float value);
@@ -30,6 +28,7 @@ public:
   void setValvePosition(float value);
   void setMode(ThermostatMode mode);
   void setHeating(bool active) { heatingActive = active; }
+  void setStatus(ThermostatStatus newStatus) { status = newStatus; }
   
   // Callback function types
   using TemperatureCallback = std::function<void(float)>;
@@ -39,15 +38,17 @@ public:
   using ValvePositionCallback = std::function<void(float)>;
   using ModeCallback = std::function<void(ThermostatMode)>;
   using HeatingCallback = std::function<void(bool)>;
+  using StatusCallback = std::function<void(ThermostatStatus)>;
   
   // Register callbacks
-  void onTemperatureChange(TemperatureCallback cb);
-  void onHumidityChange(HumidityCallback cb);
-  void onPressureChange(PressureCallback cb);
-  void onTargetTemperatureChange(TargetTemperatureCallback cb);
-  void onValvePositionChange(ValvePositionCallback cb);
-  void onModeChange(ModeCallback cb);
-  void onHeatingChange(HeatingCallback cb);
+  void onTemperatureChange(TemperatureCallback cb) { temperatureCallback = cb; }
+  void onHumidityChange(HumidityCallback cb) { humidityCallback = cb; }
+  void onPressureChange(PressureCallback cb) { pressureCallback = cb; }
+  void onTargetTemperatureChange(TargetTemperatureCallback cb) { targetTemperatureCallback = cb; }
+  void onValvePositionChange(ValvePositionCallback cb) { valvePositionCallback = cb; }
+  void onModeChange(ModeCallback cb) { modeCallback = cb; }
+  void onHeatingChange(HeatingCallback cb) { heatingCallback = cb; }
+  void onStatusChange(StatusCallback cb) { statusCallback = cb; }
 
 private:
   // Sensor readings
@@ -62,6 +63,7 @@ private:
   // Operation state
   ThermostatMode operatingMode;
   bool heatingActive;
+  ThermostatStatus status;
   
   // Callbacks
   TemperatureCallback temperatureCallback;
@@ -71,6 +73,19 @@ private:
   ValvePositionCallback valvePositionCallback;
   ModeCallback modeCallback;
   HeatingCallback heatingCallback;
+  StatusCallback statusCallback;
+  
+  // Helper to validate temperature range
+  bool isValidTemperature(float temp) const {
+    return temp >= ThermostatLimits::MIN_TEMPERATURE && 
+           temp <= ThermostatLimits::MAX_TEMPERATURE;
+  }
+  
+  // Helper to validate valve position range
+  bool isValidValvePosition(float pos) const {
+    return pos >= ThermostatLimits::MIN_VALVE_POSITION && 
+           pos <= ThermostatLimits::MAX_VALVE_POSITION;
+  }
 };
 
 #endif // THERMOSTAT_STATE_H

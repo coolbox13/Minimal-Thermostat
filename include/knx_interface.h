@@ -2,10 +2,12 @@
 #define KNX_INTERFACE_H
 
 #include <Arduino.h>
-#include <esp-knx-ip.h>
+#include "interfaces/protocol_interface.h"
+#include "thermostat_state.h"
+#include "protocol_manager.h"
 
-// Forward declaration to avoid circular dependencies
-class ThermostatState;
+// Forward declarations
+class ProtocolManager;
 
 // Enum for thermostat modes
 enum ThermostatMode {
@@ -17,55 +19,65 @@ enum ThermostatMode {
   MODE_ANTIFREEZE = 5
 };
 
-class KNXInterface {
+class KNXInterface : public ProtocolInterface {
 public:
   // Constructor
   KNXInterface();
-  
-  // Initialize KNX communication
-  bool begin(int area = 1, int line = 1, int member = 201);
-  
-  // Register with thermostat state
-  void registerCallbacks(ThermostatState* state);
-  
-  // Set group addresses for different datapoints
-  void setTemperatureGA(int area, int line, int member);
-  void setSetpointGA(int area, int line, int member);
-  void setValvePositionGA(int area, int line, int member);
-  void setModeGA(int area, int line, int member);
-  
-  // Process KNX loop
-  void loop();
-  
-  // Send values to KNX bus
-  bool sendTemperature(float temperature);
-  bool sendSetpoint(float setpoint);
-  bool sendValvePosition(float position);
-  bool sendMode(ThermostatMode mode);
-  
+
+  // ProtocolInterface implementation
+  bool begin() override;
+  void loop() override;
+  bool isConnected() const override;
+  bool sendTemperature(float value) override;
+  bool sendHumidity(float value) override;
+  bool sendPressure(float value) override;
+  bool sendSetpoint(float value) override;
+  bool sendValvePosition(float value) override;
+  bool sendMode(ThermostatMode mode) override;
+  bool sendHeatingState(bool isHeating) override;
+  ThermostatStatus getLastError() const override;
+
+  // KNX specific methods
+  void setPhysicalAddress(uint8_t area, uint8_t line, uint8_t member);
+  void setGroupAddress(uint8_t area, uint8_t line, uint8_t member);
+  void registerCallbacks(ThermostatState* state, ProtocolManager* manager);
+
 private:
-  // Helper to calculate group address
-  address_t calculateGA(int area, int line, int member);
-  
-  // KNX callbacks
-  static void handleSetpointCallback(message_t const &msg, void *arg);
-  static void handleModeCallback(message_t const &msg, void *arg);
-  
-  // Group addresses
-  address_t temperatureGA;
-  address_t setpointGA;
-  address_t valvePositionGA;
-  address_t modeGA;
-  
-  // Thermostat state reference
+  // KNX state
+  bool connected;
+  ThermostatStatus lastError;
   ThermostatState* thermostatState;
-  
-  // Callback IDs
-  callback_id_t setpointCallbackId;
-  callback_id_t modeCallbackId;
-  
-  // Helper for registering with KNX callbacks
-  void registerKNXCallbacks();
+  ProtocolManager* protocolManager;
+
+  // KNX callback IDs
+  uint32_t setpointCallbackId;
+  uint32_t modeCallbackId;
+
+  // KNX addresses
+  struct {
+    uint8_t area;
+    uint8_t line;
+    uint8_t member;
+  } physicalAddress;
+
+  struct {
+    uint8_t tempArea;
+    uint8_t tempLine;
+    uint8_t tempMember;
+    uint8_t setpointArea;
+    uint8_t setpointLine;
+    uint8_t setpointMember;
+    uint8_t valveArea;
+    uint8_t valveLine;
+    uint8_t valveMember;
+    uint8_t modeArea;
+    uint8_t modeLine;
+    uint8_t modeMember;
+  } groupAddresses;
+
+  // Internal helpers
+  void handleKNXEvent(uint16_t address, uint8_t* data, uint8_t length);
+  bool sendValue(uint8_t area, uint8_t line, uint8_t member, const void* data, uint8_t length);
 };
 
 #endif // KNX_INTERFACE_H

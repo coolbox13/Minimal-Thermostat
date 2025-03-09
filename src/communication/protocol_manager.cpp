@@ -37,10 +37,10 @@ void ProtocolManager::loop() {
   if (currentTime - lastSendTime >= sendInterval) {
     // Send current values to protocols
     if (thermostatState) {
-      sendTemperature(thermostatState->currentTemperature);
-      sendSetpoint(thermostatState->targetTemperature);
-      sendValvePosition(thermostatState->valvePosition);
-      sendMode(thermostatState->operatingMode);
+      sendTemperature(thermostatState->getCurrentTemperature());
+      sendSetpoint(thermostatState->getTargetTemperature());
+      sendValvePosition(thermostatState->getValvePosition());
+      sendMode(thermostatState->getMode());
     }
     
     lastSendTime = currentTime;
