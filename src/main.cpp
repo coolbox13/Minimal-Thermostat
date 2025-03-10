@@ -2,6 +2,7 @@
 #define ARDUINO_USB_CDC_ON_BOOT 1
 #define CORE_DEBUG_LEVEL 5
 #include <Arduino.h>
+#include <Preferences.h>
 #include <HardwareSerial.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
