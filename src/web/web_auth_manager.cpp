@@ -17,8 +17,9 @@
 
 static const char* TAG = "WebAuthManager";
 
-WebAuthManager::WebAuthManager(AsyncWebServer& server, ConfigManager& config)
-    : server(server), config(config) {
+WebAuthManager::WebAuthManager(AsyncWebServer& server, ConfigManager& configManager)
+    : server(server)
+    , configManager(configManager) {
     // Initialize with empty credentials
     memset(username, 0, sizeof(username));
     memset(password, 0, sizeof(password));
@@ -29,7 +30,7 @@ void WebAuthManager::setCredentials(const char* user, const char* pass) {
     strncpy(password, pass, sizeof(password) - 1);
 }
 
-bool WebAuthManager::isAuthenticated(AsyncWebServerRequest *request) {
+bool WebAuthManager::authenticate(AsyncWebServerRequest* request) {
     // First check rate limiting
     String ip = request->client()->remoteIP().toString();
     if (!checkRateLimit(ip)) {
@@ -55,21 +56,22 @@ bool WebAuthManager::isAuthenticated(AsyncWebServerRequest *request) {
     }
     
     // If no valid session, check basic auth
-    if (config.getWebUsername()[0] != '\0') {
-        if (request->authenticate(config.getWebUsername(), config.getWebPassword())) {
+    if (configManager.getWebUsername()[0] != '\0') {
+        if (request->authenticate(configManager.getWebUsername(), configManager.getWebPassword())) {
             // Create new session
             String newSession = createSession();
-            AsyncWebServerResponse *response = request->beginResponse(200);
-            response->addHeader("Set-Cookie", "session=" + newSession + "; Path=/; Max-Age=3600; HttpOnly; SameSite=Strict");
             return true;
         }
-        return false;
+    } else {
+        return true; // No authentication required if no credentials set
     }
     
-    return true; // No authentication required if no credentials set
+    // If we get here, authentication failed
+    requestAuthentication(request);
+    return false;
 }
 
-void WebAuthManager::requestAuthentication(AsyncWebServerRequest *request) {
+void WebAuthManager::requestAuthentication(AsyncWebServerRequest* request) {
     AsyncWebServerResponse *response = request->beginResponse(401);
     response->addHeader("WWW-Authenticate", "Basic realm=\"Login Required\"");
     request->send(response);
@@ -234,16 +236,4 @@ String WebAuthManager::generateRandomString(size_t length) {
     }
     
     return result;
-}
-
-bool WebAuthManager::authenticate(AsyncWebServerRequest* request) {
-    if (!request->authenticate(username, password)) {
-        request->requestAuthentication();
-        return false;
-    }
-    return true;
-}
-
-void WebAuthManager::requestAuthentication(AsyncWebServerRequest* request) {
-    request->requestAuthentication();
 } 

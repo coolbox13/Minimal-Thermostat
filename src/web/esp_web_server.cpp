@@ -1,292 +1,185 @@
 #include "web/esp_web_server.h"
-#include <ArduinoJson.h>
+#include "html_generator.h"
+#include <LittleFS.h>
+#include <esp_log.h>
 
-ESPWebServer::ESPWebServer(uint16_t serverPort)
-    : server(serverPort)
-    , port(serverPort)
-    , lastError(ThermostatStatus::OK)
-    , initialized(false)
-    , thermostatState(nullptr)
-    , configManager(nullptr)
+static const char* TAG = "ESPWebServer";
+
+ESPWebServer::ESPWebServer(ConfigManager* configManager, ThermostatState* state)
+    : server(80)
+    , configManager(configManager)
+    , thermostatState(state)
     , pidController(nullptr)
-    , knxInterface(nullptr)
-    , mqttInterface(nullptr) {
-    username[0] = '\0';
-    password[0] = '\0';
-    strcpy(hostname, "thermostat");
+    , port(80)
+    , lastError(ThermostatStatus::OK) {
+    memset(username, 0, sizeof(username));
+    memset(password, 0, sizeof(password));
+    memset(hostname, 0, sizeof(hostname));
 }
 
 bool ESPWebServer::begin() {
-    if (!FileFS.begin()) {
-        lastError = ThermostatStatus::FILESYSTEM_ERROR;
+    if (!LittleFS.begin()) {
+        lastError = ThermostatStatus::ERROR_FILESYSTEM;
         return false;
     }
 
-    setupMDNS();
     setupRoutes();
     server.begin();
-    initialized = true;
     return true;
 }
 
-void ESPWebServer::loop() {
-    if (initialized) {
-        server.handleClient();
-    }
-}
-
-bool ESPWebServer::isConnected() const {
-    return initialized && WiFi.status() == WL_CONNECTED;
-}
-
-void ESPWebServer::setPort(uint16_t newPort) {
-    port = newPort;
-}
-
-void ESPWebServer::setCredentials(const char* user, const char* pass) {
-    strncpy(username, user, sizeof(username) - 1);
-    username[sizeof(username) - 1] = '\0';
-    strncpy(password, pass, sizeof(password) - 1);
-    password[sizeof(password) - 1] = '\0';
-}
-
-void ESPWebServer::setHostname(const char* name) {
-    strncpy(hostname, name, sizeof(hostname) - 1);
-    hostname[sizeof(hostname) - 1] = '\0';
-}
-
-ThermostatStatus ESPWebServer::getLastError() const {
-    return lastError;
-}
-
-void ESPWebServer::registerComponents(
-    ThermostatState* state,
-    ConfigInterface* config,
-    ControlInterface* control,
-    ProtocolInterface* knx,
-    ProtocolInterface* mqtt) {
-    thermostatState = state;
-    configManager = config;
-    pidController = control;
-    knxInterface = knx;
-    mqttInterface = mqtt;
-}
-
-bool ESPWebServer::isAuthenticated() {
-    if (strlen(username) == 0) return true;  // No authentication required
-    return server.authenticate(username, password);
-}
-
-void ESPWebServer::requestAuthentication() {
-    server.requestAuthentication();
-}
-
-void ESPWebServer::setupMDNS() {
-    if (MDNS.begin(hostname)) {
-        MDNS.addService("http", "tcp", port);
-    }
-}
-
 void ESPWebServer::setupRoutes() {
-    server.on("/", HTTP_GET, [this]() { handleRoot(); });
-    server.on("/save", HTTP_POST, [this]() { handleSave(); });
-    server.on("/setpoint", HTTP_POST, [this]() { handleSetpoint(); });
-    server.on("/mode", HTTP_POST, [this]() { handleMode(); });
-    server.on("/status", HTTP_GET, [this]() { handleStatus(); });
-    server.on("/config", HTTP_GET, [this]() { handleConfig(); });
-    server.on("/reboot", HTTP_POST, [this]() { handleReboot(); });
-    server.on("/reset", HTTP_POST, [this]() { handleReset(); });
-    
-    // Handle file reads for static content
-    server.onNotFound([this]() {
-        if (!handleFileRead(server.uri())) {
-            handleNotFound();
+    server.on("/", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        String html = generateHtml();
+        AsyncWebServerResponse* response = request->beginResponse(200, "text/html", html);
+        request->send(response);
+    });
+
+    server.on("/save", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        handleSave();
+    });
+
+    server.on("/setpoint", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        if (!request->hasParam("value", true)) {
+            request->send(400, "application/json", "{\"error\":\"Missing value parameter\"}");
+            return;
+        }
+        float setpoint = request->getParam("value", true)->value().toFloat();
+        thermostatState->setTargetTemperature(setpoint);
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+    });
+
+    server.on("/mode", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        if (!request->hasParam("mode", true)) {
+            request->send(400, "application/json", "{\"error\":\"Missing mode parameter\"}");
+            return;
+        }
+        String modeStr = request->getParam("mode", true)->value();
+        ThermostatMode mode;
+        if (modeStr == "off") mode = ThermostatMode::OFF;
+        else if (modeStr == "comfort") mode = ThermostatMode::COMFORT;
+        else if (modeStr == "eco") mode = ThermostatMode::ECO;
+        else if (modeStr == "away") mode = ThermostatMode::AWAY;
+        else if (modeStr == "boost") mode = ThermostatMode::BOOST;
+        else if (modeStr == "antifreeze") mode = ThermostatMode::ANTIFREEZE;
+        else {
+            request->send(400, "application/json", "{\"error\":\"Invalid mode\"}");
+            return;
+        }
+        thermostatState->setMode(mode);
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+    });
+
+    server.on("/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        String json = generateStatusJson();
+        request->send(200, "application/json", json);
+    });
+
+    server.on("/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        String json = generateConfigJson();
+        request->send(200, "application/json", json);
+    });
+
+    server.on("/reboot", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+        ESP.restart();
+    });
+
+    server.on("/reset", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (!isAuthenticated()) {
+            requestAuthentication();
+            return;
+        }
+        configManager->reset();
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+        ESP.restart();
+    });
+
+    server.onNotFound([this](AsyncWebServerRequest* request) {
+        if (!handleFileRead(request->url())) {
+            request->send(404, "text/plain", "File Not Found");
         }
     });
-}
-
-String ESPWebServer::getContentType(String filename) {
-    if (filename.endsWith(".html")) return "text/html";
-    else if (filename.endsWith(".css")) return "text/css";
-    else if (filename.endsWith(".js")) return "application/javascript";
-    else if (filename.endsWith(".json")) return "application/json";
-    else if (filename.endsWith(".ico")) return "image/x-icon";
-    return "text/plain";
 }
 
 bool ESPWebServer::handleFileRead(String path) {
     if (path.endsWith("/")) path += "index.html";
     String contentType = getContentType(path);
     
-    if (FileFS.exists(path)) {
-        File file = FileFS.open(path, "r");
-        server.streamFile(file, contentType);
+    if (LittleFS.exists(path)) {
+        File file = LittleFS.open(path, "r");
+        if (file) {
+            AsyncWebServerResponse* response = new AsyncFileResponse(file, contentType);
+            response->addHeader("Cache-Control", "no-cache");
+            return true;
+        }
         file.close();
-        return true;
     }
     return false;
 }
 
-void ESPWebServer::handleJsonResponse(String& json) {
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send(200, "application/json", json);
+String ESPWebServer::getContentType(String filename) {
+    if (filename.endsWith(".html")) return "text/html";
+    else if (filename.endsWith(".css")) return "text/css";
+    else if (filename.endsWith(".js")) return "application/javascript";
+    else if (filename.endsWith(".ico")) return "image/x-icon";
+    else if (filename.endsWith(".gz")) return "application/x-gzip";
+    return "text/plain";
 }
 
-void ESPWebServer::handleError(const char* message, int code) {
-    DynamicJsonDocument doc(128);
-    doc["error"] = message;
-    String response;
-    serializeJson(doc, response);
-    server.send(code, "application/json", response);
+void ESPWebServer::setPort(uint16_t port) {
+    this->port = port;
 }
 
-// API Endpoint Implementations
-void ESPWebServer::handleRoot() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-    String html = generateHtml();
-    server.send(200, "text/html", html);
+void ESPWebServer::setCredentials(const char* user, const char* pass) {
+    strncpy(username, user, sizeof(username) - 1);
+    strncpy(password, pass, sizeof(password) - 1);
 }
 
-void ESPWebServer::handleStatus() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-    String json = generateStatusJson();
-    handleJsonResponse(json);
+void ESPWebServer::setHostname(const char* name) {
+    strncpy(hostname, name, sizeof(hostname) - 1);
 }
 
-void ESPWebServer::handleConfig() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-    String json = generateConfigJson();
-    handleJsonResponse(json);
+void ESPWebServer::registerComponents(ThermostatState* state, PIDController* pid) {
+    thermostatState = state;
+    pidController = pid;
 }
 
-void ESPWebServer::handleSave() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-
-    if (!configManager) {
-        handleError("Configuration manager not available", 500);
-        return;
-    }
-
-    // Parse configuration from POST data
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, server.arg("plain"));
-    
-    if (error) {
-        handleError("Invalid JSON", 400);
-        return;
-    }
-
-    // Update configuration
-    if (doc.containsKey("deviceName")) {
-        configManager->setDeviceName(doc["deviceName"]);
-    }
-    // Add more configuration updates as needed
-
-    // Save configuration
-    if (!configManager->save()) {
-        handleError("Failed to save configuration", 500);
-        return;
-    }
-
-    server.send(200, "application/json", "{\"status\":\"ok\"}");
+bool ESPWebServer::isAuthenticated() {
+    // TODO: Implement proper authentication
+    return true;
 }
 
-void ESPWebServer::handleSetpoint() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-
-    if (!thermostatState) {
-        handleError("Thermostat state not available", 500);
-        return;
-    }
-
-    if (!server.hasArg("value")) {
-        handleError("Missing setpoint value", 400);
-        return;
-    }
-
-    float setpoint = server.arg("value").toFloat();
-    thermostatState->setTargetTemperature(setpoint);
-    server.send(200, "application/json", "{\"status\":\"ok\"}");
-}
-
-void ESPWebServer::handleMode() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-
-    if (!thermostatState) {
-        handleError("Thermostat state not available", 500);
-        return;
-    }
-
-    if (!server.hasArg("mode")) {
-        handleError("Missing mode value", 400);
-        return;
-    }
-
-    String modeStr = server.arg("mode");
-    ThermostatMode mode;
-    
-    if (modeStr == "off") mode = ThermostatMode::OFF;
-    else if (modeStr == "comfort") mode = ThermostatMode::COMFORT;
-    else if (modeStr == "eco") mode = ThermostatMode::ECO;
-    else if (modeStr == "away") mode = ThermostatMode::AWAY;
-    else if (modeStr == "boost") mode = ThermostatMode::BOOST;
-    else if (modeStr == "antifreeze") mode = ThermostatMode::ANTIFREEZE;
-    else {
-        handleError("Invalid mode value", 400);
-        return;
-    }
-
-    thermostatState->setMode(mode);
-    server.send(200, "application/json", "{\"status\":\"ok\"}");
-}
-
-void ESPWebServer::handleReboot() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-    server.send(200, "application/json", "{\"status\":\"ok\"}");
-    delay(500);
-    ESP.restart();
-}
-
-void ESPWebServer::handleReset() {
-    if (!isAuthenticated()) {
-        requestAuthentication();
-        return;
-    }
-
-    if (!configManager) {
-        handleError("Configuration manager not available", 500);
-        return;
-    }
-
-    configManager->reset();
-    server.send(200, "application/json", "{\"status\":\"ok\"}");
-    delay(500);
-    ESP.restart();
-}
-
-void ESPWebServer::handleNotFound() {
-    server.send(404, "text/plain", "File Not Found");
+void ESPWebServer::requestAuthentication() {
+    // TODO: Implement proper authentication
 }
 
 String ESPWebServer::generateHtml() {
@@ -294,51 +187,45 @@ String ESPWebServer::generateHtml() {
 }
 
 String ESPWebServer::generateStatusJson() {
-    DynamicJsonDocument doc(512);
+    StaticJsonDocument<512> doc;
     
-    if (thermostatState) {
-        doc["temperature"] = thermostatState->getCurrentTemperature();
-        doc["humidity"] = thermostatState->getCurrentHumidity();
-        doc["pressure"] = thermostatState->getCurrentPressure();
-        doc["setpoint"] = thermostatState->getTargetTemperature();
-        doc["valve"] = thermostatState->getValvePosition();
-        doc["mode"] = thermostatState->getMode();
-        doc["heating"] = thermostatState->isHeating();
-    }
-
-    if (pidController) {
-        doc["pid"]["active"] = pidController->isActive();
-        doc["pid"]["output"] = pidController->getOutput();
-    }
-
-    doc["wifi"]["rssi"] = WiFi.RSSI();
-    doc["wifi"]["ip"] = WiFi.localIP().toString();
-
-    String response;
-    serializeJson(doc, response);
-    return response;
+    doc["temperature"] = thermostatState->getCurrentTemperature();
+    doc["humidity"] = thermostatState->getCurrentHumidity();
+    doc["pressure"] = thermostatState->getCurrentPressure();
+    doc["setpoint"] = thermostatState->getTargetTemperature();
+    doc["valve"] = thermostatState->getValvePosition();
+    doc["heating"] = thermostatState->isHeating();
+    doc["mode"] = static_cast<int>(thermostatState->getMode());
+    
+    String json;
+    serializeJson(doc, json);
+    return json;
 }
 
 String ESPWebServer::generateConfigJson() {
-    DynamicJsonDocument doc(1024);
+    StaticJsonDocument<1024> doc;
     
-    if (configManager) {
-        doc["device"]["name"] = configManager->getDeviceName();
-        doc["device"]["interval"] = configManager->getSendInterval();
-        
-        doc["web"]["username"] = configManager->getWebUsername();
-        // Don't send password
-        
-        doc["pid"]["kp"] = configManager->getKp();
-        doc["pid"]["ki"] = configManager->getKi();
-        doc["pid"]["kd"] = configManager->getKd();
-        doc["pid"]["setpoint"] = configManager->getSetpoint();
-        
-        doc["knx"]["enabled"] = configManager->getKnxEnabled();
-        doc["mqtt"]["enabled"] = configManager->getMqttEnabled();
+    // Device configuration
+    doc["device"]["name"] = configManager->getDeviceName();
+    doc["device"]["sendInterval"] = configManager->getSendInterval();
+    
+    // Web interface configuration
+    doc["web"]["username"] = configManager->getWebUsername();
+    doc["web"]["password"] = configManager->getWebPassword();
+    
+    // PID configuration
+    if (pidController) {
+        doc["pid"]["kp"] = pidController->getKp();
+        doc["pid"]["ki"] = pidController->getKi();
+        doc["pid"]["kd"] = pidController->getKd();
+        doc["pid"]["active"] = pidController->isActive();
     }
-
-    String response;
-    serializeJson(doc, response);
-    return response;
+    
+    // Protocol configuration
+    doc["knx"]["enabled"] = configManager->getKnxEnabled();
+    doc["mqtt"]["enabled"] = configManager->getMQTTEnabled();
+    
+    String json;
+    serializeJson(doc, json);
+    return json;
 } 

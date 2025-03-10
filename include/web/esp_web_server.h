@@ -68,6 +68,27 @@ public:
      */
     ThermostatStatus getLastError() const;
 
+    /**
+     * @brief Generate HTML for the web interface
+     * 
+     * @return String HTML content
+     */
+    String generateHtml();
+    
+    /**
+     * @brief Generate JSON representation of status
+     * 
+     * @return String JSON content
+     */
+    String generateStatusJson();
+    
+    /**
+     * @brief Generate JSON representation of configuration
+     * 
+     * @return String JSON content
+     */
+    String generateConfigJson();
+
 private:
     AsyncWebServer server;
     ConfigManager* configManager;
@@ -98,8 +119,6 @@ private:
     // Helper methods
     bool handleFileRead(String path);
     void handleJsonResponse(String& json);
-    void handleError(const char* message, int code = 400);
-    String generateHtml();
-    String generateStatusJson();
-    String generateConfigJson();
+    void handleError(const char* message, int code);
+    String getContentType(String filename);
 }; 

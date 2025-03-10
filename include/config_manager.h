@@ -9,6 +9,7 @@
 #include <DNSServer.h>
 #include "thermostat_types.h"
 #include "pid_controller.h"
+#include "interfaces/config_interface.h"
 
 // Forward declarations
 class ThermostatState;
@@ -20,12 +21,18 @@ struct KNXPhysicalAddress {
     uint8_t member;
 };
 
-class ConfigManager {
+class ConfigManager : public ConfigInterface {
 public:
     ConfigManager();
     virtual ~ConfigManager() = default;
     
-    bool begin();
+    // ConfigInterface implementation
+    bool begin() override;
+    bool load() override { return loadConfig(); }
+    bool save() override { saveConfig(); return true; }
+    void reset() override { resetToDefaults(); }
+    
+    // Additional methods
     void end();
     bool setupWiFi();
     bool loadConfig();
@@ -39,108 +46,101 @@ public:
     void setWiFiPassword(const char* password);
 
     // Device settings
-    const char* getDeviceName() const;
-    void setDeviceName(const char* name);
+    const char* getDeviceName() const override;
+    void setDeviceName(const char* name) override;
     void setSendInterval(uint32_t interval);
     uint32_t getSendInterval() const;
+    unsigned long getSendInterval() const override { return static_cast<unsigned long>(getSendInterval()); }
+    void setSendInterval(unsigned long interval) override { setSendInterval(static_cast<uint32_t>(interval)); }
     void setPidInterval(uint32_t interval);
     uint32_t getPidInterval() const;
 
     // Web interface settings
-    const char* getWebUsername() const;
-    const char* getWebPassword() const;
-    void setWebUsername(const char* username);
-    void setWebPassword(const char* password);
+    const char* getWebUsername() const override;
+    void setWebUsername(const char* username) override;
+    const char* getWebPassword() const override;
+    void setWebPassword(const char* password) override;
 
     // KNX settings
-    bool getKnxEnabled() const;
-    void setKnxEnabled(bool enabled);
+    bool getKnxEnabled() const override;
+    void setKnxEnabled(bool enabled) override;
     void setKnxPhysicalAddress(uint8_t area, uint8_t line, uint8_t member);
     void getKnxPhysicalAddress(uint8_t& area, uint8_t& line, uint8_t& member) const;
-    uint8_t getKnxPhysicalArea() const;
-    uint8_t getKnxPhysicalLine() const;
-    uint8_t getKnxPhysicalMember() const;
-
+    
+    // KNX group addresses
     void setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
-    uint8_t getKnxTempArea() const;
-    uint8_t getKnxTempLine() const;
-    uint8_t getKnxTempMember() const;
-
+    
     void setKnxSetpointGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxSetpointGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
-    uint8_t getKnxSetpointArea() const;
-    uint8_t getKnxSetpointLine() const;
-    uint8_t getKnxSetpointMember() const;
-
+    
     void setKnxValveGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxValveGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
-    uint8_t getKnxValveArea() const;
-    uint8_t getKnxValveLine() const;
-    uint8_t getKnxValveMember() const;
-
+    
     void setKnxModeGA(uint8_t area, uint8_t line, uint8_t member);
     void getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
-    uint8_t getKnxModeArea() const;
-    uint8_t getKnxModeLine() const;
-    uint8_t getKnxModeMember() const;
-
+    
     // MQTT settings
-    bool getMQTTEnabled() const;
+    bool getMQTTEnabled() const { return mqttEnabled; }
+    bool getMqttEnabled() const override { return getMQTTEnabled(); }
     void setMQTTEnabled(bool enabled);
-    const char* getMQTTServer() const;
-    uint16_t getMQTTPort() const;
-    const char* getMQTTUser() const;
-    const char* getMQTTPassword() const;
-    const char* getMQTTClientId() const;
+    void setMqttEnabled(bool enabled) override { setMQTTEnabled(enabled); }
+    uint16_t getMQTTPort() const { return mqttPort; }
+    const char* getMQTTServer() const { return mqttServer; }
+    const char* getMQTTUser() const { return mqttUser; }
+    const char* getMQTTPassword() const { return mqttPassword; }
+    const char* getMQTTClientId() const { return mqttClientId; }
+    const char* getMQTTTopicPrefix() const { return mqttTopicPrefix; }
     void setMQTTServer(const char* server);
     void setMQTTPort(uint16_t port);
     void setMQTTUser(const char* user);
     void setMQTTPassword(const char* password);
     void setMQTTClientId(const char* clientId);
-    const char* getMQTTTopicPrefix() const;
     void setMQTTTopicPrefix(const char* prefix);
-
-    // Thermostat settings
-    void setSetpoint(float setpoint);
-    float getSetpoint() const;
-
-    // PID settings
+    
+    // Control parameters
+    float getSetpoint() const override;
+    void setSetpoint(float setpoint) override;
+    float getKp() const override { return pidConfig.kp; }
+    void setKp(float value) override { pidConfig.kp = value; }
+    float getKi() const override { return pidConfig.ki; }
+    void setKi(float value) override { pidConfig.ki = value; }
+    float getKd() const override { return pidConfig.kd; }
+    void setKd(float value) override { pidConfig.kd = value; }
+    
     const PIDConfig& getPidConfig() const;
     void setPidConfig(const PIDConfig& config);
+    
+    // Status
+    ThermostatStatus getLastError() const override { return lastError; }
 
 private:
+    // Preferences storage
     Preferences prefs;
-    bool initialized;
-
+    
+    // Configuration file path
+    static const char* configFilePath;
+    
     // WiFi settings
     char wifiSSID[33];
     char wifiPassword[65];
-
+    
     // Device settings
     char deviceName[33];
     uint32_t sendInterval;
-    uint32_t pidInterval;
+    uint32_t pidUpdateInterval;
     
-    // Web interface credentials
+    // Web interface settings
     char webUsername[33];
-    char webPassword[65];
+    char webPassword[33];
     
     // KNX settings
     bool knxEnabled;
     KNXPhysicalAddress knxPhysicalAddress;
-    uint8_t knxTempArea;
-    uint8_t knxTempLine;
-    uint8_t knxTempMember;
-    uint8_t knxSetpointArea;
-    uint8_t knxSetpointLine;
-    uint8_t knxSetpointMember;
-    uint8_t knxValveArea;
-    uint8_t knxValveLine;
-    uint8_t knxValveMember;
-    uint8_t knxModeArea;
-    uint8_t knxModeLine;
-    uint8_t knxModeMember;
+    KNXPhysicalAddress knxTemperatureGA;
+    KNXPhysicalAddress knxSetpointGA;
+    KNXPhysicalAddress knxValveGA;
+    KNXPhysicalAddress knxModeGA;
     
     // MQTT settings
     bool mqttEnabled;
@@ -149,13 +149,17 @@ private:
     char mqttUser[33];
     char mqttPassword[65];
     char mqttClientId[33];
-    char mqttTopicPrefix[65];
+    char mqttTopicPrefix[33];
     
-    // Thermostat settings
+    // Control parameters
     float setpoint;
-
-    // PID settings
     PIDConfig pidConfig;
-
+    
+    // Status
+    ThermostatStatus lastError;
+    
+    // Helper methods
     void loadDefaults();
+    bool saveJsonConfig();
+    bool loadJsonConfig();
 };
