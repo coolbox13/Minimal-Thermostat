@@ -1,49 +1,108 @@
 #include "thermostat_controller.h"
-#include <esp_log.h>
+#include <Arduino.h>
 
-static const char* TAG = "ThermostatController";
-
-ThermostatController::ThermostatController(PIDController* pid, SensorInterface* sensor)
-    : currentTemp(0)
-    , targetTemp(21)
-    , output(0)
-    , isHeating(false)
-    , mode(ThermostatMode::OFF)
-    , pidController(pid)
-    , sensorInterface(sensor)
-    , hysteresis(0.5) {
+ThermostatController::ThermostatController(
+    SensorInterface* sensor,
+    ControlInterface* controller,
+    ThermostatState* state)
+    : sensorInterface(sensor),
+      controlInterface(controller),
+      thermostatState(state),
+      lastUpdateTime(0),
+      updateInterval(30000) // 30 seconds
+{
 }
 
-ThermostatController::~ThermostatController() {
-    // PIDController and SensorInterface are owned by the main application
-}
-
-void ThermostatController::begin() {
-    if (sensorInterface) {
-        sensorInterface->begin();
+bool ThermostatController::begin() {
+    if (!sensorInterface || !controlInterface || !thermostatState) {
+        return false;
     }
-    if (pidController) {
-        pidController->begin();
+    
+    // Initialize components
+    bool sensorOk = sensorInterface->begin();
+    bool controlOk = controlInterface->begin();
+    
+    // Set initial setpoint from state
+    controlInterface->setSetpoint(thermostatState->getSetpoint());
+    
+    return sensorOk && controlOk;
+}
+
+void ThermostatController::loop() {
+    if (!sensorInterface || !controlInterface || !thermostatState) {
+        return;
+    }
+    
+    // Update sensor readings
+    sensorInterface->loop();
+    
+    // Update controller
+    controlInterface->loop();
+    
+    // Periodic update of control logic
+    unsigned long currentTime = millis();
+    if (currentTime - lastUpdateTime >= updateInterval) {
+        update();
+        lastUpdateTime = currentTime;
     }
 }
 
 void ThermostatController::update() {
-    if (!pidController || !pidController->isActive()) {
-        return;
-    }
-
+    // Get current temperature from sensor
     float currentTemp = sensorInterface->getTemperature();
-    float targetTemp = targetTemp;
+    
+    // Update state with current temperature
+    thermostatState->setCurrentTemperature(currentTemp);
+    
+    // Check if heating is needed based on mode and temperature
+    bool shouldHeat = shouldActivateHeating();
+    
+    // Update controller state
+    controlInterface->setActive(shouldHeat);
+    
+    // Set current temperature as input to the controller
+    controlInterface->setInput(currentTemp);
+    
+    // Get output from controller (valve position)
+    float output = controlInterface->getOutput();
+    
+    // Update state with valve position
+    thermostatState->setValvePosition(output);
+    
+    // Update heating state
+    thermostatState->setHeatingActive(output > 0);
+}
 
-    // Update PID controller
-    pidController->setSetpoint(targetTemp);
-    pidController->setInput(currentTemp);
-    pidController->loop();
-
-    // Get and apply the output
-    float output = pidController->getOutput();
-    sensorInterface->setValvePosition(output);
-
-    ESP_LOGD(TAG, "Thermostat: Target=%.2f, Current=%.2f, Valve=%.2f",
-             targetTemp, currentTemp, output);
+bool ThermostatController::shouldActivateHeating() {
+    // Get current mode
+    ThermostatMode mode = thermostatState->getMode();
+    
+    // Get current temperature
+    float currentTemp = thermostatState->getCurrentTemperature();
+    
+    // Get target temperature based on mode
+    float targetTemp = thermostatState->getSetpoint();
+    
+    // Check if heating should be activated based on mode and temperature
+    switch (mode) {
+        case ThermostatMode::OFF:
+            return false;
+            
+        case ThermostatMode::ANTIFREEZE:
+            // Activate heating only if temperature is below antifreeze threshold
+            return currentTemp < 5.0f; // 5°C is typical antifreeze temperature
+            
+        case ThermostatMode::AWAY:
+        case ThermostatMode::ECO:
+        case ThermostatMode::COMFORT:
+            // Activate heating if current temperature is below target
+            return currentTemp < targetTemp;
+            
+        case ThermostatMode::BOOST:
+            // Always activate heating in boost mode
+            return true;
+            
+        default:
+            return false;
+    }
 } 

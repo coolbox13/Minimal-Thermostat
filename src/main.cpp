@@ -1,5 +1,8 @@
+#define ARDUINO_USB_MODE 1
+#define ARDUINO_USB_CDC_ON_BOOT 1
 #define CORE_DEBUG_LEVEL 5
 #include <Arduino.h>
+#include <HardwareSerial.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
@@ -22,26 +25,24 @@ ESPWebServer webServer(&configManager, &thermostatState);
 
 void setup() {
     // Initialize serial communication
-    Serial.begin(115200);
-    while (!Serial) delay(10);
+    Serial2.begin(115200);
+    Serial2.println("ESP32 KNX Thermostat starting...");
     
-    Serial.println("Starting ESP32 KNX Thermostat...");
-
     // Initialize configuration
     if (!configManager.begin()) {
-        Serial.println("Failed to initialize configuration");
+        Serial2.println("Failed to initialize configuration");
         return;
     }
 
     // Setup WiFi
     if (!configManager.setupWiFi()) {
-        Serial.println("Failed to connect to WiFi");
+        Serial2.println("Failed to connect to WiFi");
         return;
     }
 
     // Initialize sensor
     if (!sensorInterface.begin()) {
-        Serial.println("Failed to initialize BME280 sensor");
+        Serial2.println("Failed to initialize BME280 sensor");
         return;
     }
 
@@ -51,7 +52,7 @@ void setup() {
 
     // Initialize protocol manager
     if (!protocolManager.begin()) {
-        Serial.println("Failed to initialize protocol manager");
+        Serial2.println("Failed to initialize protocol manager");
         return;
     }
 
@@ -69,9 +70,9 @@ void setup() {
         auto mqttInterface = new MQTTInterface(&thermostatState);
         if (mqttInterface->configure(mqttConfig)) {
             protocolManager.addProtocol(mqttInterface);
-            Serial.println("MQTT interface configured and added");
+            Serial2.println("MQTT interface configured and added");
         } else {
-            Serial.println("Failed to configure MQTT interface");
+            Serial2.println("Failed to configure MQTT interface");
             delete mqttInterface;
         }
     }
@@ -87,20 +88,20 @@ void setup() {
         auto knxInterface = new KNXInterface(&thermostatState);
         if (knxInterface->configure(knxConfig)) {
             protocolManager.addProtocol(knxInterface);
-            Serial.println("KNX interface configured and added");
+            Serial2.println("KNX interface configured and added");
         } else {
-            Serial.println("Failed to configure KNX interface");
+            Serial2.println("Failed to configure KNX interface");
             delete knxInterface;
         }
     }
 
     // Initialize web server
     if (!webServer.begin()) {
-        Serial.println("Failed to start web server");
+        Serial2.println("Failed to start web server");
         return;
     }
 
-    Serial.println("ESP32 KNX Thermostat initialized successfully");
+    Serial2.println("ESP32 KNX Thermostat initialized successfully");
 }
 
 void loop() {

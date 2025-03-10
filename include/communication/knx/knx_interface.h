@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <ArduinoJson.h>
-#include "knx_interface_fix.h"
+#include "communication/knx/knx_interface_fix.h"
 #include "interfaces/protocol_interface.h"
 #include "protocol_types.h"
 #include "thermostat_types.h"
@@ -25,18 +25,30 @@ struct KnxGroupAddress {
 
 class KNXInterface : public ProtocolInterface {
 public:
-    KNXInterface(ThermostatState* state);
-    virtual ~KNXInterface() = default;
+    // Forward declaration of implementation class
+    class Impl;
     
-    // Core functionality
+    KNXInterface(ThermostatState* state);
+    ~KNXInterface();
+    
+    // ProtocolInterface methods
     bool begin() override;
     void loop() override;
+    bool configure(const JsonDocument& config) override;
     bool isConnected() const override;
+    ThermostatStatus getLastError() const override;
+    
+    // KNX specific methods
+    bool setPhysicalAddress(uint8_t area, uint8_t line, uint8_t device);
+    bool setGroupAddress(uint8_t main, uint8_t middle, uint8_t sub, const char* name);
+    bool sendValue(const char* gaName, float value);
+    bool sendStatus(const char* gaName, bool status);
+    
+    // Core functionality
     void disconnect() override;
     bool reconnect() override;
     
     // Connection configuration
-    bool configure(const JsonDocument& config) override;
     bool validateConfig() const override;
     void getConfig(JsonDocument& config) const override;
     
@@ -50,7 +62,6 @@ public:
     bool sendHeatingState(bool isHeating) override;
     
     // Error handling
-    ThermostatStatus getLastError() const override;
     const char* getLastErrorMessage() const override;
     void clearError() override;
     
@@ -63,7 +74,6 @@ public:
     CommandSource getCommandSource() const override { return CommandSource::SOURCE_KNX; }
     
     // KNX specific methods
-    void setPhysicalAddress(uint8_t area, uint8_t line, uint8_t member);
     void setTemperatureGA(uint8_t area, uint8_t line, uint8_t member);
     void setHumidityGA(const KnxGroupAddress& ga);
     void setPressureGA(const KnxGroupAddress& ga);
@@ -76,8 +86,7 @@ public:
     void registerProtocolManager(ProtocolManager* manager);
     
 private:
-    // Private implementation
-    class Impl;
+    ThermostatState* state;
     std::unique_ptr<Impl> pimpl;
     
     // Helper methods
@@ -87,7 +96,6 @@ private:
     uint8_t modeToKnx(ThermostatMode mode) const;
     ThermostatMode knxToMode(uint8_t value) const;
 
-    ThermostatState* state;
     ESPKNXIP knx;
     bool enabled;
     bool initialized;

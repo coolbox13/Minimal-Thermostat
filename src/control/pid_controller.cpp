@@ -1,40 +1,46 @@
-#include "pid_controller.h"
 #include <Arduino.h>
-#include "thermostat_state.h"
+#include <ArduinoJson.h>
+#include <LittleFS.h>
 #include <esp_log.h>
+
+#include "thermostat_state.h"
+#include "pid_controller.h"
 
 static const char* TAG = "PIDController";
 
-PIDController::PIDController() {
-    config.kp = 1.0f;
-    config.ki = 0.0f;
-    config.kd = 0.0f;
-    config.outputMin = 0.0f;
-    config.outputMax = 100.0f;
-    config.sampleTime = 30000.0f;
+PIDController::PIDController() : active(false), lastTime(0), lastError(ThermostatStatus::OK) {
+    config.kp = 2.0f;
+    config.ki = 0.5f;
+    config.kd = 1.0f;
+    config.minOutput = 0.0f;
+    config.maxOutput = 100.0f;
+    config.sampleTime = 30000.0f; // 30 seconds
     setpoint = 0.0f;
     input = 0.0f;
     output = 0.0f;
     integral = 0.0f;
-    prevError = 0.0f;
-    lastTime = 0;
-    firstRun = true;
-    active = false;
-    lastError = ThermostatStatus::OK;
+    lastInput = 0.0f;
 }
 
 bool PIDController::begin() {
     lastTime = millis();
-    firstRun = true;
+    integral = 0.0f;
+    lastInput = input;
+    active = true;
     return true;
 }
 
 void PIDController::loop() {
     if (!active) return;
-
+    
     unsigned long now = millis();
-    if (now - lastTime >= static_cast<unsigned long>(config.sampleTime)) {
-        computePID();
+    unsigned long timeChange = (now - lastTime);
+    
+    if (timeChange >= config.sampleTime) {
+        // Compute PID output
+        output = computePID();
+        
+        // Remember for next time
         lastTime = now;
     }
 }
@@ -43,45 +49,41 @@ void PIDController::configure(const void* configData) {
     if (configData) {
         const PIDConfig* newConfig = static_cast<const PIDConfig*>(configData);
         config = *newConfig;
-        resetIntegral();
     }
 }
 
-void PIDController::setUpdateInterval(unsigned long interval) {
-    config.sampleTime = static_cast<float>(interval);
+void PIDController::setSetpoint(float sp) {
+    setpoint = sp;
 }
 
-void PIDController::setSetpoint(float value) {
-    if (setpoint != value) {
-        setpoint = value;
-        resetIntegral();
-    }
-}
-
-void PIDController::setInput(float value) {
-    input = value;
+void PIDController::setInput(float in) {
+    input = in;
 }
 
 float PIDController::getOutput() const {
     return output;
 }
 
-bool PIDController::isActive() const {
-    return active;
-}
-
 void PIDController::setActive(bool state) {
     if (active != state) {
         active = state;
         if (active) {
-            lastTime = millis();
+            // Reset integral when activating
+            resetIntegral();
         }
-        resetIntegral();
     }
+}
+
+bool PIDController::isActive() const {
+    return active;
 }
 
 ThermostatStatus PIDController::getLastError() const {
     return lastError;
+}
+
+void PIDController::setUpdateInterval(unsigned long interval) {
+    config.sampleTime = static_cast<float>(interval);
 }
 
 void PIDController::reset() {
@@ -89,54 +91,49 @@ void PIDController::reset() {
 }
 
 bool PIDController::saveConfig() {
+    // This is a stub implementation
     return true;
 }
 
-void PIDController::setOutputLimits(float min, float max) {
-    if (min >= max) return;
-    
-    config.outputMin = min;
-    config.outputMax = max;
-    
-    if (output > max) {
-        output = max;
-    } else if (output < min) {
-        output = min;
-    }
-}
-
-void PIDController::setDirection(bool reverse) {
-    // Not used in this implementation
-}
-
-void PIDController::computePID() {
-    if (firstRun) {
-        prevError = setpoint - input;
-        firstRun = false;
-        return;
-    }
-
+float PIDController::computePID() {
+    // Calculate error
     float error = setpoint - input;
-    float dt = config.sampleTime / 1000.0f;
-
-    float proportional = config.kp * error;
-    integral += error * dt;
-    float integralTerm = config.ki * integral;
-    float derivative = (error - prevError) / dt;
-    float derivativeTerm = config.kd * derivative;
-
-    output = proportional + integralTerm + derivativeTerm;
-
-    if (output > config.outputMax) {
-        output = config.outputMax;
-    } else if (output < config.outputMin) {
-        output = config.outputMin;
-    }
-
-    prevError = error;
+    
+    // Calculate the proportional term
+    float pTerm = config.kp * error;
+    
+    // Calculate the integral term
+    integral += (config.ki * error);
+    
+    // Limit integral to prevent windup
+    if (integral > config.maxOutput) integral = config.maxOutput;
+    else if (integral < config.minOutput) integral = config.minOutput;
+    
+    // Calculate the derivative term
+    float dInput = input - lastInput;
+    float dTerm = -config.kd * dInput; // Negative because dInput = input - lastInput
+    
+    // Remember last input for next time
+    lastInput = input;
+    
+    // Calculate total output
+    float result = pTerm + integral + dTerm;
+    
+    // Limit output
+    if (result > config.maxOutput) result = config.maxOutput;
+    else if (result < config.minOutput) result = config.minOutput;
+    
+    return result;
 }
 
 void PIDController::resetIntegral() {
     integral = 0.0f;
-    firstRun = true;
+    lastInput = input;
 }
+
+float PIDController::clamp(float value, float min, float max) const {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+

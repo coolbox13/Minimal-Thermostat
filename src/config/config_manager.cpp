@@ -42,14 +42,14 @@ ConfigManager::ConfigManager() {
     strlcpy(mqttClientId, "esp32_thermostat", sizeof(mqttClientId));
     strlcpy(mqttTopicPrefix, "esp32/thermostat/", sizeof(mqttTopicPrefix));
     
-    // PID defaults
+    // Default PID configuration
     pidConfig = {
-        .kp = 1.0f,
-        .ki = 0.1f,
-        .kd = 0.05f,
-        .outputMin = 0.0f,
-        .outputMax = 100.0f,
-        .sampleTime = 1000
+        .kp = 2.0f,
+        .ki = 0.5f,
+        .kd = 1.0f,
+        .minOutput = 0.0f,
+        .maxOutput = 100.0f,
+        .sampleTime = 30000.0f
     };
 }
 
@@ -114,14 +114,14 @@ bool ConfigManager::loadConfig() {
     }
 
     // Load PID settings
-    JsonObject pid = doc["pid"];
-    if (pid) {
-        pidConfig.kp = pid["kp"] | 1.0f;
-        pidConfig.ki = pid["ki"] | 0.1f;
-        pidConfig.kd = pid["kd"] | 0.05f;
-        pidConfig.outputMin = pid["outputMin"] | 0.0f;
-        pidConfig.outputMax = pid["outputMax"] | 100.0f;
-        pidConfig.sampleTime = pid["sampleTime"] | 1000;
+    if (doc.containsKey("pid")) {
+        JsonObject pid = doc["pid"];
+        pidConfig.kp = pid["kp"] | 2.0f;
+        pidConfig.ki = pid["ki"] | 0.5f;
+        pidConfig.kd = pid["kd"] | 1.0f;
+        pidConfig.minOutput = pid["minOutput"] | 0.0f;
+        pidConfig.maxOutput = pid["maxOutput"] | 100.0f;
+        pidConfig.sampleTime = pid["sampleTime"] | 30000.0f;
     }
 
     return true;
@@ -161,8 +161,8 @@ void ConfigManager::saveConfig() {
     pid["kp"] = pidConfig.kp;
     pid["ki"] = pidConfig.ki;
     pid["kd"] = pidConfig.kd;
-    pid["outputMin"] = pidConfig.outputMin;
-    pid["outputMax"] = pidConfig.outputMax;
+    pid["minOutput"] = pidConfig.minOutput;
+    pid["maxOutput"] = pidConfig.maxOutput;
     pid["sampleTime"] = pidConfig.sampleTime;
 
     File file = LittleFS.open("/config.json", "w");
@@ -198,14 +198,14 @@ void ConfigManager::resetToDefaults() {
     strlcpy(mqttClientId, "esp32_thermostat", sizeof(mqttClientId));
     strlcpy(mqttTopicPrefix, "esp32/thermostat/", sizeof(mqttTopicPrefix));
     
-    // Reset PID settings
+    // Reset PID configuration
     pidConfig = {
-        .kp = 1.0f,
-        .ki = 0.1f,
-        .kd = 0.05f,
-        .outputMin = 0.0f,
-        .outputMax = 100.0f,
-        .sampleTime = 1000
+        .kp = 2.0f,
+        .ki = 0.5f,
+        .kd = 1.0f,
+        .minOutput = 0.0f,
+        .maxOutput = 100.0f,
+        .sampleTime = 30000.0f
     };
     
     saveConfig();

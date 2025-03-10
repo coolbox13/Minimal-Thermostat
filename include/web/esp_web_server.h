@@ -2,36 +2,89 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <LittleFS.h>
 #include <ESPAsyncWebServer.h>
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <AsyncJson.h>
-
-// Forward declarations
-class ThermostatState;
-class ProtocolManager;
-
-#include "web/web_interface.h"
+#include <LittleFS.h>
 #include "config_manager.h"
 #include "thermostat_state.h"
+#include "pid_controller.h"
 
+/**
+ * @brief Web server implementation for ESP32
+ * 
+ * This class provides a web interface for the thermostat
+ */
 class ESPWebServer {
 public:
+    /**
+     * @brief Construct a new ESPWebServer object
+     * 
+     * @param configManager Configuration manager
+     * @param state Thermostat state
+     */
     ESPWebServer(ConfigManager* configManager, ThermostatState* state);
-    virtual ~ESPWebServer() = default;
-
+    
+    /**
+     * @brief Initialize the web server
+     * 
+     * @return true if successful
+     * @return false if failed
+     */
     bool begin();
-    void stop();
-
-    // WebInterface implementation
-    bool isConnected() const;
+    
+    /**
+     * @brief Set the port for the web server
+     * 
+     * @param port Port number
+     */
     void setPort(uint16_t port);
+    
+    /**
+     * @brief Set authentication credentials
+     * 
+     * @param username Username
+     * @param password Password
+     */
     void setCredentials(const char* username, const char* password);
+    
+    /**
+     * @brief Set the hostname for the web server
+     * 
+     * @param hostname Hostname
+     */
     void setHostname(const char* hostname);
+    
+    /**
+     * @brief Register components with the web server
+     * 
+     * @param state Thermostat state
+     * @param pidController PID controller
+     */
+    void registerComponents(ThermostatState* state, PIDController* pidController);
+    
+    /**
+     * @brief Get the last error
+     * 
+     * @return ThermostatStatus 
+     */
     ThermostatStatus getLastError() const;
 
-    // API endpoints
+private:
+    AsyncWebServer server;
+    ConfigManager* configManager;
+    ThermostatState* thermostatState;
+    PIDController* pidController;
+    uint16_t port;
+    char username[32];
+    char password[32];
+    char hostname[32];
+    ThermostatStatus lastError;
+    
+    // Setup methods
+    void setupRoutes();
+    bool isAuthenticated();
+    void requestAuthentication();
+    
+    // Request handlers
     void handleRoot();
     void handleSave();
     void handleSetpoint();
@@ -41,52 +94,12 @@ public:
     void handleReboot();
     void handleReset();
     void handleNotFound();
-
-    // Component registration
-    void registerComponents(
-        ThermostatState* state,
-        ConfigInterface* config,
-        ControlInterface* control = nullptr,
-        ProtocolInterface* knx = nullptr,
-        ProtocolInterface* mqtt = nullptr
-    );
-
-protected:
+    
     // Helper methods
-    bool isAuthenticated();
-    void requestAuthentication();
-    String generateHtml();
     bool handleFileRead(String path);
-
-private:
-    // Web server
-    AsyncWebServer server;
-    uint16_t port;
-    char username[32];
-    char password[32];
-    char hostname[32];
-    ThermostatStatus lastError;
-    bool initialized;
-
-    // Component references
-    ThermostatState* thermostatState;
-    ConfigInterface* configManager;
-    ControlInterface* pidController;
-    ProtocolInterface* knxInterface;
-    ProtocolInterface* mqttInterface;
-
-    // Internal helpers
-    void setupRoutes();
-    void setupMDNS();
-    String getContentType(String filename);
+    void handleJsonResponse(String& json);
+    void handleError(const char* message, int code = 400);
+    String generateHtml();
     String generateStatusJson();
     String generateConfigJson();
-    void handleJsonResponse(String& json);
-    void handleError(const char* message, int code = 500);
-
-    void handleGetStatus(AsyncWebServerRequest* request);
-    void handleSaveConfig(AsyncWebServerRequest* request);
-    void handleNotFound(AsyncWebServerRequest* request);
-};
-
-#endif // ESP_WEB_SERVER_H 
+}; 
