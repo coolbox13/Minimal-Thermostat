@@ -6,9 +6,11 @@
 // Operating modes for the thermostat
 enum class ThermostatMode : uint8_t {
     OFF = 0,
-    HEAT = 1,
-    COOL = 2,
-    AUTO = 3
+    COMFORT = 1,
+    ECO = 2,
+    AWAY = 3,
+    BOOST = 4,
+    ANTIFREEZE = 5
 };
 
 // Temperature ranges and limits
@@ -32,7 +34,8 @@ enum class ThermostatStatus : int8_t {
     ERROR_SENSOR = -3,
     ERROR_SENSOR_READ = -4,
     ERROR_CONTROL = -5,
-    ERROR_STORAGE = -6
+    ERROR_STORAGE = -6,
+    ERROR_FILESYSTEM = -7
 };
 
 // Command sources for protocol interfaces
@@ -59,9 +62,11 @@ enum class CommandType : uint8_t {
 inline const char* getThermostatModeName(ThermostatMode mode) {
     switch (mode) {
         case ThermostatMode::OFF: return "OFF";
-        case ThermostatMode::HEAT: return "HEAT";
-        case ThermostatMode::COOL: return "COOL";
-        case ThermostatMode::AUTO: return "AUTO";
+        case ThermostatMode::COMFORT: return "COMFORT";
+        case ThermostatMode::ECO: return "ECO";
+        case ThermostatMode::AWAY: return "AWAY";
+        case ThermostatMode::BOOST: return "BOOST";
+        case ThermostatMode::ANTIFREEZE: return "ANTIFREEZE";
         default: return "UNKNOWN";
     }
 }
@@ -84,6 +89,8 @@ inline const char* getThermostatStatusString(ThermostatStatus status) {
             return "Control Error";
         case ThermostatStatus::ERROR_STORAGE:
             return "Storage Error";
+        case ThermostatStatus::ERROR_FILESYSTEM:
+            return "Filesystem Error";
         default:
             return "Unknown Error";
     }
@@ -130,9 +137,11 @@ namespace ArduinoJson {
             static void toJson(const ThermostatMode& src, JsonVariant dst) {
                 switch (src) {
                     case ThermostatMode::OFF: dst.set("OFF"); break;
-                    case ThermostatMode::HEAT: dst.set("HEAT"); break;
-                    case ThermostatMode::COOL: dst.set("COOL"); break;
-                    case ThermostatMode::AUTO: dst.set("AUTO"); break;
+                    case ThermostatMode::COMFORT: dst.set("COMFORT"); break;
+                    case ThermostatMode::ECO: dst.set("ECO"); break;
+                    case ThermostatMode::AWAY: dst.set("AWAY"); break;
+                    case ThermostatMode::BOOST: dst.set("BOOST"); break;
+                    case ThermostatMode::ANTIFREEZE: dst.set("ANTIFREEZE"); break;
                 }
             }
         };
@@ -149,6 +158,7 @@ namespace ArduinoJson {
                     case ThermostatStatus::ERROR_SENSOR_READ: dst.set("Sensor Read Error"); break;
                     case ThermostatStatus::ERROR_CONTROL: dst.set("Control Error"); break;
                     case ThermostatStatus::ERROR_STORAGE: dst.set("Storage Error"); break;
+                    case ThermostatStatus::ERROR_FILESYSTEM: dst.set("Filesystem Error"); break;
                 }
             }
         };

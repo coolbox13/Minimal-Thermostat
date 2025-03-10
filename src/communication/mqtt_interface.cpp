@@ -366,11 +366,23 @@ void MQTTInterface::handleMessage(char* topic, byte* payload, unsigned int lengt
     }
     // Handle mode changes
     else if (topicStr.endsWith("/mode/set")) {
-        ThermostatMode mode = ThermostatMode::OFF;
-        if (payloadStr == "heat") {
-            mode = ThermostatMode::HEAT;
+        ThermostatMode mode;
+        String modeStr = String((char*)payload).substring(0, length);
+        
+        if (modeStr == "off") mode = ThermostatMode::OFF;
+        else if (modeStr == "comfort") mode = ThermostatMode::COMFORT;
+        else if (modeStr == "eco") mode = ThermostatMode::ECO;
+        else if (modeStr == "away") mode = ThermostatMode::AWAY;
+        else if (modeStr == "boost") mode = ThermostatMode::BOOST;
+        else if (modeStr == "antifreeze") mode = ThermostatMode::ANTIFREEZE;
+        else {
+            ESP_LOGW(TAG, "Invalid mode received: %s", modeStr.c_str());
+            return;
         }
-        pimpl->thermostatState->setMode(mode);
+        
+        if (pimpl->protocolManager) {
+            pimpl->protocolManager->onModeChanged(mode, CommandSource::SOURCE_MQTT);
+        }
     }
 }
 

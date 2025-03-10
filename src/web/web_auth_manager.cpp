@@ -1,11 +1,11 @@
 #include "web/web_auth_manager.h"
-#include <Arduino.h>
-#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
+#include <Arduino.h>
+#include <esp_log.h>
+#include <WiFi.h>
 #include <DNSServer.h>
 #include <LittleFS.h>
-#include <esp_log.h>
-#include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include "config_manager.h"
 
@@ -19,6 +19,14 @@ static const char* TAG = "WebAuthManager";
 
 WebAuthManager::WebAuthManager(AsyncWebServer& server, ConfigManager& config)
     : server(server), config(config) {
+    // Initialize with empty credentials
+    memset(username, 0, sizeof(username));
+    memset(password, 0, sizeof(password));
+}
+
+void WebAuthManager::setCredentials(const char* user, const char* pass) {
+    strncpy(username, user, sizeof(username) - 1);
+    strncpy(password, pass, sizeof(password) - 1);
 }
 
 bool WebAuthManager::isAuthenticated(AsyncWebServerRequest *request) {
@@ -226,4 +234,16 @@ String WebAuthManager::generateRandomString(size_t length) {
     }
     
     return result;
+}
+
+bool WebAuthManager::authenticate(AsyncWebServerRequest* request) {
+    if (!request->authenticate(username, password)) {
+        request->requestAuthentication();
+        return false;
+    }
+    return true;
+}
+
+void WebAuthManager::requestAuthentication(AsyncWebServerRequest* request) {
+    request->requestAuthentication();
 } 

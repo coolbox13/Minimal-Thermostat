@@ -37,27 +37,92 @@ public:
     bool configure(const JsonDocument& config) {
         // Configure KNX interface
         if (config.containsKey("physical")) {
-            // Direct access without conversion
-            uint8_t area = config["physical"]["area"] | 1;
-            uint8_t line = config["physical"]["line"] | 1;
-            uint8_t member = config["physical"]["member"] | 1;
+            // Direct access without conversion to JsonObject
+            uint8_t area = 1;    // Default value
+            uint8_t line = 1;    // Default value
+            uint8_t member = 1;  // Default value
+            
+            // Read values if they exist
+            if (config["physical"].containsKey("area")) {
+                area = config["physical"]["area"];
+            }
+            if (config["physical"].containsKey("line")) {
+                line = config["physical"]["line"];
+            }
+            if (config["physical"].containsKey("member")) {
+                member = config["physical"]["member"];
+            }
             
             knx.physical_address_set(knx.PA_to_address(area, line, member));
         }
         
-        // Configure group addresses
+        // Configure group addresses - avoid using JsonObject entirely
         if (config.containsKey("ga")) {
-            for (JsonPair kv : config["ga"].template as<JsonObject>()) {
-                const char* name = kv.key().c_str();
-                JsonVariant val = kv.value();
-                
-                // Direct access to avoid JsonObject conversion
-                uint8_t main = val["main"] | 0;
-                uint8_t middle = val["middle"] | 0;
-                uint8_t sub = val["sub"] | 0;
-                
+            // We'll need to manually check each key we're interested in
+            // This is a crude approach but should work without JsonObject conversion
+            
+            // Example: Check for specific known group addresses
+            if (config["ga"].containsKey("temperature")) {
+                uint8_t main = config["ga"]["temperature"]["main"] | 0;
+                uint8_t middle = config["ga"]["temperature"]["middle"] | 0;
+                uint8_t sub = config["ga"]["temperature"]["sub"] | 0;
                 address_t addr = knx.GA_to_address(main, middle, sub);
-                groupAddresses[name] = addr;
+                groupAddresses["temperature"] = addr;
+                ESP_LOGI(TAG, "Added temperature group address: %d/%d/%d", main, middle, sub);
+            }
+            
+            if (config["ga"].containsKey("humidity")) {
+                uint8_t main = config["ga"]["humidity"]["main"] | 0;
+                uint8_t middle = config["ga"]["humidity"]["middle"] | 0;
+                uint8_t sub = config["ga"]["humidity"]["sub"] | 0;
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses["humidity"] = addr;
+                ESP_LOGI(TAG, "Added humidity group address: %d/%d/%d", main, middle, sub);
+            }
+            
+            if (config["ga"].containsKey("pressure")) {
+                uint8_t main = config["ga"]["pressure"]["main"] | 0;
+                uint8_t middle = config["ga"]["pressure"]["middle"] | 0;
+                uint8_t sub = config["ga"]["pressure"]["sub"] | 0;
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses["pressure"] = addr;
+                ESP_LOGI(TAG, "Added pressure group address: %d/%d/%d", main, middle, sub);
+            }
+            
+            if (config["ga"].containsKey("setpoint")) {
+                uint8_t main = config["ga"]["setpoint"]["main"] | 0;
+                uint8_t middle = config["ga"]["setpoint"]["middle"] | 0;
+                uint8_t sub = config["ga"]["setpoint"]["sub"] | 0;
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses["setpoint"] = addr;
+                ESP_LOGI(TAG, "Added setpoint group address: %d/%d/%d", main, middle, sub);
+            }
+            
+            if (config["ga"].containsKey("valve")) {
+                uint8_t main = config["ga"]["valve"]["main"] | 0;
+                uint8_t middle = config["ga"]["valve"]["middle"] | 0;
+                uint8_t sub = config["ga"]["valve"]["sub"] | 0;
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses["valve"] = addr;
+                ESP_LOGI(TAG, "Added valve group address: %d/%d/%d", main, middle, sub);
+            }
+            
+            if (config["ga"].containsKey("mode")) {
+                uint8_t main = config["ga"]["mode"]["main"] | 0;
+                uint8_t middle = config["ga"]["mode"]["middle"] | 0;
+                uint8_t sub = config["ga"]["mode"]["sub"] | 0;
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses["mode"] = addr;
+                ESP_LOGI(TAG, "Added mode group address: %d/%d/%d", main, middle, sub);
+            }
+            
+            if (config["ga"].containsKey("heating")) {
+                uint8_t main = config["ga"]["heating"]["main"] | 0;
+                uint8_t middle = config["ga"]["heating"]["middle"] | 0;
+                uint8_t sub = config["ga"]["heating"]["sub"] | 0;
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses["heating"] = addr;
+                ESP_LOGI(TAG, "Added heating group address: %d/%d/%d", main, middle, sub);
             }
         }
         
@@ -117,16 +182,20 @@ public:
         return true;
     }
     
+    // Expose group addresses to KNXInterface
+    std::map<std::string, address_t> groupAddresses;
+    
     // Make KNXInterface a friend class so it can access private members
     friend class KNXInterface;
     
-private:
+    // Make these accessible for KNXInterface
     ESPKNXIP knx;
     bool enabled;
+    
+private:
     ThermostatStatus lastError;
     char lastErrorMessage[128];
     ThermostatState* state;
-    std::map<std::string, address_t> groupAddresses;
 };
 
 // Use raw pointer initialization
@@ -162,17 +231,43 @@ void KNXInterface::clearError() {
 }
 
 void KNXInterface::getConfig(JsonDocument& config) const {
-    JsonObject knx = config.createNestedObject("knx");
+    // Create the knx object if it doesn't exist
+    JsonObject knx;
+    if (config.containsKey("knx")) {
+        knx = config["knx"];
+    } else {
+        knx = config.createNestedObject("knx");
+    }
     
-    JsonObject physical = knx.createNestedObject("physical");
+    // Add physical address information
+    JsonObject physical;
+    if (knx.containsKey("physical")) {
+        physical = knx["physical"];
+    } else {
+        physical = knx.createNestedObject("physical");
+    }
+    
     address_t addr = pimpl->knx.physical_address_get();
     physical["area"] = addr.pa.area;
     physical["line"] = addr.pa.line;
     physical["member"] = addr.pa.member;
     
-    JsonObject ga = knx.createNestedObject("ga");
+    // Add group addresses
+    JsonObject ga;
+    if (knx.containsKey("ga")) {
+        ga = knx["ga"];
+    } else {
+        ga = knx.createNestedObject("ga");
+    }
+    
     for (const auto& pair : pimpl->groupAddresses) {
-        JsonObject obj = ga.createNestedObject(pair.first.c_str());
+        JsonObject obj;
+        if (ga.containsKey(pair.first.c_str())) {
+            obj = ga[pair.first.c_str()];
+        } else {
+            obj = ga.createNestedObject(pair.first.c_str());
+        }
+        
         // Extract KNX group address components
         obj["main"] = pair.second.ga.area;
         obj["middle"] = pair.second.ga.line;

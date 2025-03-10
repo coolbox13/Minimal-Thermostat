@@ -1,108 +1,66 @@
 #include "thermostat_controller.h"
-#include <Arduino.h>
+#include "thermostat_state.h"
+#include "interfaces/sensor_interface.h"
+#include "interfaces/control_interface.h"
+#include <esp_log.h>
 
-ThermostatController::ThermostatController(
-    SensorInterface* sensor,
-    ControlInterface* controller,
-    ThermostatState* state)
-    : sensorInterface(sensor),
-      controlInterface(controller),
-      thermostatState(state),
-      lastUpdateTime(0),
-      updateInterval(30000) // 30 seconds
-{
+static const char* TAG = "ThermostatController";
+
+ThermostatController::ThermostatController(PIDController* pid, SensorInterface* sensor)
+    : pidController(pid)
+    , sensorInterface(sensor)
+    , lastError(ThermostatStatus::OK) {
+    memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
-bool ThermostatController::begin() {
-    if (!sensorInterface || !controlInterface || !thermostatState) {
-        return false;
-    }
-    
-    // Initialize components
-    bool sensorOk = sensorInterface->begin();
-    bool controlOk = controlInterface->begin();
-    
-    // Set initial setpoint from state
-    controlInterface->setSetpoint(thermostatState->getSetpoint());
-    
-    return sensorOk && controlOk;
-}
-
-void ThermostatController::loop() {
-    if (!sensorInterface || !controlInterface || !thermostatState) {
+void ThermostatController::begin() {
+    if (!sensorInterface->begin()) {
+        snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to initialize sensor");
+        lastError = ThermostatStatus::ERROR_SENSOR;
         return;
     }
     
-    // Update sensor readings
-    sensorInterface->loop();
-    
-    // Update controller
-    controlInterface->loop();
-    
-    // Periodic update of control logic
-    unsigned long currentTime = millis();
-    if (currentTime - lastUpdateTime >= updateInterval) {
-        update();
-        lastUpdateTime = currentTime;
+    if (!pidController->begin()) {
+        snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to initialize PID controller");
+        lastError = ThermostatStatus::ERROR_CONTROL;
+        return;
     }
+    
+    lastError = ThermostatStatus::OK;
 }
 
 void ThermostatController::update() {
-    // Get current temperature from sensor
-    float currentTemp = sensorInterface->getTemperature();
-    
-    // Update state with current temperature
-    thermostatState->setCurrentTemperature(currentTemp);
-    
-    // Check if heating is needed based on mode and temperature
-    bool shouldHeat = shouldActivateHeating();
-    
-    // Update controller state
-    controlInterface->setActive(shouldHeat);
-    
-    // Set current temperature as input to the controller
-    controlInterface->setInput(currentTemp);
-    
-    // Get output from controller (valve position)
-    float output = controlInterface->getOutput();
-    
-    // Update state with valve position
-    thermostatState->setValvePosition(output);
-    
-    // Update heating state
-    thermostatState->setHeatingActive(output > 0);
-}
-
-bool ThermostatController::shouldActivateHeating() {
-    // Get current mode
-    ThermostatMode mode = thermostatState->getMode();
+    // Update sensor readings
+    sensorInterface->updateReadings();
     
     // Get current temperature
-    float currentTemp = thermostatState->getCurrentTemperature();
+    float currentTemp = sensorInterface->getTemperature();
     
-    // Get target temperature based on mode
-    float targetTemp = thermostatState->getSetpoint();
+    // Update PID controller
+    pidController->update(currentTemp);
     
-    // Check if heating should be activated based on mode and temperature
-    switch (mode) {
-        case ThermostatMode::OFF:
-            return false;
-            
-        case ThermostatMode::ANTIFREEZE:
-            // Activate heating only if temperature is below antifreeze threshold
-            return currentTemp < 5.0f; // 5°C is typical antifreeze temperature
-            
-        case ThermostatMode::AWAY:
-        case ThermostatMode::ECO:
-        case ThermostatMode::COMFORT:
-            // Activate heating if current temperature is below target
-            return currentTemp < targetTemp;
-            
-        case ThermostatMode::BOOST:
-            // Always activate heating in boost mode
-            return true;
-            
-        default:
-            return false;
+    // Update valve position based on PID output
+    float valvePosition = pidController->getOutput();
+    // Ensure valve position is within bounds
+    valvePosition = constrain(valvePosition, 0.0f, 100.0f);
+    
+    // Update status
+    if (sensorInterface->getLastError() != ThermostatStatus::OK) {
+        lastError = sensorInterface->getLastError();
+        strncpy(lastErrorMessage, sensorInterface->getLastErrorMessage(), sizeof(lastErrorMessage));
+    } else if (pidController->getLastError() != ThermostatStatus::OK) {
+        lastError = pidController->getLastError();
+        strncpy(lastErrorMessage, pidController->getLastErrorMessage(), sizeof(lastErrorMessage));
+    } else {
+        lastError = ThermostatStatus::OK;
+        memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
     }
+}
+
+ThermostatStatus ThermostatController::getLastError() const {
+    return lastError;
+}
+
+const char* ThermostatController::getLastErrorMessage() const {
+    return lastErrorMessage;
 } 

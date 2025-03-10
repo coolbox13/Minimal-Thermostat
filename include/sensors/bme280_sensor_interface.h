@@ -2,21 +2,22 @@
 
 #include <Adafruit_BME280.h>
 #include "thermostat_types.h"
+#include "interfaces/sensor_interface.h"
 
-class BME280SensorInterface {
+class BME280SensorInterface : public SensorInterface {
 public:
     BME280SensorInterface();
     
-    bool begin();
-    void updateReadings();
+    bool begin() override;
+    void updateReadings() override;
     
-    float getTemperature() const;
-    float getHumidity() const;
-    float getPressure() const;
+    float getTemperature() const override;
+    float getHumidity() const override;
+    float getPressure() const override;
     
-    ThermostatStatus getLastError() const;
-    const char* getLastErrorMessage() const;
-    void clearError();
+    ThermostatStatus getLastError() const override;
+    const char* getLastErrorMessage() const override;
+    void clearError() override;
     
 private:
     Adafruit_BME280 bme;
