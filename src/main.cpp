@@ -5,7 +5,9 @@
 #include <HardwareSerial.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <esp_log.h>
 #include "config_manager.h"
 #include "thermostat_state.h"
 #include "protocol_manager.h"
@@ -14,6 +16,9 @@
 #include "sensors/bme280_sensor_interface.h"
 #include "pid_controller.h"
 #include "web/esp_web_server.h"
+#include "web/web_interface.h"
+
+static const char* TAG = "Main";
 
 // Global objects
 ConfigManager configManager;
@@ -22,11 +27,19 @@ ProtocolManager protocolManager(&thermostatState);
 BME280SensorInterface sensorInterface;
 PIDController pidController;
 ESPWebServer webServer(&configManager, &thermostatState);
+WebInterface webInterface(&configManager, &sensorInterface, &pidController, &thermostatState, &protocolManager);
+KNXInterface knxInterface(&thermostatState);
 
 void setup() {
     // Initialize serial communication
     Serial2.begin(115200);
     Serial2.println("ESP32 KNX Thermostat starting...");
+    
+    // Initialize file system
+    if (!LittleFS.begin()) {
+        Serial2.println("Failed to mount file system");
+        return;
+    }
     
     // Initialize configuration
     if (!configManager.begin()) {
@@ -47,8 +60,10 @@ void setup() {
     }
 
     // Initialize PID controller
-    pidController.begin();
-    pidController.configure(static_cast<const void*>(&configManager.getPidConfig()));
+    if (!pidController.begin()) {
+        Serial2.println("Failed to initialize PID controller");
+        return;
+    }
 
     // Initialize protocol manager
     if (!protocolManager.begin()) {
@@ -85,14 +100,12 @@ void setup() {
         physical["line"] = configManager.getKnxPhysicalLine();
         physical["device"] = configManager.getKnxPhysicalMember();
 
-        auto knxInterface = new KNXInterface(&thermostatState);
-        if (knxInterface->configure(knxConfig)) {
-            protocolManager.addProtocol(knxInterface);
-            Serial2.println("KNX interface configured and added");
-        } else {
-            Serial2.println("Failed to configure KNX interface");
-            delete knxInterface;
+        if (!knxInterface.begin()) {
+            Serial2.println("Failed to initialize KNX interface");
+            return;
         }
+        protocolManager.registerProtocol(&knxInterface);
+        Serial2.println("KNX interface configured and added");
     }
 
     // Initialize web server
@@ -108,16 +121,25 @@ void loop() {
     // Update sensor readings
     sensorInterface.loop();
 
+    // Update web interface
+    webInterface.loop();
+
+    // Update KNX interface if enabled
+    if (configManager.getKnxEnabled()) {
+        knxInterface.loop();
+    }
+
     // Update PID controller
-    pidController.setInput(sensorInterface.getTemperature());
-    pidController.setSetpoint(thermostatState.getTargetTemperature());
-    pidController.loop();
+    pidController.update(sensorInterface.getTemperature());
 
-    // Update valve position
-    sensorInterface.setValvePosition(pidController.getOutput());
+    // Update thermostat state
+    thermostatState.setCurrentTemperature(sensorInterface.getTemperature());
+    thermostatState.setCurrentHumidity(sensorInterface.getHumidity());
+    thermostatState.setCurrentPressure(sensorInterface.getPressure());
+    thermostatState.setValvePosition(pidController.getOutput());
 
-    // Update protocol manager
-    protocolManager.loop();
+    // Handle protocol updates
+    protocolManager.update();
 
     // Small delay to prevent tight looping
     delay(10);
