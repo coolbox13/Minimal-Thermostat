@@ -124,7 +124,7 @@ inline ThermostatStatus intToThermostatStatus(int value) {
 
 // Add JSON serialization support
 namespace ArduinoJson {
-    namespace V731PB22 {
+    namespace V6215PB2 {
         template<>
         struct Converter<ThermostatMode> {
             static void toJson(const ThermostatMode& src, JsonVariant dst) {

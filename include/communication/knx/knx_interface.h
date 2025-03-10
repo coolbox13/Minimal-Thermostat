@@ -20,16 +20,6 @@ class AsyncWebServer;
 class ThermostatState;
 class ProtocolManager;
 
-// Custom implementation of make_unique for C++11
-#if __cplusplus < 201402L
-namespace std {
-    template<typename T, typename... Args>
-    unique_ptr<T> make_unique(Args&&... args) {
-        return unique_ptr<T>(new T(std::forward<Args>(args)...));
-    }
-}
-#endif
-
 struct KnxGroupAddress {
     uint8_t main;
     uint8_t middle;
