@@ -389,9 +389,8 @@ void MQTTInterface::handleMessage(char* topic, byte* payload, unsigned int lengt
             return;
         }
         
-        pimpl->thermostatState->setMode(mode);
         if (pimpl->protocolManager) {
-            pimpl->protocolManager->onModeChanged(mode, CommandSource::SOURCE_MQTT);
+            pimpl->protocolManager->handleIncomingCommand(CommandSource::SOURCE_MQTT, CommandType::CMD_MODE, static_cast<float>(mode));
         }
     }
 }

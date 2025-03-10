@@ -11,6 +11,7 @@ public:
     virtual bool begin() = 0;
     virtual void loop() = 0;
     virtual void setUpdateInterval(unsigned long interval) = 0;
+    virtual void updateReadings() = 0;
 
     // Sensor readings
     virtual float getTemperature() const = 0;
@@ -20,6 +21,8 @@ public:
     // Status
     virtual bool isAvailable() const = 0;
     virtual ThermostatStatus getLastError() const = 0;
+    virtual const char* getLastErrorMessage() const = 0;
+    virtual void clearError() = 0;
     
     // Calibration
     virtual void setTemperatureOffset(float offset) = 0;

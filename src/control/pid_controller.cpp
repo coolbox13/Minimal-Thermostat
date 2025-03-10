@@ -20,6 +20,7 @@ PIDController::PIDController() : active(false), lastTime(0), lastError(Thermosta
     output = 0.0f;
     integral = 0.0f;
     lastInput = 0.0f;
+    memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
 bool PIDController::begin() {
@@ -27,6 +28,7 @@ bool PIDController::begin() {
     integral = 0.0f;
     lastInput = input;
     active = true;
+    clearError();
     return true;
 }
 
@@ -80,6 +82,15 @@ bool PIDController::isActive() const {
 
 ThermostatStatus PIDController::getLastError() const {
     return lastError;
+}
+
+const char* PIDController::getLastErrorMessage() const {
+    return lastErrorMessage;
+}
+
+void PIDController::clearError() {
+    lastError = ThermostatStatus::OK;
+    memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
 void PIDController::setUpdateInterval(unsigned long interval) {

@@ -27,6 +27,8 @@ public:
     void setActive(bool state) override;
     bool isActive() const override;
     ThermostatStatus getLastError() const override;
+    const char* getLastErrorMessage() const override;
+    void clearError() override;
     void setUpdateInterval(unsigned long interval) override;
     void reset() override;
     bool saveConfig() override;
@@ -40,6 +42,12 @@ public:
     float getMinOutput() const { return config.minOutput; }
     float getMaxOutput() const { return config.maxOutput; }
     float getSampleTime() const { return config.sampleTime; }
+    
+    // Update method that combines setInput and loop
+    void update(float newInput) {
+        setInput(newInput);
+        loop();
+    }
 
 protected:
     // Helper methods
@@ -57,4 +65,5 @@ private:
     unsigned long lastTime;
     bool active;
     ThermostatStatus lastError;
+    char lastErrorMessage[128];
 };

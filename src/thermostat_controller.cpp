@@ -47,20 +47,16 @@ void ThermostatController::update() {
     // Update status
     if (sensorInterface->getLastError() != ThermostatStatus::OK) {
         lastError = sensorInterface->getLastError();
-        strncpy(lastErrorMessage, sensorInterface->getLastErrorMessage(), sizeof(lastErrorMessage));
+        strncpy(lastErrorMessage, sensorInterface->getLastErrorMessage(), sizeof(lastErrorMessage) - 1);
+        lastErrorMessage[sizeof(lastErrorMessage) - 1] = '\0';
     } else if (pidController->getLastError() != ThermostatStatus::OK) {
         lastError = pidController->getLastError();
-        strncpy(lastErrorMessage, pidController->getLastErrorMessage(), sizeof(lastErrorMessage));
+        strncpy(lastErrorMessage, pidController->getLastErrorMessage(), sizeof(lastErrorMessage) - 1);
+        lastErrorMessage[sizeof(lastErrorMessage) - 1] = '\0';
     } else {
         lastError = ThermostatStatus::OK;
         memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
     }
 }
 
-ThermostatStatus ThermostatController::getLastError() const {
-    return lastError;
-}
-
-const char* ThermostatController::getLastErrorMessage() const {
-    return lastErrorMessage;
-} 
+// Error handling methods are defined in the header file 

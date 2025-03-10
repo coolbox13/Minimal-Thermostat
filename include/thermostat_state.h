@@ -30,6 +30,11 @@ public:
   void setHeating(bool active) { heatingActive = active; }
   void setStatus(ThermostatStatus newStatus) { status = newStatus; }
   
+  // Alias methods for clarity
+  void setCurrentTemperature(float value) { setTemperature(value); }
+  void setCurrentHumidity(float value) { setHumidity(value); }
+  void setCurrentPressure(float value) { setPressure(value); }
+  
   // Callback function types
   using TemperatureCallback = std::function<void(float)>;
   using HumidityCallback = std::function<void(float)>;
@@ -51,19 +56,21 @@ public:
   void onStatusChange(StatusCallback cb) { statusCallback = cb; }
 
 private:
-  // Sensor readings
+  // Current state
   float currentTemperature;
   float currentHumidity;
   float currentPressure;
-  
-  // Control values
   float targetTemperature;
-  float valvePosition;  // 0-100%
-  
-  // Operation state
+  float valvePosition;
   ThermostatMode operatingMode;
   bool heatingActive;
   ThermostatStatus status;
+  
+  // Validation helpers
+  bool isValidTemperature(float value) const;
+  bool isValidHumidity(float value) const;
+  bool isValidPressure(float value) const;
+  bool isValidValvePosition(float value) const;
   
   // Callbacks
   TemperatureCallback temperatureCallback;
@@ -74,18 +81,6 @@ private:
   ModeCallback modeCallback;
   HeatingCallback heatingCallback;
   StatusCallback statusCallback;
-  
-  // Helper to validate temperature range
-  bool isValidTemperature(float temp) const {
-    return temp >= ThermostatLimits::MIN_TEMPERATURE && 
-           temp <= ThermostatLimits::MAX_TEMPERATURE;
-  }
-  
-  // Helper to validate valve position range
-  bool isValidValvePosition(float pos) const {
-    return pos >= ThermostatLimits::MIN_VALVE_POSITION && 
-           pos <= ThermostatLimits::MAX_VALVE_POSITION;
-  }
 };
 
 #endif // THERMOSTAT_STATE_H

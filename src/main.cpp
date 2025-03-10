@@ -104,7 +104,7 @@ void setup() {
             Serial2.println("Failed to initialize KNX interface");
             return;
         }
-        protocolManager.registerProtocol(&knxInterface);
+        protocolManager.addProtocol(&knxInterface);
         Serial2.println("KNX interface configured and added");
     }
 

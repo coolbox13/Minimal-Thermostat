@@ -15,6 +15,8 @@ private:
     PIDController* pidController;
     SensorInterface* sensorInterface;
     float hysteresis;
+    ThermostatStatus lastError;
+    char lastErrorMessage[128];
 
 public:
     ThermostatController(PIDController* pid, SensorInterface* sensor);
@@ -29,6 +31,8 @@ public:
     float getOutput() const { return output; }
     bool isActive() const { return isHeating; }
     ThermostatMode getMode() const { return mode; }
+    ThermostatStatus getLastError() const { return lastError; }
+    const char* getLastErrorMessage() const { return lastErrorMessage; }
 
     // Setters
     void setTargetTemperature(float temp) { targetTemp = temp; }

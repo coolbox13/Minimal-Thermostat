@@ -243,12 +243,12 @@ void ESPWebServer::handleMode() {
     String modeStr = server.arg("mode");
     ThermostatMode mode;
     
-    if (modeStr == "off") mode = MODE_OFF;
-    else if (modeStr == "comfort") mode = MODE_COMFORT;
-    else if (modeStr == "eco") mode = MODE_ECO;
-    else if (modeStr == "away") mode = MODE_AWAY;
-    else if (modeStr == "boost") mode = MODE_BOOST;
-    else if (modeStr == "antifreeze") mode = MODE_ANTIFREEZE;
+    if (modeStr == "off") mode = ThermostatMode::OFF;
+    else if (modeStr == "comfort") mode = ThermostatMode::COMFORT;
+    else if (modeStr == "eco") mode = ThermostatMode::ECO;
+    else if (modeStr == "away") mode = ThermostatMode::AWAY;
+    else if (modeStr == "boost") mode = ThermostatMode::BOOST;
+    else if (modeStr == "antifreeze") mode = ThermostatMode::ANTIFREEZE;
     else {
         handleError("Invalid mode value", 400);
         return;

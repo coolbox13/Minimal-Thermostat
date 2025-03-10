@@ -108,23 +108,12 @@ String HtmlGenerator::generateControlSection(ThermostatState* state) {
     snprintf(buf, sizeof(buf), R"(
 <div id='control' class='section'>
     <h2>Control</h2>
-    <div class='row'>
-        <div class='col-md-6'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Setpoint</h5>
-                    <div class='input-group'>
-                        <input type='number' class='form-control' id='setpoint' value='%.1f' step='0.5'>
-                        <button class='btn btn-primary' onclick='setSetpoint()'>Set</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class='col-md-6'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Mode</h5>
-                    <select class='form-select' id='mode' onchange='setMode()'>
+    <div class='card'>
+        <div class='card-body'>
+            <div class='row'>
+                <div class='col-md-6'>
+                    <label class='form-label'>Mode</label>
+                    <select class='form-select' id='mode'>
                         <option value='off' %s>Off</option>
                         <option value='comfort' %s>Comfort</option>
                         <option value='eco' %s>Eco</option>
@@ -133,18 +122,23 @@ String HtmlGenerator::generateControlSection(ThermostatState* state) {
                         <option value='antifreeze' %s>Anti-freeze</option>
                     </select>
                 </div>
+                <div class='col-md-6'>
+                    <label class='form-label'>Target Temperature</label>
+                    <input type='number' class='form-control' id='setpoint' value='%.1f' step='0.5'>
+                </div>
             </div>
+            <button class='btn btn-primary mt-3' onclick='updateControl()'>Update</button>
         </div>
     </div>
 </div>
 )",
-        state->getTargetTemperature(),
-        state->getMode() == MODE_OFF ? "selected" : "",
-        state->getMode() == MODE_COMFORT ? "selected" : "",
-        state->getMode() == MODE_ECO ? "selected" : "",
-        state->getMode() == MODE_AWAY ? "selected" : "",
-        state->getMode() == MODE_BOOST ? "selected" : "",
-        state->getMode() == MODE_ANTIFREEZE ? "selected" : ""
+        state->getMode() == ThermostatMode::OFF ? "selected" : "",
+        state->getMode() == ThermostatMode::COMFORT ? "selected" : "",
+        state->getMode() == ThermostatMode::ECO ? "selected" : "",
+        state->getMode() == ThermostatMode::AWAY ? "selected" : "",
+        state->getMode() == ThermostatMode::BOOST ? "selected" : "",
+        state->getMode() == ThermostatMode::ANTIFREEZE ? "selected" : "",
+        state->getTargetTemperature()
     );
     return String(buf);
 }

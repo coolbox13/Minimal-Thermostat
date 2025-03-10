@@ -24,6 +24,7 @@ public:
     virtual ~WebInterface();
 
     void begin();
+    void loop();
     void end();
     
     // Request handlers

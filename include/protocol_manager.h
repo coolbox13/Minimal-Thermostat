@@ -19,6 +19,7 @@ public:
     // Core functionality
     bool begin();
     void loop();
+    void update() { loop(); }  // Alias for loop()
     void addProtocol(ProtocolInterface* protocol);
     void removeProtocol(ProtocolInterface* protocol);
 
