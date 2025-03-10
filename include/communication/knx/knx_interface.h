@@ -13,14 +13,10 @@
 class ThermostatState;
 class ProtocolManager;
 
-// KNX group address structure
 struct KnxGroupAddress {
-    uint8_t area;   // 0-31 (5 bits)
-    uint8_t line;   // 0-7  (3 bits)
-    uint8_t member; // 0-255 (8 bits)
-
-    KnxGroupAddress(uint8_t a = 0, uint8_t l = 0, uint8_t m = 0)
-        : area(a), line(l), member(m) {}
+    uint8_t main;
+    uint8_t middle;
+    uint8_t sub;
 };
 
 class KNXInterface : public ProtocolInterface {
@@ -29,20 +25,31 @@ public:
     class Impl;
     
     KNXInterface(ThermostatState* state);
-    ~KNXInterface();
+    virtual ~KNXInterface();
     
     // ProtocolInterface methods
-    bool begin() override;
-    void loop() override;
-    bool configure(const JsonDocument& config) override;
-    bool isConnected() const override;
-    ThermostatStatus getLastError() const override;
+    virtual bool begin() override;
+    virtual void loop() override;
+    virtual bool configure(const JsonDocument& config) override;
+    virtual bool isConnected() const override;
+    virtual ThermostatStatus getLastError() const override;
     
     // KNX specific methods
-    bool setPhysicalAddress(uint8_t area, uint8_t line, uint8_t device);
-    bool setGroupAddress(uint8_t main, uint8_t middle, uint8_t sub, const char* name);
-    bool sendValue(const char* gaName, float value);
-    bool sendStatus(const char* gaName, bool status);
+    void setTemperatureGA(const KnxGroupAddress& ga);
+    void setHumidityGA(const KnxGroupAddress& ga);
+    void setPressureGA(const KnxGroupAddress& ga);
+    void setSetpointGA(const KnxGroupAddress& ga);
+    void setValvePositionGA(const KnxGroupAddress& ga);
+    void setModeGA(const KnxGroupAddress& ga);
+    void setHeatingStateGA(const KnxGroupAddress& ga);
+    
+    bool sendTemperature(float value);
+    bool sendHumidity(float value);
+    bool sendPressure(float value);
+    bool sendSetpoint(float value);
+    bool sendValvePosition(float value);
+    bool sendMode(ThermostatMode mode);
+    bool sendHeatingState(bool isHeating);
     
     // Core functionality
     void disconnect() override;
@@ -52,19 +59,6 @@ public:
     bool validateConfig() const override;
     void getConfig(JsonDocument& config) const override;
     
-    // Data transmission
-    bool sendTemperature(float value) override;
-    bool sendHumidity(float value) override;
-    bool sendPressure(float value) override;
-    bool sendSetpoint(float value) override;
-    bool sendValvePosition(float value) override;
-    bool sendMode(ThermostatMode mode) override;
-    bool sendHeatingState(bool isHeating) override;
-    
-    // Error handling
-    const char* getLastErrorMessage() const override;
-    void clearError() override;
-    
     // Protocol registration
     void registerCallbacks(ThermostatState* state, ProtocolManager* manager) override;
     void unregisterCallbacks() override;
@@ -73,17 +67,12 @@ public:
     const char* getProtocolName() const override { return "KNX"; }
     CommandSource getCommandSource() const override { return CommandSource::SOURCE_KNX; }
     
-    // KNX specific methods
-    void setTemperatureGA(uint8_t area, uint8_t line, uint8_t member);
-    void setHumidityGA(const KnxGroupAddress& ga);
-    void setPressureGA(const KnxGroupAddress& ga);
-    void setSetpointGA(uint8_t area, uint8_t line, uint8_t member);
-    void setValvePositionGA(const KnxGroupAddress& ga);
-    void setModeGA(uint8_t area, uint8_t line, uint8_t member);
-    void setHeatingStateGA(const KnxGroupAddress& ga);
-    
     // Protocol manager registration
     void registerProtocolManager(ProtocolManager* manager);
+    
+    // Error handling
+    virtual const char* getLastErrorMessage() const override;
+    virtual void clearError() override;
     
 private:
     ThermostatState* state;

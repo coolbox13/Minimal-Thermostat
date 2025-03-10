@@ -4,8 +4,12 @@
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
-#include "thermostat_state.h"
+#include "web/elegant_ota_async.h"
 #include "config_manager.h"
+#include "pid_controller.h"
+#include "thermostat_state.h"
+#include "protocol_manager.h"
+#include "interfaces/sensor_interface.h"
 
 // Forward declarations
 class SensorInterface;

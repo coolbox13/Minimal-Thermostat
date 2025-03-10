@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include "esp-knx-ip.h"
+#include <esp-knx-ip.h>
 #include "communication/knx/knx_interface.h"
 #include "protocol_manager.h"
 #include "thermostat_state.h"
@@ -24,12 +24,7 @@ public:
             return false;
         }
         
-        if (!knx.start(nullptr)) {
-            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to start KNX interface");
-            lastError = ThermostatStatus::ERROR_COMMUNICATION;
-            return false;
-        }
-        
+        knx.start(nullptr);  // We don't need web server integration
         return true;
     }
     
@@ -41,16 +36,28 @@ public:
     
     bool configure(const JsonDocument& config) {
         // Configure KNX interface
-        if (config.containsKey("physical")) {
+        if (config["physical"].is<JsonObject>()) {
             JsonObject physical = config["physical"].as<JsonObject>();
             uint8_t area = physical["area"] | 1;
             uint8_t line = physical["line"] | 1;
-            uint8_t device = physical["device"] | 1;
+            uint8_t member = physical["member"] | 1;
             
-            address_t addr;
-            addr.bytes.high = (area << 4) | line;
-            addr.bytes.low = device;
-            knx.physical_address_set(addr);
+            knx.physical_address_set(knx.PA_to_address(area, line, member));
+        }
+        
+        // Configure group addresses
+        if (config["ga"].is<JsonObject>()) {
+            JsonObject ga = config["ga"].as<JsonObject>();
+            for (JsonPair kv : ga) {
+                const char* name = kv.key().c_str();
+                JsonObject gaObj = kv.value().as<JsonObject>();
+                uint8_t main = gaObj["main"] | 0;
+                uint8_t middle = gaObj["middle"] | 0;
+                uint8_t sub = gaObj["sub"] | 0;
+                
+                address_t addr = knx.GA_to_address(main, middle, sub);
+                groupAddresses[name] = addr;
+            }
         }
         
         enabled = true;
@@ -74,115 +81,152 @@ public:
         memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
     }
     
-    bool setPhysicalAddress(uint8_t area, uint8_t line, uint8_t device) {
-        address_t addr;
-        addr.bytes.high = (area << 4) | line;
-        addr.bytes.low = device;
-        knx.physical_address_set(addr);
+    bool setPhysicalAddress(uint8_t area, uint8_t line, uint8_t member) {
+        knx.physical_address_set(knx.PA_to_address(area, line, member));
         return true;
     }
     
-    bool setGroupAddress(uint8_t main, uint8_t middle, uint8_t sub, const char* name) {
-        groupAddresses[name] = {main, middle, sub};
+    bool setGroupAddress(const char* name, uint8_t main, uint8_t middle, uint8_t sub) {
+        address_t addr = knx.GA_to_address(main, middle, sub);
+        groupAddresses[name] = addr;
         return true;
     }
     
     bool sendValue(const char* gaName, float value) {
-        if (!enabled) return false;
-        
         auto it = groupAddresses.find(gaName);
         if (it == groupAddresses.end()) {
-            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Group address '%s' not found", gaName);
+            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Group address %s not found", gaName);
             lastError = ThermostatStatus::ERROR_CONFIGURATION;
             return false;
         }
         
-        const auto& ga = it->second;
-        address_t addr;
-        addr.bytes.high = (ga.main << 3) | ga.middle;
-        addr.bytes.low = ga.sub;
-        knx.write_2byte_float(addr, value);
+        knx.write_2byte_float(it->second, value);
         return true;
     }
     
     bool sendStatus(const char* gaName, bool status) {
-        if (!enabled) return false;
-        
         auto it = groupAddresses.find(gaName);
         if (it == groupAddresses.end()) {
-            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Group address '%s' not found", gaName);
+            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Group address %s not found", gaName);
             lastError = ThermostatStatus::ERROR_CONFIGURATION;
             return false;
         }
         
-        const auto& ga = it->second;
-        address_t addr;
-        addr.bytes.high = (ga.main << 3) | ga.middle;
-        addr.bytes.low = ga.sub;
-        knx.write_1bit(addr, status);
+        knx.write_1bit(it->second, status);
         return true;
     }
     
-    // Make these public for access from KNXInterface
+private:
     ESPKNXIP knx;
     bool enabled;
     ThermostatStatus lastError;
     char lastErrorMessage[128];
-    
-    struct GroupAddress {
-        uint8_t main;
-        uint8_t middle;
-        uint8_t sub;
-    };
-    
-    std::map<std::string, GroupAddress> groupAddresses;
     ThermostatState* state;
+    std::map<std::string, address_t> groupAddresses;
 };
 
-// KNXInterface implementation
-KNXInterface::KNXInterface(ThermostatState* state) : state(state) {
-    pimpl = std::unique_ptr<Impl>(new Impl(state));
-    Serial2.println("KNX interface created");
-}
-
-KNXInterface::~KNXInterface() {
-    // Destructor implementation
-}
+KNXInterface::KNXInterface(ThermostatState* state) : pimpl(std::make_unique<Impl>(state)) {}
+KNXInterface::~KNXInterface() = default;
 
 bool KNXInterface::begin() {
-    return pimpl ? pimpl->begin() : false;
+    return pimpl->begin();
 }
 
 void KNXInterface::loop() {
-    if (pimpl) pimpl->loop();
+    pimpl->loop();
 }
 
 bool KNXInterface::configure(const JsonDocument& config) {
-    return pimpl ? pimpl->configure(config) : false;
+    return pimpl->configure(config);
 }
 
 bool KNXInterface::isConnected() const {
-    return pimpl ? pimpl->isConnected() : false;
+    return pimpl->isConnected();
 }
 
 ThermostatStatus KNXInterface::getLastError() const {
-    return pimpl ? pimpl->getLastError() : ThermostatStatus::ERROR_CONFIGURATION;
+    return pimpl->getLastError();
 }
 
-bool KNXInterface::setPhysicalAddress(uint8_t area, uint8_t line, uint8_t device) {
-    return pimpl ? pimpl->setPhysicalAddress(area, line, device) : false;
+const char* KNXInterface::getLastErrorMessage() const {
+    return pimpl->getLastErrorMessage();
 }
 
-bool KNXInterface::setGroupAddress(uint8_t main, uint8_t middle, uint8_t sub, const char* name) {
-    return pimpl ? pimpl->setGroupAddress(main, middle, sub, name) : false;
+void KNXInterface::clearError() {
+    pimpl->clearError();
 }
 
-bool KNXInterface::sendValue(const char* gaName, float value) {
-    return pimpl ? pimpl->sendValue(gaName, value) : false;
+void KNXInterface::getConfig(JsonDocument& config) const {
+    JsonObject knx = config["knx"].to<JsonObject>();
+    
+    JsonObject physical = knx["physical"].to<JsonObject>();
+    physical["area"] = 1;
+    physical["line"] = 1;
+    physical["member"] = 1;
+    
+    JsonObject ga = knx["ga"].to<JsonObject>();
+    for (const auto& pair : pimpl->groupAddresses) {
+        JsonObject obj = ga[pair.first.c_str()].to<JsonObject>();
+        obj["main"] = knx.address_to_GA(pair.second).main;
+        obj["middle"] = knx.address_to_GA(pair.second).middle;
+        obj["sub"] = knx.address_to_GA(pair.second).sub;
+    }
 }
 
-bool KNXInterface::sendStatus(const char* gaName, bool status) {
-    return pimpl ? pimpl->sendStatus(gaName, status) : false;
+void KNXInterface::setTemperatureGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("temperature", ga.main, ga.middle, ga.sub);
+}
+
+void KNXInterface::setHumidityGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("humidity", ga.main, ga.middle, ga.sub);
+}
+
+void KNXInterface::setPressureGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("pressure", ga.main, ga.middle, ga.sub);
+}
+
+void KNXInterface::setSetpointGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("setpoint", ga.main, ga.middle, ga.sub);
+}
+
+void KNXInterface::setValvePositionGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("valve", ga.main, ga.middle, ga.sub);
+}
+
+void KNXInterface::setModeGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("mode", ga.main, ga.middle, ga.sub);
+}
+
+void KNXInterface::setHeatingStateGA(const KnxGroupAddress& ga) {
+    pimpl->setGroupAddress("heating", ga.main, ga.middle, ga.sub);
+}
+
+bool KNXInterface::sendTemperature(float value) {
+    return pimpl->sendValue("temperature", value);
+}
+
+bool KNXInterface::sendHumidity(float value) {
+    return pimpl->sendValue("humidity", value);
+}
+
+bool KNXInterface::sendPressure(float value) {
+    return pimpl->sendValue("pressure", value);
+}
+
+bool KNXInterface::sendSetpoint(float value) {
+    return pimpl->sendValue("setpoint", value);
+}
+
+bool KNXInterface::sendValvePosition(float value) {
+    return pimpl->sendValue("valve", value);
+}
+
+bool KNXInterface::sendMode(ThermostatMode mode) {
+    return pimpl->sendValue("mode", static_cast<float>(mode));
+}
+
+bool KNXInterface::sendHeatingState(bool isHeating) {
+    return pimpl->sendStatus("heating", isHeating);
 }
 
 // Core functionality
@@ -197,69 +241,6 @@ void KNXInterface::disconnect() {
 }
 
 bool KNXInterface::validateConfig() const {
-    // Simplified implementation
-    return true;
-}
-
-void KNXInterface::getConfig(JsonDocument& config) const {
-    // Simplified implementation
-    JsonObject knx = config.createNestedObject("knx");
-    
-    // Physical address
-    JsonObject physical = knx.createNestedObject("physical");
-    physical["area"] = pimpl->knx.physical_address_get().area;
-    physical["line"] = pimpl->knx.physical_address_get().line;
-    physical["device"] = pimpl->knx.physical_address_get().device;
-    
-    // Group addresses
-    JsonObject ga = knx.createNestedObject("ga");
-    
-    // Helper function to add group addresses
-    auto addGA = [](JsonObject& obj, const KnxGroupAddress& ga) {
-        obj["area"] = ga.area;
-        obj["line"] = ga.line;
-        obj["device"] = ga.device;
-    };
-    
-    // Add all group addresses
-    for (const auto& pair : pimpl->groupAddresses) {
-        JsonObject obj = ga.createNestedObject(pair.first.c_str());
-        addGA(obj, pair.second);
-    }
-}
-
-// Data transmission
-bool KNXInterface::sendTemperature(float value) {
-    // Simplified implementation
-    return true;
-}
-
-bool KNXInterface::sendHumidity(float value) {
-    // Simplified implementation
-    return true;
-}
-
-bool KNXInterface::sendPressure(float value) {
-    // Simplified implementation
-    return true;
-}
-
-bool KNXInterface::sendSetpoint(float value) {
-    // Simplified implementation
-    return true;
-}
-
-bool KNXInterface::sendValvePosition(float value) {
-    // Simplified implementation
-    return true;
-}
-
-bool KNXInterface::sendMode(ThermostatMode mode) {
-    // Simplified implementation
-    return true;
-}
-
-bool KNXInterface::sendHeatingState(bool isHeating) {
     // Simplified implementation
     return true;
 }
@@ -283,35 +264,6 @@ void KNXInterface::registerProtocolManager(ProtocolManager* manager) {
     if (pimpl) {
         this->protocolManager = manager;
     }
-}
-
-// KNX specific methods
-void KNXInterface::setTemperatureGA(uint8_t area, uint8_t line, uint8_t device) {
-    pimpl->knx.groupWrite2ByteFloat(area, line, device, 0.0f);
-}
-
-void KNXInterface::setHumidityGA(const KnxGroupAddress& ga) {
-    pimpl->knx.groupWrite2ByteFloat(ga.area, ga.line, ga.device, 0.0f);
-}
-
-void KNXInterface::setPressureGA(const KnxGroupAddress& ga) {
-    pimpl->knx.groupWrite2ByteFloat(ga.area, ga.line, ga.device, 0.0f);
-}
-
-void KNXInterface::setSetpointGA(uint8_t area, uint8_t line, uint8_t device) {
-    pimpl->knx.groupWrite2ByteFloat(area, line, device, 0.0f);
-}
-
-void KNXInterface::setValvePositionGA(const KnxGroupAddress& ga) {
-    pimpl->knx.groupWrite2ByteFloat(ga.area, ga.line, ga.device, 0.0f);
-}
-
-void KNXInterface::setModeGA(uint8_t area, uint8_t line, uint8_t device) {
-    pimpl->knx.groupWriteBool(area, line, device, false);
-}
-
-void KNXInterface::setHeatingStateGA(const KnxGroupAddress& ga) {
-    pimpl->knx.groupWriteBool(ga.area, ga.line, ga.device, false);
 }
 
 // Helper methods

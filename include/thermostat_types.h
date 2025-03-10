@@ -26,11 +26,13 @@ struct ThermostatLimits {
 // Status codes for operations
 enum class ThermostatStatus : int8_t {
     OK = 0,
-    ERROR_CONFIGURATION,
-    ERROR_COMMUNICATION,
-    ERROR_SENSOR_READ,
-    ERROR_CONTROL,
-    ERROR_STORAGE
+    WARNING = 1,
+    ERROR_CONFIGURATION = -1,
+    ERROR_COMMUNICATION = -2,
+    ERROR_SENSOR = -3,
+    ERROR_SENSOR_READ = -4,
+    ERROR_CONTROL = -5,
+    ERROR_STORAGE = -6
 };
 
 // Command sources for protocol interfaces
@@ -68,10 +70,14 @@ inline const char* getThermostatStatusString(ThermostatStatus status) {
     switch (status) {
         case ThermostatStatus::OK:
             return "OK";
+        case ThermostatStatus::WARNING:
+            return "WARNING";
         case ThermostatStatus::ERROR_CONFIGURATION:
             return "Configuration Error";
         case ThermostatStatus::ERROR_COMMUNICATION:
             return "Communication Error";
+        case ThermostatStatus::ERROR_SENSOR:
+            return "Sensor Error";
         case ThermostatStatus::ERROR_SENSOR_READ:
             return "Sensor Read Error";
         case ThermostatStatus::ERROR_CONTROL:
@@ -136,8 +142,10 @@ namespace ArduinoJson {
             static void toJson(const ThermostatStatus& src, JsonVariant dst) {
                 switch (src) {
                     case ThermostatStatus::OK: dst.set("OK"); break;
+                    case ThermostatStatus::WARNING: dst.set("WARNING"); break;
                     case ThermostatStatus::ERROR_CONFIGURATION: dst.set("Configuration Error"); break;
                     case ThermostatStatus::ERROR_COMMUNICATION: dst.set("Communication Error"); break;
+                    case ThermostatStatus::ERROR_SENSOR: dst.set("Sensor Error"); break;
                     case ThermostatStatus::ERROR_SENSOR_READ: dst.set("Sensor Read Error"); break;
                     case ThermostatStatus::ERROR_CONTROL: dst.set("Control Error"); break;
                     case ThermostatStatus::ERROR_STORAGE: dst.set("Storage Error"); break;

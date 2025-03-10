@@ -1,42 +1,28 @@
 #include "sensors/bme280_sensor_interface.h"
-#include <Arduino.h>
+#include <Wire.h>
+#include <esp_log.h>
 
-BME280SensorInterface::BME280SensorInterface(uint8_t i2cAddress) 
-    : address(i2cAddress), 
-      temperature(0.0f), 
-      humidity(0.0f), 
-      pressure(0.0f), 
-      lastError(ThermostatStatus::OK), 
-      lastReadTime(0) {
-    memset(errorMessage, 0, sizeof(errorMessage));
+static const char* TAG = "BME280";
+
+BME280SensorInterface::BME280SensorInterface() : lastError(ThermostatStatus::OK) {
+    memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
 bool BME280SensorInterface::begin() {
-    if (!bme.begin(address)) {
+    if (!bme.begin(BME280_ADDRESS_ALTERNATE)) {
+        snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Could not find BME280 sensor");
         lastError = ThermostatStatus::ERROR_SENSOR;
-        snprintf(errorMessage, sizeof(errorMessage), "Could not find BME280 sensor at address 0x%02X", address);
         return false;
     }
     
-    // Set up the BME280 sensor
     bme.setSampling(Adafruit_BME280::MODE_NORMAL,
-                    Adafruit_BME280::SAMPLING_X1,  // temperature
-                    Adafruit_BME280::SAMPLING_X1,  // pressure
-                    Adafruit_BME280::SAMPLING_X1,  // humidity
-                    Adafruit_BME280::FILTER_OFF,
-                    Adafruit_BME280::STANDBY_MS_1000);
+                    Adafruit_BME280::SAMPLING_X16,  // temperature
+                    Adafruit_BME280::SAMPLING_X16,  // pressure
+                    Adafruit_BME280::SAMPLING_X16,  // humidity
+                    Adafruit_BME280::FILTER_X16,
+                    Adafruit_BME280::STANDBY_MS_0_5);
     
-    lastReadTime = millis();
-    updateReadings();
     return true;
-}
-
-void BME280SensorInterface::loop() {
-    unsigned long currentTime = millis();
-    if (currentTime - lastReadTime >= 1000) { // Update every second
-        updateReadings();
-        lastReadTime = currentTime;
-    }
 }
 
 float BME280SensorInterface::getTemperature() const {
@@ -56,33 +42,36 @@ ThermostatStatus BME280SensorInterface::getLastError() const {
 }
 
 const char* BME280SensorInterface::getLastErrorMessage() const {
-    return errorMessage;
+    return lastErrorMessage;
 }
 
 void BME280SensorInterface::clearError() {
     lastError = ThermostatStatus::OK;
-    memset(errorMessage, 0, sizeof(errorMessage));
+    memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
 void BME280SensorInterface::updateReadings() {
     if (lastError != ThermostatStatus::OK && lastError != ThermostatStatus::WARNING) {
-        // Try to reconnect if there was an error
-        if (!bme.begin(address)) {
+        if (!begin()) {
+            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to reinitialize BME280");
             lastError = ThermostatStatus::ERROR_SENSOR;
-            snprintf(errorMessage, sizeof(errorMessage), "Failed to reconnect to BME280 sensor");
             return;
         }
-        clearError();
     }
     
-    // Read sensor data
-    temperature = bme.readTemperature();
-    humidity = bme.readHumidity();
-    pressure = bme.readPressure() / 100.0F; // Convert Pa to hPa
+    float newTemp = bme.readTemperature();
+    float newHumidity = bme.readHumidity();
+    float newPressure = bme.readPressure() / 100.0F;
     
-    // Check for invalid readings
-    if (isnan(temperature) || isnan(humidity) || isnan(pressure)) {
+    if (isnan(newTemp) || isnan(newHumidity) || isnan(newPressure)) {
+        snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to read from BME280");
         lastError = ThermostatStatus::WARNING;
-        snprintf(errorMessage, sizeof(errorMessage), "Invalid sensor readings detected");
+        return;
     }
+    
+    temperature = newTemp;
+    humidity = newHumidity;
+    pressure = newPressure;
+    
+    clearError();
 } 

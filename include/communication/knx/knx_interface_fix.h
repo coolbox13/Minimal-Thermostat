@@ -10,6 +10,6 @@ class AsyncWebServer;
 #endif
 
 // Now include the KNX library
-#include "../../lib/esp-knx-ip/esp-knx-ip.h"
+#include <esp-knx-ip.h>
 
 #endif // KNX_INTERFACE_FIX_H 
