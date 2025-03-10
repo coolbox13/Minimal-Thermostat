@@ -118,7 +118,7 @@ void ESPWebServer::setupRoutes() {
             requestAuthentication();
             return;
         }
-        configManager->reset();
+        configManager->resetToDefaults();
         request->send(200, "application/json", "{\"status\":\"ok\"}");
         ESP.restart();
     });
@@ -146,7 +146,7 @@ bool ESPWebServer::handleFileRead(String path) {
     return false;
 }
 
-String ESPWebServer::getContentType(String filename) {
+String ESPWebServer::getContentType(const String &filename) {
     if (filename.endsWith(".html")) return "text/html";
     else if (filename.endsWith(".css")) return "text/css";
     else if (filename.endsWith(".js")) return "application/javascript";
@@ -183,7 +183,7 @@ void ESPWebServer::requestAuthentication() {
 }
 
 String ESPWebServer::generateHtml() {
-    return HtmlGenerator::generatePage(thermostatState, configManager, pidController);
+    return HtmlGenerator::generatePage(thermostatState, static_cast<ConfigInterface*>(configManager), pidController);
 }
 
 String ESPWebServer::generateStatusJson() {
@@ -223,7 +223,7 @@ String ESPWebServer::generateConfigJson() {
     
     // Protocol configuration
     doc["knx"]["enabled"] = configManager->getKnxEnabled();
-    doc["mqtt"]["enabled"] = configManager->getMQTTEnabled();
+    doc["mqtt"]["enabled"] = configManager->getMqttEnabled();
     
     String json;
     serializeJson(doc, json);

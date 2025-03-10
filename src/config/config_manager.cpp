@@ -255,16 +255,12 @@ void ConfigManager::getKnxPhysicalAddress(uint8_t& area, uint8_t& line, uint8_t&
     member = knxPhysicalAddress.member;
 }
 
-uint8_t ConfigManager::getKnxPhysicalArea() const {
-    return knxPhysicalAddress.area;
+bool ConfigManager::getKnxEnabled() const {
+    return knxEnabled;
 }
 
-uint8_t ConfigManager::getKnxPhysicalLine() const {
-    return knxPhysicalAddress.line;
-}
-
-uint8_t ConfigManager::getKnxPhysicalMember() const {
-    return knxPhysicalAddress.member;
+void ConfigManager::setKnxEnabled(bool enabled) {
+    knxEnabled = enabled;
 }
 
 const char* ConfigManager::getDeviceName() const {
@@ -279,15 +275,7 @@ const char* ConfigManager::getWebPassword() const {
     return webPassword;
 }
 
-bool ConfigManager::getKnxEnabled() const {
-    return knxEnabled;
-}
-
-void ConfigManager::setKnxEnabled(bool enabled) {
-    knxEnabled = enabled;
-}
-
-bool ConfigManager::getMQTTEnabled() const {
+bool ConfigManager::getMqttEnabled() const {
     return mqttEnabled;
 }
 
@@ -295,38 +283,6 @@ void ConfigManager::setMQTTEnabled(bool enabled) {
     mqttEnabled = enabled;
 }
 
-const char* ConfigManager::getMQTTServer() const {
-    return mqttServer;
-}
-
-uint16_t ConfigManager::getMQTTPort() const {
-    return mqttPort;
-}
-
 void ConfigManager::setMQTTPort(uint16_t port) {
     mqttPort = port;
-}
-
-const char* ConfigManager::getMQTTUser() const {
-    return mqttUser;
-}
-
-const char* ConfigManager::getMQTTPassword() const {
-    return mqttPassword;
-}
-
-const char* ConfigManager::getMQTTClientId() const {
-    return mqttClientId;
-}
-
-const char* ConfigManager::getMQTTTopicPrefix() const {
-    return mqttTopicPrefix;
-}
-
-const PIDConfig& ConfigManager::getPidConfig() const {
-    return pidConfig;
-}
-
-void ConfigManager::setPidConfig(const PIDConfig& config) {
-    pidConfig = config;
 }

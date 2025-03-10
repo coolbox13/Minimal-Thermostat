@@ -1,4 +1,27 @@
 #include "web/web_auth_manager.h"
+
+#ifdef HTTP_DELETE
+#undef HTTP_DELETE
+#endif
+#ifdef HTTP_GET
+#undef HTTP_GET
+#endif
+#ifdef HTTP_HEAD
+#undef HTTP_HEAD
+#endif
+#ifdef HTTP_POST
+#undef HTTP_POST
+#endif
+#ifdef HTTP_PUT
+#undef HTTP_PUT
+#endif
+#ifdef HTTP_OPTIONS
+#undef HTTP_OPTIONS
+#endif
+#ifdef HTTP_PATCH
+#undef HTTP_PATCH
+#endif
+
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
 #include <Arduino.h>
@@ -8,12 +31,6 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include "config_manager.h"
-
-#ifdef ESP32
-  #include <WebServer.h>
-#elif defined(ESP8266)
-  #include <ESP8266WebServer.h>
-#endif
 
 static const char* TAG = "WebAuthManager";
 

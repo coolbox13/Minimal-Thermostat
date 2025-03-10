@@ -89,6 +89,15 @@ public:
      */
     String generateConfigJson();
 
+    /**
+     * @brief Get the content type for a file
+     * 
+     * @param filename File name
+     * @return String content type
+     */
+    String getContentType(const String &filename);
+
+
 private:
     AsyncWebServer server;
     ConfigManager* configManager;
@@ -120,5 +129,5 @@ private:
     bool handleFileRead(String path);
     void handleJsonResponse(String& json);
     void handleError(const char* message, int code);
-    String getContentType(String filename);
+    //String getContentType(const String &filename);
 }; 

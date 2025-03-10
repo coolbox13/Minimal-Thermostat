@@ -29,6 +29,7 @@ PIDController pidController;
 ESPWebServer webServer(&configManager, &thermostatState);
 WebInterface webInterface(&configManager, &sensorInterface, &pidController, &thermostatState, &protocolManager);
 KNXInterface knxInterface(&thermostatState);
+MQTTInterface mqttInterface(&thermostatState);
 
 void setup() {
     // Initialize serial communication
@@ -71,39 +72,33 @@ void setup() {
         return;
     }
 
-    // Configure and add MQTT interface if enabled
-    if (configManager.getMQTTEnabled()) {
-        StaticJsonDocument<512> mqttConfig;
-        mqttConfig["enabled"] = true;
-        mqttConfig["server"] = configManager.getMQTTServer();
-        mqttConfig["port"] = configManager.getMQTTPort();
-        mqttConfig["username"] = configManager.getMQTTUser();
-        mqttConfig["password"] = configManager.getMQTTPassword();
-        mqttConfig["clientId"] = configManager.getDeviceName();
-        mqttConfig["topicPrefix"] = "esp32/thermostat/";
-
-        auto mqttInterface = new MQTTInterface(&thermostatState);
-        if (mqttInterface->configure(mqttConfig)) {
-            protocolManager.addProtocol(mqttInterface);
-            Serial2.println("MQTT interface configured and added");
-        } else {
-            Serial2.println("Failed to configure MQTT interface");
-            delete mqttInterface;
+    // MQTT setup
+    if (configManager.getMqttEnabled()) {
+        Serial2.println("MQTT is enabled");
+        mqttInterface.setServer(configManager.getMQTTServer(), configManager.getMQTTPort());
+        if (configManager.getMQTTUser()[0] != '\0') {
+            mqttInterface.setCredentials(configManager.getMQTTUser(), configManager.getMQTTPassword());
         }
+        
+        // Add to protocol manager
+        mqttInterface.begin();
+        protocolManager.addProtocol(&mqttInterface);
+        Serial2.println("MQTT interface added");
     }
 
-    // Configure and add KNX interface if enabled
+    // KNX setup
     if (configManager.getKnxEnabled()) {
-        StaticJsonDocument<512> knxConfig;
-        JsonObject physical = knxConfig.createNestedObject("physical");
-        physical["area"] = configManager.getKnxPhysicalArea();
-        physical["line"] = configManager.getKnxPhysicalLine();
-        physical["device"] = configManager.getKnxPhysicalMember();
-
-        if (!knxInterface.begin()) {
-            Serial2.println("Failed to initialize KNX interface");
-            return;
-        }
+        ESP_LOGI(TAG, "Initializing KNX interface");
+        // Configure KNX settings
+        DynamicJsonDocument knxConfig(512);
+        uint8_t area, line, member;
+        configManager.getKnxPhysicalAddress(area, line, member);
+        knxConfig["physical"]["area"] = area;
+        knxConfig["physical"]["line"] = line;
+        knxConfig["physical"]["device"] = member;
+        
+        // Add more KNX configuration...
+        knxInterface.configure(knxConfig);
         protocolManager.addProtocol(&knxInterface);
         Serial2.println("KNX interface configured and added");
     }

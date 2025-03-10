@@ -48,10 +48,8 @@ public:
     // Device settings
     const char* getDeviceName() const override;
     void setDeviceName(const char* name) override;
-    void setSendInterval(uint32_t interval);
-    uint32_t getSendInterval() const;
-    unsigned long getSendInterval() const override { return static_cast<unsigned long>(getSendInterval()); }
-    void setSendInterval(unsigned long interval) override { setSendInterval(static_cast<uint32_t>(interval)); }
+    unsigned long getSendInterval() const override;
+    void setSendInterval(unsigned long interval) override;
     void setPidInterval(uint32_t interval);
     uint32_t getPidInterval() const;
 
@@ -81,10 +79,10 @@ public:
     void getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) const;
     
     // MQTT settings
-    bool getMQTTEnabled() const { return mqttEnabled; }
-    bool getMqttEnabled() const override { return getMQTTEnabled(); }
-    void setMQTTEnabled(bool enabled);
+    bool getMqttEnabled() const override;
+    //bool getMqttEnabled() const override { return mqttEnabled; }
     void setMqttEnabled(bool enabled) override { setMQTTEnabled(enabled); }
+    void setMQTTEnabled(bool enabled);
     uint16_t getMQTTPort() const { return mqttPort; }
     const char* getMQTTServer() const { return mqttServer; }
     const char* getMQTTUser() const { return mqttUser; }
