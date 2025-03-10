@@ -36,24 +36,25 @@ public:
     
     bool configure(const JsonDocument& config) {
         // Configure KNX interface
-        if (config["physical"].is<JsonObject>()) {
-            JsonObject physical = config["physical"].as<JsonObject>();
-            uint8_t area = physical["area"] | 1;
-            uint8_t line = physical["line"] | 1;
-            uint8_t member = physical["member"] | 1;
+        if (config.containsKey("physical")) {
+            // Direct access without conversion
+            uint8_t area = config["physical"]["area"] | 1;
+            uint8_t line = config["physical"]["line"] | 1;
+            uint8_t member = config["physical"]["member"] | 1;
             
             knx.physical_address_set(knx.PA_to_address(area, line, member));
         }
         
         // Configure group addresses
-        if (config["ga"].is<JsonObject>()) {
-            JsonObject ga = config["ga"].as<JsonObject>();
-            for (JsonPair kv : ga) {
+        if (config.containsKey("ga")) {
+            for (JsonPair kv : config["ga"].template as<JsonObject>()) {
                 const char* name = kv.key().c_str();
-                JsonObject gaObj = kv.value().as<JsonObject>();
-                uint8_t main = gaObj["main"] | 0;
-                uint8_t middle = gaObj["middle"] | 0;
-                uint8_t sub = gaObj["sub"] | 0;
+                JsonVariant val = kv.value();
+                
+                // Direct access to avoid JsonObject conversion
+                uint8_t main = val["main"] | 0;
+                uint8_t middle = val["middle"] | 0;
+                uint8_t sub = val["sub"] | 0;
                 
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses[name] = addr;
@@ -128,7 +129,8 @@ private:
     std::map<std::string, address_t> groupAddresses;
 };
 
-KNXInterface::KNXInterface(ThermostatState* state) : pimpl(std::make_unique<Impl>(state)) {}
+// Use raw pointer initialization
+KNXInterface::KNXInterface(ThermostatState* state) : pimpl(new Impl(state)) {}
 KNXInterface::~KNXInterface() = default;
 
 bool KNXInterface::begin() {
