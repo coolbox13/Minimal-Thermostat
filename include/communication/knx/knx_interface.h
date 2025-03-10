@@ -2,16 +2,33 @@
 
 #include <memory>
 #include <ArduinoJson.h>
-#include "communication/knx/knx_interface_fix.h"
 #include "interfaces/protocol_interface.h"
 #include "protocol_types.h"
 #include "thermostat_types.h"
 #include "thermostat_state.h"
+
+// Forward declaration of AsyncWebServer to avoid compilation errors
+// This is a workaround for the esp-knx-ip library which expects AsyncWebServer
+#ifndef AsyncWebServer
+class AsyncWebServer;
+#endif
+
+// Now include the KNX library
 #include "esp-knx-ip.h"
 
 // Forward declarations
 class ThermostatState;
 class ProtocolManager;
+
+// Custom implementation of make_unique for C++11
+#if __cplusplus < 201402L
+namespace std {
+    template<typename T, typename... Args>
+    unique_ptr<T> make_unique(Args&&... args) {
+        return unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+}
+#endif
 
 struct KnxGroupAddress {
     uint8_t main;
@@ -77,6 +94,7 @@ public:
 private:
     ThermostatState* state;
     std::unique_ptr<Impl> pimpl;
+    ProtocolManager* protocolManager;
     
     // Helper methods
     bool validateGroupAddress(const KnxGroupAddress& ga) const;
@@ -84,17 +102,4 @@ private:
     void cleanupCallbacks();
     uint8_t modeToKnx(ThermostatMode mode) const;
     ThermostatMode knxToMode(uint8_t value) const;
-
-    ESPKNXIP knx;
-    bool enabled;
-    bool initialized;
-
-    // Group addresses
-    address_t temperatureGA;
-    address_t setpointGA;
-    address_t valveGA;
-    address_t modeGA;
-
-    void handleKnxEvent(message_t const &msg);
-    void updateKnxValues();
-}; 
+};

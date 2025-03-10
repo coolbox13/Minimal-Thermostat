@@ -116,6 +116,9 @@ public:
         return true;
     }
     
+    // Make KNXInterface a friend class so it can access private members
+    friend class KNXInterface;
+    
 private:
     ESPKNXIP knx;
     bool enabled;
@@ -157,19 +160,21 @@ void KNXInterface::clearError() {
 }
 
 void KNXInterface::getConfig(JsonDocument& config) const {
-    JsonObject knx = config["knx"].to<JsonObject>();
+    JsonObject knx = config.createNestedObject("knx");
     
-    JsonObject physical = knx["physical"].to<JsonObject>();
-    physical["area"] = 1;
-    physical["line"] = 1;
-    physical["member"] = 1;
+    JsonObject physical = knx.createNestedObject("physical");
+    address_t addr = pimpl->knx.physical_address_get();
+    physical["area"] = addr.pa.area;
+    physical["line"] = addr.pa.line;
+    physical["member"] = addr.pa.member;
     
-    JsonObject ga = knx["ga"].to<JsonObject>();
+    JsonObject ga = knx.createNestedObject("ga");
     for (const auto& pair : pimpl->groupAddresses) {
-        JsonObject obj = ga[pair.first.c_str()].to<JsonObject>();
-        obj["main"] = knx.address_to_GA(pair.second).main;
-        obj["middle"] = knx.address_to_GA(pair.second).middle;
-        obj["sub"] = knx.address_to_GA(pair.second).sub;
+        JsonObject obj = ga.createNestedObject(pair.first.c_str());
+        // Extract KNX group address components
+        obj["main"] = pair.second.ga.area;
+        obj["middle"] = pair.second.ga.line;
+        obj["sub"] = pair.second.ga.member;
     }
 }
 
@@ -288,4 +293,4 @@ uint8_t KNXInterface::modeToKnx(ThermostatMode mode) const {
 ThermostatMode KNXInterface::knxToMode(uint8_t value) const {
     // Simplified implementation
     return static_cast<ThermostatMode>(value);
-} 
+}
