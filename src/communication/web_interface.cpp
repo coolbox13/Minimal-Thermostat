@@ -27,32 +27,14 @@ WebInterface::~WebInterface() {
 }
 
 void WebInterface::begin() {
-    if (!LittleFS.begin()) {
-        ESP_LOGE(TAG, "An error occurred while mounting LittleFS");
-        return;
-    }
-
-    server.on("/", HTTP_GET, std::bind(&WebInterface::handleRoot, this, std::placeholders::_1));
-    server.on("/save", HTTP_POST, std::bind(&WebInterface::handleSave, this, std::placeholders::_1));
-    server.on("/status", HTTP_GET, std::bind(&WebInterface::handleGetStatus, this, std::placeholders::_1));
-    server.on("/setpoint", HTTP_POST, std::bind(&WebInterface::handleSetpoint, this, std::placeholders::_1));
-    server.on("/config", HTTP_POST, std::bind(&WebInterface::handleSaveConfig, this, std::placeholders::_1));
-    server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this, std::placeholders::_1));
-    server.on("/reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
-    server.onNotFound(std::bind(&WebInterface::handleNotFound, this, std::placeholders::_1));
-
-    // Initialize AsyncElegantOta
-    AsyncElegantOta.begin(&server, configManager->getWebUsername(), configManager->getWebPassword());
-    otaInitialized = true;
+    ESP_LOGI(TAG, "Starting web interface...");
     
+    // Note: LittleFS is now initialized in main.cpp
+    
+    // Initialize web server
     server.begin();
-
-    if (!MDNS.begin("thermostat")) {
-        ESP_LOGE(TAG, "Error setting up MDNS responder!");
-        return;
-    }
-
-    ESP_LOGI(TAG, "HTTP server started");
+    
+    ESP_LOGI(TAG, "Web interface started");
 }
 
 void WebInterface::end() {

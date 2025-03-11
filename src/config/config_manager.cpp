@@ -62,18 +62,23 @@ bool ConfigManager::begin() {
 }
 
 bool ConfigManager::loadConfig() {
-    File file = LittleFS.open("/config.json", "r");
-    if (!file) {
-        ESP_LOGW(TAG, "Failed to open config file, using defaults");
+    // Note: LittleFS is now initialized in main.cpp
+    
+    // Try to open the config file
+    File configFile = LittleFS.open("/config.json", "r");
+    if (!configFile) {
+        ESP_LOGE(TAG, "Failed to open config file");
+        lastError = ThermostatStatus::ERROR_CONFIGURATION;
         return false;
     }
 
     StaticJsonDocument<1024> doc;
-    DeserializationError error = deserializeJson(doc, file);
-    file.close();
+    DeserializationError error = deserializeJson(doc, configFile);
+    configFile.close();
 
     if (error) {
         ESP_LOGE(TAG, "Failed to parse config file: %s", error.c_str());
+        lastError = ThermostatStatus::ERROR_CONFIGURATION;
         return false;
     }
 
@@ -305,28 +310,46 @@ void ConfigManager::setSetpoint(float value) {
 
 // Add a basic WiFi setup implementation
 bool ConfigManager::setupWiFi() {
-    if (strlen(wifiSSID) == 0) {
-        ESP_LOGE(TAG, "WiFi SSID is not configured");
-        return false;
-    }
+    // Hardcoded credentials for debugging
+    const char* DEBUG_SSID = "coolbox_down";
+    const char* DEBUG_PASSWORD = "1313131313131";
     
-    ESP_LOGI(TAG, "Connecting to WiFi network: %s", wifiSSID);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(wifiSSID, wifiPassword);
+    ESP_LOGI(TAG, "Setting up WiFi with hardcoded credentials for debugging");
     
-    // Wait for connection
-    int timeout = 30; // 30 seconds timeout
-    while (WiFi.status() != WL_CONNECTED && timeout > 0) {
+    // Disconnect if already connected
+    if (WiFi.status() == WL_CONNECTED) {
+        ESP_LOGI(TAG, "WiFi already connected, disconnecting first...");
+        WiFi.disconnect(true);
         delay(1000);
-        ESP_LOGI(TAG, "Connecting to WiFi... %d", timeout);
-        timeout--;
     }
     
-    if (WiFi.status() != WL_CONNECTED) {
-        ESP_LOGE(TAG, "Failed to connect to WiFi");
-        return false;
+    // Set WiFi mode to station
+    WiFi.mode(WIFI_STA);
+    
+    // Connect using hardcoded credentials
+    WiFi.begin(DEBUG_SSID, DEBUG_PASSWORD);
+    
+    // Wait for connection with timeout
+    int attempts = 0;
+    const int MAX_ATTEMPTS = 20;
+    
+    ESP_LOGI(TAG, "Attempting to connect to WiFi network: %s", DEBUG_SSID);
+    
+    while (attempts < MAX_ATTEMPTS) {
+        if (WiFi.status() == WL_CONNECTED) {
+            ESP_LOGI(TAG, "Successfully connected to WiFi! IP: %s", WiFi.localIP().toString().c_str());
+            return true;
+        }
+        
+        delay(500);
+        attempts++;
+        
+        // Only log every second attempt to reduce spam
+        if (attempts % 2 == 0) {
+            ESP_LOGI(TAG, "Still trying to connect... attempt %d/%d", attempts, MAX_ATTEMPTS);
+        }
     }
     
-    ESP_LOGI(TAG, "Connected to WiFi. IP address: %s", WiFi.localIP().toString().c_str());
-    return true;
+    ESP_LOGE(TAG, "Failed to connect to WiFi after %d attempts", MAX_ATTEMPTS);
+    return false;
 }

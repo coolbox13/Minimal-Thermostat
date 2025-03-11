@@ -6,6 +6,10 @@
 #include <esp_log.h>
 #include "thermostat_types.h"
 
+// I2C pins for BME280 sensor
+#define BME280_SDA_PIN 21
+#define BME280_SCL_PIN 22
+
 class BME280SensorInterface : public SensorInterface {
 public:
     BME280SensorInterface();
@@ -41,6 +45,9 @@ private:
     float pressureOffset;
     unsigned long updateInterval;
     unsigned long lastUpdateTime;
+    unsigned long firstErrorTime;  // Time when sensor first reported as unavailable
+    bool sensorAvailable;          // Track if sensor is properly initialized
+    bool stopErrorMessages;        // Flag to stop continuous error messages
     ThermostatStatus lastError;
     char lastErrorMessage[128];
 };

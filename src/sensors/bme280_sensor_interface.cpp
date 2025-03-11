@@ -13,43 +13,51 @@ BME280SensorInterface::BME280SensorInterface()
     , pressureOffset(0)
     , updateInterval(30000)  // Default 30 seconds
     , lastUpdateTime(0)
+    , firstErrorTime(0)
+    , sensorAvailable(false)
+    , stopErrorMessages(false)
     , lastError(ThermostatStatus::OK) {
     memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
 bool BME280SensorInterface::begin() {
-    Wire.begin(); // Initialize I2C bus
+    ESP_LOGI(TAG, "Initializing BME280 sensor...");
     
-    // First try I2C with the alternate address (0x76)
-    if (bme.begin(BME280_ADDRESS_ALTERNATE, &Wire)) {
-        ESP_LOGI(TAG, "BME280 found at address 0x76 (I2C)");
-        setSensorMode();
+    // Initialize I2C bus
+    Wire.begin(BME280_SDA_PIN, BME280_SCL_PIN);
+    delay(100); // Brief delay to ensure I2C bus is ready
+    
+    // Simple initialization approach like in the test script
+    if (bme.begin(0x76)) {
+        ESP_LOGI(TAG, "BME280 sensor found and initialized!");
+        sensorAvailable = true;
+        stopErrorMessages = false;
+        clearError();
         return true;
     }
     
-    // Then try I2C with the default address (0x77)
-    if (bme.begin(BME280_ADDRESS, &Wire)) {
-        ESP_LOGI(TAG, "BME280 found at address 0x77 (I2C)");
-        setSensorMode();
+    // Try alternate address as fallback
+    if (bme.begin(0x77)) {
+        ESP_LOGI(TAG, "BME280 sensor found at alternate address and initialized!");
+        sensorAvailable = true;
+        stopErrorMessages = false;
+        clearError();
         return true;
     }
     
-    // If I2C fails, try SPI (unlikely to work based on your error)
-    // This requires proper CS pin setup
-    if (bme.begin()) {
-        ESP_LOGI(TAG, "BME280 found using SPI");
-        setSensorMode();
-        return true;
-    }
-    
-    // All connection attempts failed
-    snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Could not find BME280 sensor");
+    // Sensor not found - log once and continue
+    ESP_LOGE(TAG, "Could not find BME280 sensor! Check your wiring.");
+    ESP_LOGW(TAG, "Continuing without BME280 sensor - other functionality will work");
+    sensorAvailable = false;
+    stopErrorMessages = true; // Don't log any more errors
     lastError = ThermostatStatus::ERROR_SENSOR;
-    return false;
+    snprintf(lastErrorMessage, sizeof(lastErrorMessage)-1, "Could not find BME280 sensor");
+    
+    return false; // Return false but system will continue
 }
 
-// Move sensor configuration to a separate function
 void BME280SensorInterface::setSensorMode() {
+    // Use default settings - the sensor works fine with these in the test script
     bme.setSampling(Adafruit_BME280::MODE_NORMAL,
                    Adafruit_BME280::SAMPLING_X16,  // temperature
                    Adafruit_BME280::SAMPLING_X16,  // pressure
@@ -59,6 +67,13 @@ void BME280SensorInterface::setSensorMode() {
 }
 
 void BME280SensorInterface::loop() {
+    // If sensor is not available, just return without doing anything
+    // This allows other system functionality to continue
+    if (!sensorAvailable) {
+        return;
+    }
+    
+    // Only update readings at the specified interval if sensor is available
     unsigned long currentTime = millis();
     if (currentTime - lastUpdateTime >= updateInterval) {
         updateReadings();
@@ -67,28 +82,37 @@ void BME280SensorInterface::loop() {
 }
 
 void BME280SensorInterface::updateReadings() {
-    if (lastError != ThermostatStatus::OK && lastError != ThermostatStatus::WARNING) {
-        if (!begin()) {
-            snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to reinitialize BME280");
-            lastError = ThermostatStatus::ERROR_SENSOR;
-            return;
-        }
+    // Skip if sensor is not available
+    if (!sensorAvailable) {
+        return; // Just return silently
     }
     
-    float newTemp = bme.readTemperature() + temperatureOffset;
-    float newHumidity = bme.readHumidity() + humidityOffset;
-    float newPressure = (bme.readPressure() / 100.0F) + pressureOffset;
+    // Simple reading approach like in the test script
+    float tempValue = bme.readTemperature();
+    float humValue = bme.readHumidity();
+    float pressValue = bme.readPressure() / 100.0F; // Convert Pa to hPa
     
-    if (isnan(newTemp) || isnan(newHumidity) || isnan(newPressure)) {
-        snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Failed to read from BME280");
-        lastError = ThermostatStatus::WARNING;
+    // Check for invalid readings
+    if (isnan(tempValue) || isnan(humValue) || isnan(pressValue)) {
+        ESP_LOGW(TAG, "Invalid sensor readings detected");
+        sensorAvailable = false;
+        lastError = ThermostatStatus::ERROR_SENSOR;
+        snprintf(lastErrorMessage, sizeof(lastErrorMessage)-1, "Invalid sensor readings");
         return;
     }
     
-    temperature = newTemp;
-    humidity = newHumidity;
-    pressure = newPressure;
+    // Apply calibration offsets
+    temperature = tempValue + temperatureOffset;
+    humidity = humValue + humidityOffset;
+    if (humidity < 0) humidity = 0;
+    if (humidity > 100) humidity = 100;
+    pressure = pressValue + pressureOffset;
     
+    // Log the readings at debug level
+    ESP_LOGD(TAG, "Sensor readings: Temp=%.2f°C, Humidity=%.2f%%, Pressure=%.2fhPa", 
+             temperature, humidity, pressure);
+    
+    // Clear any previous errors
     clearError();
 }
 
@@ -97,7 +121,7 @@ void BME280SensorInterface::setUpdateInterval(unsigned long interval) {
 }
 
 bool BME280SensorInterface::isAvailable() const {
-    return lastError != ThermostatStatus::ERROR_SENSOR;
+    return sensorAvailable;
 }
 
 float BME280SensorInterface::getTemperature() const {

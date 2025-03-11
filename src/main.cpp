@@ -34,48 +34,58 @@ MQTTInterface mqttInterface(&thermostatState);
 
 void setup() {
     // Initialize serial communication
-    Serial2.begin(115200);
-    Serial2.println("ESP32 KNX Thermostat starting...");
+    Serial.begin(115200);
+    ESP_LOGI(TAG, "Starting ESP32 KNX Thermostat...");
     
-    // Initialize file system
-    if (!LittleFS.begin()) {
-        Serial2.println("Failed to mount file system");
-        return;
+    // Initialize LittleFS - this is the only place where LittleFS should be initialized
+    if (!LittleFS.begin(true)) {  // Format on failure
+        ESP_LOGE(TAG, "Failed to mount LittleFS - formatting");
+        if (!LittleFS.format()) {
+            ESP_LOGE(TAG, "Failed to format LittleFS");
+            return;
+        }
+        if (!LittleFS.begin()) {
+            ESP_LOGE(TAG, "Failed to mount LittleFS after formatting");
+            return;
+        }
     }
+    ESP_LOGI(TAG, "LittleFS mounted successfully");
     
     // Initialize configuration
     if (!configManager.begin()) {
-        Serial2.println("Failed to initialize configuration");
+        Serial.println("Failed to initialize configuration");
         return;
     }
 
     // Setup WiFi
     if (!configManager.setupWiFi()) {
-        Serial2.println("Failed to connect to WiFi");
+        Serial.println("Failed to connect to WiFi");
         return;
     }
 
-    // Initialize sensor
+    // Initialize sensor - try once at startup
     if (!sensorInterface.begin()) {
-        Serial2.println("Failed to initialize BME280 sensor");
-        return;
+        Serial.println("BME280 sensor not available - continuing with other functionality");
+        ESP_LOGW(TAG, "System will operate without temperature/humidity/pressure readings");
+    } else {
+        ESP_LOGI(TAG, "BME280 sensor initialized successfully");
     }
 
     // Initialize PID controller
     if (!pidController.begin()) {
-        Serial2.println("Failed to initialize PID controller");
+        Serial.println("Failed to initialize PID controller");
         return;
     }
 
     // Initialize protocol manager
     if (!protocolManager.begin()) {
-        Serial2.println("Failed to initialize protocol manager");
+        Serial.println("Failed to initialize protocol manager");
         return;
     }
 
     // MQTT setup
     if (configManager.getMqttEnabled()) {
-        Serial2.println("MQTT is enabled");
+        Serial.println("MQTT is enabled");
         mqttInterface.setServer(configManager.getMQTTServer(), configManager.getMQTTPort());
         if (configManager.getMQTTUser()[0] != '\0') {
             mqttInterface.setCredentials(configManager.getMQTTUser(), configManager.getMQTTPassword());
@@ -84,7 +94,7 @@ void setup() {
         // Add to protocol manager
         mqttInterface.begin();
         protocolManager.addProtocol(&mqttInterface);
-        Serial2.println("MQTT interface added");
+        Serial.println("MQTT interface added");
     }
 
     // KNX setup
@@ -101,16 +111,16 @@ void setup() {
         // Add more KNX configuration...
         knxInterface.configure(knxConfig);
         protocolManager.addProtocol(&knxInterface);
-        Serial2.println("KNX interface configured and added");
+        Serial.println("KNX interface configured and added");
     }
 
     // Initialize web server
     if (!webServer.begin()) {
-        Serial2.println("Failed to start web server");
+        Serial.println("Failed to start web server");
         return;
     }
 
-    Serial2.println("ESP32 KNX Thermostat initialized successfully");
+    ESP_LOGI(TAG, "ESP32 KNX Thermostat initialized successfully");
 }
 
 void loop() {
@@ -123,8 +133,11 @@ void loop() {
         thermostatState.setCurrentHumidity(sensorInterface.getHumidity());
         thermostatState.setCurrentPressure(sensorInterface.getPressure());
     } else {
-        // Use default values or disable temperature-dependent functions
-        ESP_LOGW(TAG, "BME280 sensor not available");
+        // Sensor not available - use default values
+        // This allows the system to continue functioning with default values
+        thermostatState.setCurrentTemperature(21.0); // Default room temperature
+        thermostatState.setCurrentHumidity(50.0);    // Default humidity
+        thermostatState.setCurrentPressure(1013.25); // Default pressure (sea level)
     }
 
     // Update web interface

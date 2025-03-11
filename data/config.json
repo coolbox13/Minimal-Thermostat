@@ -1,0 +1,9 @@
+{
+    "wifi": {
+        "ssid": "coolbox_down",
+        "password": "1313131313131"
+    },
+    "device": {
+        "name": "ESP32Thermostat"
+    }
+}

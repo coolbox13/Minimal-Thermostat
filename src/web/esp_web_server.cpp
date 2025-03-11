@@ -18,13 +18,17 @@ ESPWebServer::ESPWebServer(ConfigManager* configManager, ThermostatState* state)
 }
 
 bool ESPWebServer::begin() {
-    if (!LittleFS.begin()) {
-        lastError = ThermostatStatus::ERROR_FILESYSTEM;
-        return false;
-    }
-
+    ESP_LOGI(TAG, "Starting web server...");
+    
+    // Initialize SPIFFS
+    // Note: LittleFS is now initialized in main.cpp
+    
+    // Setup routes
     setupRoutes();
+    
+    // Start server
     server.begin();
+    ESP_LOGI(TAG, "Web server started");
     return true;
 }
 
