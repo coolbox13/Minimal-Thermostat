@@ -4,6 +4,7 @@
 #include <ESPmDNS.h>
 #include "web/base64.h"
 #include "interfaces/sensor_interface.h"
+#include <ElegantOTA.h>
 
 static const char* TAG = "WebInterface";
 
