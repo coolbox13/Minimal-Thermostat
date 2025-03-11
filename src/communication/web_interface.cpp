@@ -8,15 +8,17 @@
 
 static const char* TAG = "WebInterface";
 
+// Add to WebInterface constructor to initialize otaInitialized
 WebInterface::WebInterface(ConfigManager* configManager, SensorInterface* sensorInterface, 
-                         PIDController* pidController, ThermostatState* thermostatState,
-                         ProtocolManager* protocolManager)
+                          PIDController* pidController, ThermostatState* thermostatState,
+                          ProtocolManager* protocolManager)
     : server(80)
     , configManager(configManager)
     , sensorInterface(sensorInterface)
     , pidController(pidController)
     , thermostatState(thermostatState)
-    , protocolManager(protocolManager) {
+    , protocolManager(protocolManager)
+    , otaInitialized(false) {
     ESP_LOGI(TAG, "Web interface initialized");
 }
 
@@ -39,7 +41,10 @@ void WebInterface::begin() {
     server.on("/reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
     server.onNotFound(std::bind(&WebInterface::handleNotFound, this, std::placeholders::_1));
 
-    AsyncElegantOta.begin(&server);
+    // Initialize AsyncElegantOta
+    AsyncElegantOta.begin(&server, configManager->getWebUsername(), configManager->getWebPassword());
+    otaInitialized = true;
+    
     server.begin();
 
     if (!MDNS.begin("thermostat")) {
@@ -430,14 +435,7 @@ void WebInterface::handleNotFound(AsyncWebServerRequest *request) {
     }
 }
 
-// Add a basic WebInterface::loop implementation
 void WebInterface::loop() {
-    // Handle OTA updates if initialized
-    if (otaInitialized) {
-        elegantOTA.loop();
-    }
-    
-    // Perform any other periodic tasks here
-    
-    // Process incoming requests (this is actually handled by ESPAsyncWebServer in the background)
+    // We don't need to call elegantOTA.loop() because AsyncElegantOta
+    // uses the AsyncWebServer which doesn't require a loop() method
 }

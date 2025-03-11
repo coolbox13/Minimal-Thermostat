@@ -4,12 +4,8 @@
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <LittleFS.h>
-#include "web/elegant_ota_async.h"
-#include "config_manager.h"
-#include "pid_controller.h"
 #include "thermostat_state.h"
-#include "protocol_manager.h"
-#include "interfaces/sensor_interface.h"
+#include "config_manager.h"
 
 // Forward declarations
 class SensorInterface;
@@ -24,8 +20,8 @@ public:
     virtual ~WebInterface();
 
     void begin();
-    void loop();
     void end();
+    void loop();
     
     // Request handlers
     void handleRoot(AsyncWebServerRequest* request);
@@ -55,4 +51,5 @@ private:
     PIDController* pidController;
     ThermostatState* thermostatState;
     ProtocolManager* protocolManager;
+    bool otaInitialized;
 };

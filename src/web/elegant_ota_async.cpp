@@ -1,3 +1,4 @@
 #include "web/elegant_ota_async.h"
 
-AsyncElegantOtaClass AsyncElegantOta; 
+// Create the global instance
+AsyncElegantOtaClass AsyncElegantOta;
