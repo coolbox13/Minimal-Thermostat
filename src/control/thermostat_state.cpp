@@ -79,4 +79,20 @@ void ThermostatState::setMode(ThermostatMode mode) {
       modeCallback(mode);
     }
   }
+}
+
+bool ThermostatState::isValidTemperature(float value) const {
+  return value >= ThermostatLimits::MIN_TEMPERATURE && value <= ThermostatLimits::MAX_TEMPERATURE;
+}
+
+bool ThermostatState::isValidHumidity(float value) const {
+  return value >= 0.0f && value <= 100.0f;
+}
+
+bool ThermostatState::isValidPressure(float value) const {
+  return value >= 800.0f && value <= 1200.0f; // Standard atmospheric pressure range in hPa
+}
+
+bool ThermostatState::isValidValvePosition(float value) const {
+  return value >= 0.0f && value <= 100.0f;
 } 

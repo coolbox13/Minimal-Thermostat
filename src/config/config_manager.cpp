@@ -286,3 +286,47 @@ void ConfigManager::setMQTTEnabled(bool enabled) {
 void ConfigManager::setMQTTPort(uint16_t port) {
     mqttPort = port;
 }
+
+unsigned long ConfigManager::getSendInterval() const {
+    return static_cast<unsigned long>(sendInterval);
+}
+
+void ConfigManager::setSendInterval(unsigned long interval) {
+    sendInterval = static_cast<uint32_t>(interval);
+}
+
+float ConfigManager::getSetpoint() const {
+    return setpoint;
+}
+
+void ConfigManager::setSetpoint(float value) {
+    setpoint = value;
+}
+
+// Add a basic WiFi setup implementation
+bool ConfigManager::setupWiFi() {
+    if (strlen(wifiSSID) == 0) {
+        ESP_LOGE(TAG, "WiFi SSID is not configured");
+        return false;
+    }
+    
+    ESP_LOGI(TAG, "Connecting to WiFi network: %s", wifiSSID);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(wifiSSID, wifiPassword);
+    
+    // Wait for connection
+    int timeout = 30; // 30 seconds timeout
+    while (WiFi.status() != WL_CONNECTED && timeout > 0) {
+        delay(1000);
+        ESP_LOGI(TAG, "Connecting to WiFi... %d", timeout);
+        timeout--;
+    }
+    
+    if (WiFi.status() != WL_CONNECTED) {
+        ESP_LOGE(TAG, "Failed to connect to WiFi");
+        return false;
+    }
+    
+    ESP_LOGI(TAG, "Connected to WiFi. IP address: %s", WiFi.localIP().toString().c_str());
+    return true;
+}

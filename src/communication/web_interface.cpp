@@ -428,3 +428,15 @@ void WebInterface::handleNotFound(AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "File Not Found");
     }
 }
+
+// Add a basic WebInterface::loop implementation
+void WebInterface::loop() {
+    // Handle OTA updates if initialized
+    if (otaInitialized) {
+        elegantOTA.loop();
+    }
+    
+    // Perform any other periodic tasks here
+    
+    // Process incoming requests (this is actually handled by ESPAsyncWebServer in the background)
+}

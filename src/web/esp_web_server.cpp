@@ -228,4 +228,10 @@ String ESPWebServer::generateConfigJson() {
     String json;
     serializeJson(doc, json);
     return json;
+}
+
+void ESPWebServer::handleSave() {
+    // This method is called from a lambda in setupRoutes
+    // In the ESPAsyncWebServer architecture, the actual implementation is different
+    // This stub is here to satisfy the linker
 } 
