@@ -25,15 +25,23 @@ WebInterface::~WebInterface() {
     end();
 }
 
-void WebInterface::begin() {
+bool WebInterface::begin() {
     ESP_LOGI(TAG, "Starting web interface...");
     
     // Note: LittleFS is now initialized in main.cpp
     
-    // Initialize web server
-    server.begin();
-    
-    ESP_LOGI(TAG, "Web interface started");
+    try {
+        // Initialize web server
+        server.begin();
+        ESP_LOGI(TAG, "Web interface started successfully");
+        return true;
+    } catch (const std::exception& e) {
+        ESP_LOGE(TAG, "Failed to start web interface: %s", e.what());
+        return false;
+    } catch (...) {
+        ESP_LOGE(TAG, "Failed to start web interface: Unknown error");
+        return false;
+    }
 }
 
 void WebInterface::end() {

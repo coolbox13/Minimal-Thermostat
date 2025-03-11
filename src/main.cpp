@@ -16,7 +16,6 @@
 #include "communication/knx/knx_interface.h"
 #include "sensors/bme280_sensor_interface.h"
 #include "pid_controller.h"
-#include "web/esp_web_server.h"
 #include "web/web_interface.h"
 
 static const char* TAG = "Main";
@@ -27,7 +26,6 @@ ThermostatState thermostatState;
 ProtocolManager protocolManager(&thermostatState);
 BME280SensorInterface sensorInterface;
 PIDController pidController;
-ESPWebServer webServer(&configManager, &thermostatState);
 WebInterface webInterface(&configManager, &sensorInterface, &pidController, &thermostatState, &protocolManager);
 KNXInterface knxInterface(&thermostatState);
 MQTTInterface mqttInterface(&thermostatState);
@@ -50,6 +48,9 @@ void setup() {
         }
     }
     ESP_LOGI(TAG, "LittleFS mounted successfully");
+    
+    // List files in LittleFS
+    webInterface.listFiles();
     
     // Initialize configuration
     if (!configManager.begin()) {
@@ -115,8 +116,8 @@ void setup() {
     }
 
     // Initialize web server
-    if (!webServer.begin()) {
-        Serial.println("Failed to start web server");
+    if (!webInterface.begin()) {
+        Serial.println("Failed to start web interface");
         return;
     }
 

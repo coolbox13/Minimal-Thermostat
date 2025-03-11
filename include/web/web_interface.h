@@ -19,9 +19,10 @@ public:
                 ProtocolManager* protocolManager);
     virtual ~WebInterface();
 
-    void begin();
+    bool begin();
     void end();
     void loop();
+    void listFiles();
     
     // Request handlers
     void handleRoot(AsyncWebServerRequest* request);

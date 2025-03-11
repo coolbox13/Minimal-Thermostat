@@ -19,7 +19,14 @@ void WebInterface::handleRoot(AsyncWebServerRequest *request) {
         return;
     }
 
+    ESP_LOGI(TAG, "Generating HTML for root page");
     String html = generateHtml();
+    if (html.startsWith("Error:")) {
+        ESP_LOGE(TAG, "Failed to generate HTML: %s", html.c_str());
+    } else {
+        ESP_LOGI(TAG, "HTML generated successfully, length: %d bytes", html.length());
+    }
+
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", html);
     addSecurityHeaders(response);
     request->send(response);
