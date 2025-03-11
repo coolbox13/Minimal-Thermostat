@@ -114,8 +114,18 @@ void setup() {
 }
 
 void loop() {
-    // Update sensor readings
-    sensorInterface.loop();
+    // Update sensor readings if available
+    if (sensorInterface.isAvailable()) {
+        sensorInterface.loop();
+        
+        // Update thermostat state with sensor readings
+        thermostatState.setCurrentTemperature(sensorInterface.getTemperature());
+        thermostatState.setCurrentHumidity(sensorInterface.getHumidity());
+        thermostatState.setCurrentPressure(sensorInterface.getPressure());
+    } else {
+        // Use default values or disable temperature-dependent functions
+        ESP_LOGW(TAG, "BME280 sensor not available");
+    }
 
     // Update web interface
     webInterface.loop();

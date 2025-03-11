@@ -18,20 +18,44 @@ BME280SensorInterface::BME280SensorInterface()
 }
 
 bool BME280SensorInterface::begin() {
-    if (!bme.begin(BME280_ADDRESS_ALTERNATE)) {
-        snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Could not find BME280 sensor");
-        lastError = ThermostatStatus::ERROR_SENSOR;
-        return false;
+    Wire.begin(); // Initialize I2C bus
+    
+    // First try I2C with the alternate address (0x76)
+    if (bme.begin(BME280_ADDRESS_ALTERNATE, &Wire)) {
+        ESP_LOGI(TAG, "BME280 found at address 0x76 (I2C)");
+        setSensorMode();
+        return true;
     }
     
-    bme.setSampling(Adafruit_BME280::MODE_NORMAL,
-                    Adafruit_BME280::SAMPLING_X16,  // temperature
-                    Adafruit_BME280::SAMPLING_X16,  // pressure
-                    Adafruit_BME280::SAMPLING_X16,  // humidity
-                    Adafruit_BME280::FILTER_X16,
-                    Adafruit_BME280::STANDBY_MS_0_5);
+    // Then try I2C with the default address (0x77)
+    if (bme.begin(BME280_ADDRESS, &Wire)) {
+        ESP_LOGI(TAG, "BME280 found at address 0x77 (I2C)");
+        setSensorMode();
+        return true;
+    }
     
-    return true;
+    // If I2C fails, try SPI (unlikely to work based on your error)
+    // This requires proper CS pin setup
+    if (bme.begin()) {
+        ESP_LOGI(TAG, "BME280 found using SPI");
+        setSensorMode();
+        return true;
+    }
+    
+    // All connection attempts failed
+    snprintf(lastErrorMessage, sizeof(lastErrorMessage), "Could not find BME280 sensor");
+    lastError = ThermostatStatus::ERROR_SENSOR;
+    return false;
+}
+
+// Move sensor configuration to a separate function
+void BME280SensorInterface::setSensorMode() {
+    bme.setSampling(Adafruit_BME280::MODE_NORMAL,
+                   Adafruit_BME280::SAMPLING_X16,  // temperature
+                   Adafruit_BME280::SAMPLING_X16,  // pressure
+                   Adafruit_BME280::SAMPLING_X16,  // humidity
+                   Adafruit_BME280::FILTER_X16,
+                   Adafruit_BME280::STANDBY_MS_0_5);
 }
 
 void BME280SensorInterface::loop() {
