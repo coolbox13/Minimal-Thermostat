@@ -353,3 +353,47 @@ bool ConfigManager::setupWiFi() {
     ESP_LOGE(TAG, "Failed to connect to WiFi after %d attempts", MAX_ATTEMPTS);
     return false;
 }
+
+void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
+    knxTemperatureGA = {area, line, member};
+    ESP_LOGI(TAG, "KNX temperature GA set to: %d/%d/%d", area, line, member);
+}
+
+void ConfigManager::getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+    area = knxTemperatureGA.area;
+    line = knxTemperatureGA.line;
+    member = knxTemperatureGA.member;
+}
+
+void ConfigManager::setKnxSetpointGA(uint8_t area, uint8_t line, uint8_t member) {
+    knxSetpointGA = {area, line, member};
+    ESP_LOGI(TAG, "KNX setpoint GA set to: %d/%d/%d", area, line, member);
+}
+
+void ConfigManager::getKnxSetpointGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+    area = knxSetpointGA.area;
+    line = knxSetpointGA.line;
+    member = knxSetpointGA.member;
+}
+
+void ConfigManager::setKnxValveGA(uint8_t area, uint8_t line, uint8_t member) {
+    knxValveGA = {area, line, member};
+    ESP_LOGI(TAG, "KNX valve GA set to: %d/%d/%d", area, line, member);
+}
+
+void ConfigManager::getKnxValveGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+    area = knxValveGA.area;
+    line = knxValveGA.line;
+    member = knxValveGA.member;
+}
+
+void ConfigManager::setKnxModeGA(uint8_t area, uint8_t line, uint8_t member) {
+    knxModeGA = {area, line, member};
+    ESP_LOGI(TAG, "KNX mode GA set to: %d/%d/%d", area, line, member);
+}
+
+void ConfigManager::getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
+    area = knxModeGA.area;
+    line = knxModeGA.line;
+    member = knxModeGA.member;
+}

@@ -120,17 +120,17 @@ private:
     static const char* configFilePath;
     
     // WiFi settings
-    char wifiSSID[33];
-    char wifiPassword[65];
+    char wifiSSID[32];
+    char wifiPassword[64];
     
     // Device settings
-    char deviceName[33];
+    char deviceName[32];
     uint32_t sendInterval;
     uint32_t pidUpdateInterval;
     
     // Web interface settings
-    char webUsername[33];
-    char webPassword[33];
+    char webUsername[32];
+    char webPassword[32];
     
     // KNX settings
     bool knxEnabled;
@@ -142,12 +142,12 @@ private:
     
     // MQTT settings
     bool mqttEnabled;
-    char mqttServer[65];
+    char mqttServer[64];
     uint16_t mqttPort;
-    char mqttUser[33];
-    char mqttPassword[65];
-    char mqttClientId[33];
-    char mqttTopicPrefix[33];
+    char mqttUser[32];
+    char mqttPassword[32];
+    char mqttClientId[32];
+    char mqttTopicPrefix[32];
     
     // Control parameters
     float setpoint;
