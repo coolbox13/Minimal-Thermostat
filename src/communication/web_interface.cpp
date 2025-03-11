@@ -436,6 +436,5 @@ void WebInterface::handleNotFound(AsyncWebServerRequest *request) {
 }
 
 void WebInterface::loop() {
-    // We don't need to call elegantOTA.loop() because AsyncElegantOta
-    // uses the AsyncWebServer which doesn't require a loop() method
+    // AsyncWebServer doesn't need explicit loop handling
 }

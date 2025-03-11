@@ -1,3 +1,7 @@
+#ifndef SKIP_WEB_INTERFACE_EXTRA
+// implementation here
+#endif
+
 #include "web/web_interface.h"
 #include "esp_log.h"
 #include <ESPmDNS.h>
