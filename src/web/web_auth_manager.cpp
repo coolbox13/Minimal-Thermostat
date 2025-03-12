@@ -43,8 +43,15 @@ WebAuthManager::WebAuthManager(AsyncWebServer& server, ConfigManager& configMana
 }
 
 void WebAuthManager::setCredentials(const char* user, const char* pass) {
+    // Safely copy username with null termination
     strncpy(username, user, sizeof(username) - 1);
+    username[sizeof(username) - 1] = '\0';
+    
+    // Safely copy password with null termination
     strncpy(password, pass, sizeof(password) - 1);
+    password[sizeof(password) - 1] = '\0';
+    
+    ESP_LOGI("WebAuthManager", "Credentials updated for user: %s", username);
 }
 
 bool WebAuthManager::authenticate(AsyncWebServerRequest* request) {
@@ -220,9 +227,13 @@ void WebAuthManager::addSecurityHeaders(AsyncWebServerResponse *response) {
 
 void WebAuthManager::cleanupSessions() {
     unsigned long now = millis();
-    for (auto it = sessions.begin(); it != sessions.end();) {
+    auto it = sessions.begin();
+    
+    // Use safe iterator-based removal
+    while (it != sessions.end()) {
         if (now - it->second.created > SESSION_TIMEOUT) {
-            it = sessions.erase(it);
+            ESP_LOGD(TAG, "Removing expired session: %s", it->first.c_str());
+            it = sessions.erase(it); // erase() returns the next iterator
         } else {
             ++it;
         }

@@ -1,33 +1,38 @@
 #include "web/html_generator.h"
+#include "config_manager.h"
 
 String HtmlGenerator::generatePage(
     ThermostatState* state,
     ConfigInterface* config,
-    ControlInterface* control) {
-    String html = generateHeader();
+    ControlInterface* control,
+    const String& csrfToken) {
+    
+    String html = generateHeader(csrfToken);
     html += generateNavigation();
     html += "<div class='container'>";
     html += generateStatusSection(state);
-    html += generateControlSection(state);
-    html += generateConfigSection(config);
+    html += generateControlSection(state, csrfToken);
+    html += generateConfigSection(config, csrfToken);
     if (control) {
-        html += generatePIDSection(control);
+        html += generatePIDSection(control, csrfToken);
     }
     html += "</div>";
     html += generateFooter();
     return html;
 }
 
-String HtmlGenerator::generateHeader() {
+String HtmlGenerator::generateHeader(const String& csrfToken) {
     return R"(
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>ESP32 KNX Thermostat</title>
-    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'>
-)" + generateStyles() + R"(
+    <meta name="csrf-token" content=")" + csrfToken + R"(">
+    <title>KNX Thermostat V1.0</title>
+    <!-- Load custom CSS from LittleFS -->
+    <link rel='stylesheet' href='/style.css'>
+    <link rel='stylesheet' href='/style.css'>
 </head>
 <body>
 )";
@@ -37,7 +42,7 @@ String HtmlGenerator::generateNavigation() {
     return R"(
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">ESP32 KNX Thermostat</a>
+        <a class="navbar-brand" href="#">KNX Thermostat V1.0</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -61,39 +66,40 @@ String HtmlGenerator::generateNavigation() {
 
 String HtmlGenerator::generateStatusSection(ThermostatState* state) {
     if (!state) return "";
-
-    char buf[256];
+    
+    // Increase buffer to ensure complete HTML is generated
+    char buf[1024];
     snprintf(buf, sizeof(buf), R"(
-<div id='status' class='section'>
+<div id="status" class="section">
     <h2>Status</h2>
-    <div class='row'>
-        <div class='col-md-4'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Temperature</h5>
-                    <p class='card-text'>%.1f°C</p>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Temperature</h5>
+                    <p id="temperature" class="card-text temperature">%.1f°C</p>
                 </div>
             </div>
         </div>
-        <div class='col-md-4'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Humidity</h5>
-                    <p class='card-text'>%.1f%%</p>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Humidity</h5>
+                    <p id="humidity" class="card-text humidity">%.1f%%</p>
                 </div>
             </div>
         </div>
-        <div class='col-md-4'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Pressure</h5>
-                    <p class='card-text'>%.1f hPa</p>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Pressure</h5>
+                    <p id="pressure" class="card-text pressure">%.1f hPa</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-)", 
+)",
         state->getCurrentTemperature(),
         state->getCurrentHumidity(),
         state->getCurrentPressure()
@@ -101,124 +107,181 @@ String HtmlGenerator::generateStatusSection(ThermostatState* state) {
     return String(buf);
 }
 
-String HtmlGenerator::generateControlSection(ThermostatState* state) {
+String HtmlGenerator::generateControlSection(ThermostatState* state, const String& csrfToken) {
     if (!state) return "";
 
-    char buf[512];
-    snprintf(buf, sizeof(buf), R"(
-<div id='control' class='section'>
-    <h2>Control</h2>
-    <div class='card'>
-        <div class='card-body'>
-            <div class='row'>
-                <div class='col-md-6'>
-                    <label class='form-label'>Mode</label>
-                    <select class='form-select' id='mode'>
-                        <option value='off' %s>Off</option>
-                        <option value='comfort' %s>Comfort</option>
-                        <option value='eco' %s>Eco</option>
-                        <option value='away' %s>Away</option>
-                        <option value='boost' %s>Boost</option>
-                        <option value='antifreeze' %s>Anti-freeze</option>
-                    </select>
-                </div>
-                <div class='col-md-6'>
-                    <label class='form-label'>Target Temperature</label>
-                    <input type='number' class='form-control' id='setpoint' value='%.1f' step='0.5'>
-                </div>
-            </div>
-            <button class='btn btn-primary mt-3' onclick='updateControl()'>Update</button>
-        </div>
-    </div>
-</div>
-)",
-        state->getMode() == ThermostatMode::OFF ? "selected" : "",
-        state->getMode() == ThermostatMode::COMFORT ? "selected" : "",
-        state->getMode() == ThermostatMode::ECO ? "selected" : "",
-        state->getMode() == ThermostatMode::AWAY ? "selected" : "",
-        state->getMode() == ThermostatMode::BOOST ? "selected" : "",
-        state->getMode() == ThermostatMode::ANTIFREEZE ? "selected" : "",
-        state->getTargetTemperature()
-    );
-    return String(buf);
+    String html;
+    html += "<div id='control' class='section container mt-4'>\n";
+    html += "  <div class='card'>\n";
+    html += "    <div class='card-header'>\n";
+    html += "      <h2>Control</h2>\n";
+    html += "    </div>\n";
+    html += "    <div class='card-body'>\n";
+    // Add hidden CSRF token field for forms if needed
+    html += "      <input type='hidden' name='_csrf' value='" + csrfToken + "'>\n";
+    // Mode selection control
+    html += "      <div class='mb-3'>\n";
+    html += "        <label class='form-label' for='mode'>Mode</label>\n";
+    html += "        <select class='form-select' id='mode' name='mode'>\n";
+    html += "          <option value='on'>On</option>\n";
+    html += "          <option value='off'>Off</option>\n";
+    html += "        </select>\n";
+    html += "      </div>\n";
+    // Temperature setpoint control
+    html += "      <div class='mb-3'>\n";
+    html += "        <label class='form-label' for='setpoint'>Temperature Setpoint</label>\n";
+    html += "        <input type='number' class='form-control' id='setpoint' name='setpoint' value='" + String(state->getTargetTemperature()) + "' min='10' max='30' step='0.5'>\n";
+    html += "      </div>\n";
+    // Action buttons for setting mode and setpoint
+    html += "      <button type='button' class='btn btn-primary' onclick='setMode()'>Set Mode</button>\n";
+    html += "      <button type='button' class='btn btn-primary ms-2' onclick='setSetpoint()'>Set Temperature</button>\n";
+    html += "    </div>\n";
+    html += "  </div>\n";
+    html += "</div>\n";
+    
+    return html;
 }
 
-String HtmlGenerator::generateConfigSection(ConfigInterface* config) {
+String HtmlGenerator::generateConfigSection(ConfigInterface* config, const String& csrfToken) {
     if (!config) return "";
+    
+    // Retrieve KNX physical address components
+    uint8_t area = 1, line = 1, member = 1;
+    if (ConfigManager* cm = dynamic_cast<ConfigManager*>(config)) {
+        cm->getKnxPhysicalAddress(area, line, member);
+    }
 
-    char buf[512];
-    snprintf(buf, sizeof(buf), R"(
-<div id='config' class='section'>
-    <h2>Configuration</h2>
-    <div class='card'>
-        <div class='card-body'>
-            <form id='configForm'>
-                <div class='mb-3'>
-                    <label class='form-label'>Device Name</label>
-                    <input type='text' class='form-control' name='deviceName' value='%s'>
-                </div>
-                <div class='mb-3'>
-                    <label class='form-label'>Update Interval (ms)</label>
-                    <input type='number' class='form-control' name='interval' value='%lu'>
-                </div>
-                <div class='mb-3'>
-                    <label class='form-label'>Web Username</label>
-                    <input type='text' class='form-control' name='username' value='%s'>
-                </div>
-                <div class='mb-3'>
-                    <label class='form-label'>Web Password</label>
-                    <input type='password' class='form-control' name='password'>
-                </div>
-                <button type='button' class='btn btn-primary' onclick='saveConfig()'>Save</button>
-                <button type='button' class='btn btn-danger' onclick='factoryReset()'>Factory Reset</button>
-            </form>
-        </div>
-    </div>
-</div>
-)",
-        config->getDeviceName(),
-        config->getSendInterval(),
-        config->getWebUsername()
-    );
-    return String(buf);
+    String knxAddress = String(area) + "." + String(line) + "." + String(member);
+    
+    // Build the HTML form with the correctly nested structure
+    String html;
+    html += "<div id='config' class='section container mt-4'>\n";
+    html += "  <div class='card'>\n";
+    html += "    <div class='card-header'>\n";
+    html += "      <h2>Configuration</h2>\n";
+    html += "    </div>\n";
+    html += "    <div class='card-body'>\n";
+    html += "      <form id='configForm'>\n";
+    html += "        <input type='hidden' name='_csrf' value='" + csrfToken + "'>\n";
+    
+    // Device Settings Section
+    html += "        <h4>Device Settings</h4>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='device.name'>Device Name</label>\n";
+    html += "          <input type='text' class='form-control' id='device.name' name='device[name]' value='" + String(config->getDeviceName()) + "'>\n";
+    html += "        </div>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='device.sendInterval'>Update Interval (ms)</label>\n";
+    html += "          <input type='number' class='form-control' id='device.sendInterval' name='device[sendInterval]' value='" + String(config->getSendInterval()) + "' min='1000' step='1000'>\n";
+    html += "        </div>\n";
+    
+    // KNX Settings Section
+    html += "        <h4>KNX Settings</h4>\n";
+    html += "        <div class='mb-3 form-check'>\n";
+    html += "          <input type='checkbox' class='form-check-input' id='knx.enabled' name='knx[enabled]' " + String(config->getKnxEnabled() ? "checked" : "") + ">\n";
+    html += "          <label class='form-check-label' for='knx.enabled'>Enable KNX</label>\n";
+    html += "        </div>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='knx.physical.area'>KNX Area</label>\n";
+    html += "          <input type='number' class='form-control' id='knx.physical.area' name='knx[physical][area]' value='" + String(area) + "' min='0' max='15'>\n";
+    html += "        </div>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='knx.physical.line'>KNX Line</label>\n";
+    html += "          <input type='number' class='form-control' id='knx.physical.line' name='knx[physical][line]' value='" + String(line) + "' min='0' max='15'>\n";
+    html += "        </div>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='knx.physical.member'>KNX Member</label>\n";
+    html += "          <input type='number' class='form-control' id='knx.physical.member' name='knx[physical][member]' value='" + String(member) + "' min='0' max='255'>\n";
+    html += "        </div>\n";
+    
+    // MQTT Settings Section
+    html += "        <h4>MQTT Settings</h4>\n";
+    html += "        <div class='mb-3 form-check'>\n";
+    html += "          <input type='checkbox' class='form-check-input' id='mqtt.enabled' name='mqtt[enabled]' " + String(config->getMqttEnabled() ? "checked" : "") + ">\n";
+    html += "          <label class='form-check-label' for='mqtt.enabled'>Enable MQTT</label>\n";
+    html += "        </div>\n";
+    
+    // Conditionally include MQTT-specific fields if available
+    if (ConfigManager* configManager = dynamic_cast<ConfigManager*>(config)) {
+        html += "        <div class='mb-3'>\n";
+        html += "          <label class='form-label' for='mqtt.server'>MQTT Server</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.server' name='mqtt[server]' value='" + String(configManager->getMQTTServer()) + "'>\n";
+        html += "        </div>\n";
+        html += "        <div class='mb-3'>\n";
+        html += "          <label class='form-label' for='mqtt.port'>MQTT Port</label>\n";
+        html += "          <input type='number' class='form-control' id='mqtt.port' name='mqtt[port]' value='" + String(configManager->getMQTTPort()) + "'>\n";
+        html += "        </div>\n";
+        html += "        <div class='mb-3'>\n";
+        html += "          <label class='form-label' for='mqtt.username'>MQTT Username</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.username' name='mqtt[username]' value='" + String(configManager->getMQTTUser()) + "'>\n";
+        html += "        </div>\n";
+        html += "        <div class='mb-3'>\n";
+        html += "          <label class='form-label' for='mqtt.password'>MQTT Password</label>\n";
+        html += "          <input type='password' class='form-control' id='mqtt.password' name='mqtt[password]'>\n";
+        html += "        </div>\n";
+        html += "        <div class='mb-3'>\n";
+        html += "          <label class='form-label' for='mqtt.clientId'>MQTT Client ID</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.clientId' name='mqtt[clientId]' value='" + String(configManager->getMQTTClientId()) + "'>\n";
+        html += "        </div>\n";
+        html += "        <div class='mb-3'>\n";
+        html += "          <label class='form-label' for='mqtt.topicPrefix'>MQTT Topic Prefix</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.topicPrefix' name='mqtt[topicPrefix]' value='" + String(configManager->getMQTTTopicPrefix()) + "'>\n";
+        html += "        </div>\n";
+    }
+    
+    // Action buttons
+    html += "        <button type='button' class='btn btn-primary' onclick='saveConfig()'>Save Configuration</button>\n";
+    html += "        <button type='button' class='btn btn-danger ms-2' onclick='factoryReset()'>Factory Reset</button>\n";
+    html += "        <button type='button' class='btn btn-info ms-2' onclick='showConfig()'>Show Config</button>\n";
+    html += "        <button type='button' class='btn btn-warning ms-2' onclick='saveConfigDirect()'>Save Test Config</button>\n";
+    html += "        <button type='button' class='btn btn-success ms-2' onclick='createMinimalConfig()'>Create Minimal Config</button>\n";
+    html += "      </form>\n";
+    html += "      <pre id='configContents' class='mt-3'></pre>\n";
+    html += "    </div>\n";
+    html += "  </div>\n";
+    html += "</div>\n";
+    
+    return html;
 }
 
-String HtmlGenerator::generatePIDSection(ControlInterface* control) {
+String HtmlGenerator::generatePIDSection(ControlInterface* control, const String& csrfToken) {
     if (!control) return "";
-
-    char buf[512];
-    snprintf(buf, sizeof(buf), R"(
-<div id='pid' class='section'>
+    
+    char buf[2024];
+    snprintf(buf, sizeof(buf), R"PID(
+<div id="pid" class="section">
     <h2>PID Control</h2>
-    <div class='card'>
-        <div class='card-body'>
-            <div class='row'>
-                <div class='col-md-3'>
-                    <label class='form-label'>Kp</label>
-                    <input type='number' class='form-control' id='kp' value='%.2f' step='0.1'>
+    <div class="card">
+        <div class="card-body">
+            <input type="hidden" name="_csrf" value="%s">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Kp</label>
+                    <input type="number" class="form-control" id="kp" value="%.2f" step="0.1">
                 </div>
-                <div class='col-md-3'>
-                    <label class='form-label'>Ki</label>
-                    <input type='number' class='form-control' id='ki' value='%.2f' step='0.01'>
+                <div class="col-md-3">
+                    <label class="form-label">Ki</label>
+                    <input type="number" class="form-control" id="ki" value="%.2f" step="0.01">
                 </div>
-                <div class='col-md-3'>
-                    <label class='form-label'>Kd</label>
-                    <input type='number' class='form-control' id='kd' value='%.2f' step='0.01'>
+                <div class="col-md-3">
+                    <label class="form-label">Kd</label>
+                    <input type="number" class="form-control" id="kd" value="%.2f" step="0.01">
                 </div>
-                <div class='col-md-3'>
-                    <label class='form-label'>Output</label>
-                    <input type='number' class='form-control' value='%.1f' readonly>
+                <div class="col-md-3">
+                    <label class="form-label">Output</label>
+                    <input type="number" class="form-control" id="pidOutput" value="%.1f" readonly>
                 </div>
             </div>
-            <div class='form-check mt-3'>
-                <input class='form-check-input' type='checkbox' id='pidActive' %s>
-                <label class='form-check-label'>PID Active</label>
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="pidActive" %s>
+                <label class="form-check-label" for="pidActive">PID Active</label>
             </div>
-            <button class='btn btn-primary mt-3' onclick='updatePID()'>Update</button>
+            <button class="btn btn-primary mt-3" onclick="updatePID()">Update</button>
         </div>
     </div>
 </div>
-)",
+)PID",
+        csrfToken.c_str(),
         control->getKp(),
         control->getKi(),
         control->getKd(),
@@ -228,98 +291,14 @@ String HtmlGenerator::generatePIDSection(ControlInterface* control) {
     return String(buf);
 }
 
+
 String HtmlGenerator::generateFooter() {
     return R"(
-    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'></script>
-)" + generateScripts() + R"(
+<footer>
+    <p>&copy; 2025 Coolbox</p>
+</footer>
+<script src="/scripts.js"></script>
 </body>
 </html>
 )";
 }
-
-String HtmlGenerator::generateStyles() {
-    return R"(
-<style>
-    body { padding-top: 20px; }
-    .section { margin-bottom: 30px; }
-    .card { margin-bottom: 20px; }
-    .navbar { margin-bottom: 20px; }
-</style>
-)";
-}
-
-String HtmlGenerator::generateScripts() {
-    return R"(
-<script>
-async function setSetpoint() {
-    const value = document.getElementById('setpoint').value;
-    await fetch('/setpoint', {
-        method: 'POST',
-        body: `value=${value}`
-    });
-    location.reload();
-}
-
-async function setMode() {
-    const mode = document.getElementById('mode').value;
-    await fetch('/mode', {
-        method: 'POST',
-        body: `mode=${mode}`
-    });
-    location.reload();
-}
-
-async function saveConfig() {
-    const form = document.getElementById('configForm');
-    const data = new FormData(form);
-    const json = Object.fromEntries(data.entries());
-    
-    await fetch('/save', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(json)
-    });
-    location.reload();
-}
-
-async function updatePID() {
-    const data = {
-        kp: document.getElementById('kp').value,
-        ki: document.getElementById('ki').value,
-        kd: document.getElementById('kd').value,
-        active: document.getElementById('pidActive').checked
-    };
-    
-    await fetch('/pid', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    });
-    location.reload();
-}
-
-async function factoryReset() {
-    if (confirm('Are you sure you want to reset to factory defaults?')) {
-        await fetch('/reset', { method: 'POST' });
-        location.reload();
-    }
-}
-
-// Auto-refresh status every 10 seconds
-setInterval(() => {
-    fetch('/status')
-        .then(response => response.json())
-        .then(data => {
-            // Update status values
-            document.querySelector('#status .temperature').textContent = data.temperature.toFixed(1) + '°C';
-            document.querySelector('#status .humidity').textContent = data.humidity.toFixed(1) + '%';
-            document.querySelector('#status .pressure').textContent = data.pressure.toFixed(1) + ' hPa';
-        });
-}, 10000);
-</script>
-)";
-} 

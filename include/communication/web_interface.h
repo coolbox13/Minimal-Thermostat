@@ -29,10 +29,14 @@ public:
     void handleSave(AsyncWebServerRequest* request);
     void handleGetStatus(AsyncWebServerRequest* request);
     void handleSetpoint(AsyncWebServerRequest* request);
-    void handleSaveConfig(AsyncWebServerRequest* request);
     void handleReboot(AsyncWebServerRequest* request);
     void handleFactoryReset(AsyncWebServerRequest* request);
     void handleNotFound(AsyncWebServerRequest* request);
+    void handleMode(AsyncWebServerRequest* request);
+    void handlePID(AsyncWebServerRequest* request);
+    void handleGetConfig(AsyncWebServerRequest *request);
+    void handleCreateConfig(AsyncWebServerRequest* request);
+
     
     // Utility methods
     bool handleFileRead(AsyncWebServerRequest* request, String path);

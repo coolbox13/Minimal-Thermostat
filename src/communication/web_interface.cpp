@@ -1,10 +1,11 @@
-#include "web/web_interface.h"
+#include "web_interface.h"
 #include <LittleFS.h>
 #include "esp_log.h"
 #include <ESPmDNS.h>
 #include "web/base64.h"
 #include "interfaces/sensor_interface.h"
 #include "web/elegant_ota_async.h"
+#include <ArduinoJson.h>
 
 static const char* TAG = "WebInterface";
 
@@ -29,6 +30,10 @@ bool WebInterface::begin() {
     ESP_LOGI(TAG, "Starting web interface...");
     
     // Note: LittleFS is now initialized in main.cpp
+
+    // Serve the CSS file and JS file with caching headers
+    server.serveStatic("/style.css", LittleFS, "/style.css", "max-age=86400").setDefaultFile("style.css");
+    server.serveStatic("/scripts.js", LittleFS, "/scripts.js", "max-age=86400").setDefaultFile("scripts.js");
     
     try {
         // Set up request handlers
@@ -36,10 +41,12 @@ bool WebInterface::begin() {
         server.on("/save", HTTP_POST, std::bind(&WebInterface::handleSave, this, std::placeholders::_1));
         server.on("/status", HTTP_GET, std::bind(&WebInterface::handleGetStatus, this, std::placeholders::_1));
         server.on("/setpoint", HTTP_POST, std::bind(&WebInterface::handleSetpoint, this, std::placeholders::_1));
-        server.on("/config", HTTP_POST, std::bind(&WebInterface::handleSaveConfig, this, std::placeholders::_1));
+        server.on("/mode", HTTP_POST, std::bind(&WebInterface::handleMode, this, std::placeholders::_1));
+        server.on("/pid", HTTP_POST, std::bind(&WebInterface::handlePID, this, std::placeholders::_1));
         server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this, std::placeholders::_1));
         server.on("/factory_reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
-        
+        server.on("/config", HTTP_GET, std::bind(&WebInterface::handleGetConfig, this, std::placeholders::_1));
+        server.on("/create_config", HTTP_POST, std::bind(&WebInterface::handleCreateConfig, this, std::placeholders::_1));
         // Set up MDNS for easy access
         setupMDNS();
         
@@ -66,6 +73,33 @@ void WebInterface::end() {
 
 void WebInterface::loop() {
     // AsyncWebServer doesn't need explicit loop handling
+}
+
+void WebInterface::listFiles() {
+    ESP_LOGI(TAG, "Listing files in LittleFS:");
+    File root = LittleFS.open("/");
+    File file = root.openNextFile();
+    while(file) {
+        ESP_LOGI(TAG, "File: %s, Size: %d bytes", file.name(), file.size());
+        file = root.openNextFile();
+    }
+    root.close();
+}
+
+String WebInterface::generateHtml() {
+    File file = LittleFS.open("/index.html", "r");
+    if (!file) {
+        ESP_LOGE(TAG, "Failed to open index.html");
+        return "Error: Failed to load web interface";
+    }
+    String html = file.readString();
+    
+    // Add CSRF token to the HTML
+    String csrfToken = generateCSRFToken(nullptr);
+    html.replace("{{CSRF_TOKEN}}", csrfToken);
+    
+    file.close();
+    return html;
 }
 
 void WebInterface::setupMDNS() {
@@ -134,18 +168,121 @@ String WebInterface::getContentType(String filename) {
 }
 
 bool WebInterface::validateCSRFToken(AsyncWebServerRequest* request) {
-    if (!request->hasHeader("X-CSRF-Token")) {
-        return false;
+    // First check for token in request header
+    if (request->hasHeader("X-CSRF-Token")) {
+        String token = request->header("X-CSRF-Token");
+        
+        // Check for token in form data
+        if (request->hasParam("_csrf", true)) {
+            String formToken = request->getParam("_csrf", true)->value();
+            if (token != formToken) {
+                ESP_LOGW(TAG, "CSRF token mismatch between header and form");
+                return false;
+            }
+        }
+        
+        // For debugging - REMOVE IN PRODUCTION
+        ESP_LOGI(TAG, "Validating CSRF token: %s", token.c_str());
+        
+        // Temporarily return true for development
+        return true;
+        
+        // In a real implementation, you would validate against a stored token:
+        // return token == String((const char*)request->_tempObject);
+    } else if (request->hasParam("_csrf", true)) {
+        // Check for token in form data only
+        String token = request->getParam("_csrf", true)->value();
+        
+        // For debugging - REMOVE IN PRODUCTION
+        ESP_LOGI(TAG, "Validating CSRF token from form: %s", token.c_str());
+        
+        // Temporarily return true for development
+        return true;
     }
     
-    String token = request->header("X-CSRF-Token");
-    // In a real implementation, you would validate the token against a stored value
-    // For now, we'll accept any non-empty token
-    return token.length() > 0;
+    ESP_LOGW(TAG, "No CSRF token found in request");
+    return false;
 }
 
 String WebInterface::generateCSRFToken(AsyncWebServerRequest* request) {
-    // In a real implementation, you would generate a secure random token
-    // For now, we'll return a simple timestamp-based token
-    return String(millis());
+    // Generate a more secure token
+    String token = "";
+    const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    
+    // Create a 32-character random token
+    for (int i = 0; i < 32; i++) {
+        int index = random(0, strlen(charset));
+        token += charset[index];
+    }
+    
+    // Store token in session (this is a simplified example)
+    // In a real implementation, you'd store this in a session object
+    request->_tempObject = strdup(token.c_str());
+    
+    return token;
+}
+
+void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
+        return;
+    }
+
+    File configFile = LittleFS.open("/config.json", "r");
+    if (!configFile) {
+        Serial.println("[WebInterface] Failed to open config file");
+        request->send(500, "text/plain", "Failed to open config file");
+        return;
+    }
+
+    size_t size = configFile.size();
+    std::unique_ptr<char[]> buf(new char[size + 1]); // +1 for null terminator
+    configFile.readBytes(buf.get(), size);
+    configFile.close();
+
+    // Null-terminate the buffer
+    buf[size] = '\0';
+
+    // Log the raw file contents to the serial monitor
+    Serial.printf("[WebInterface] Raw config file content: %s\n", buf.get());
+
+    // Send the raw file contents as plain text
+    request->send(200, "text/plain", buf.get());
+}
+
+// Add to web_interface.cpp - full implementation
+void WebInterface::handleCreateConfig(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
+        return;
+    }
+
+    if (request->hasParam("plain", true)) {
+        String jsonData = request->getParam("plain", true)->value();
+        ESP_LOGI(TAG, "Received config JSON: %s", jsonData.c_str());
+        
+        // Directly write to the config file
+        File configFile = LittleFS.open("/config.json", "w");
+        if (!configFile) {
+            ESP_LOGE(TAG, "Failed to open config file for writing");
+            request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to open config file\"}");
+            return;
+        }
+        
+        // Write the JSON as-is
+        configFile.print(jsonData);
+        configFile.close();
+        
+        // Verify file exists
+        if (!LittleFS.exists("/config.json")) {
+            ESP_LOGE(TAG, "Config file does not exist after writing");
+            request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to create config file\"}");
+            return;
+        }
+        
+        ESP_LOGI(TAG, "Config file created successfully");
+        request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Config file created\"}");
+    } else {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"No JSON data received\"}");
+    }
 }

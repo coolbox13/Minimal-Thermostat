@@ -31,11 +31,11 @@ ConfigManager::ConfigManager() {
     
     // KNX defaults
     knxEnabled = false;
-    knxPhysicalAddress = {1, 1, 1};
+    knxPhysicalAddress = {1, 1, 160};
     
     // MQTT defaults
-    mqttEnabled = false;
-    strlcpy(mqttServer, "localhost", sizeof(mqttServer));
+    mqttEnabled = true;
+    strlcpy(mqttServer, "192.168.178.32", sizeof(mqttServer));
     mqttPort = 1883;
     strlcpy(mqttUser, "", sizeof(mqttUser));
     strlcpy(mqttPassword, "", sizeof(mqttPassword));
@@ -54,16 +54,18 @@ ConfigManager::ConfigManager() {
 }
 
 bool ConfigManager::begin() {
+    // Initialize LittleFS
     if (!LittleFS.begin(true)) {
         ESP_LOGE(TAG, "Failed to mount file system");
+        lastError = ThermostatStatus::ERROR_FILESYSTEM;
         return false;
     }
+
+    // Load the configuration
     return loadConfig();
 }
 
 bool ConfigManager::loadConfig() {
-    // Note: LittleFS is now initialized in main.cpp
-    
     // Try to open the config file
     File configFile = LittleFS.open("/config.json", "r");
     if (!configFile) {
@@ -72,6 +74,7 @@ bool ConfigManager::loadConfig() {
         return false;
     }
 
+    // Parse the JSON document
     StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, configFile);
     configFile.close();
@@ -97,7 +100,7 @@ bool ConfigManager::loadConfig() {
     // Load KNX settings
     JsonObject knx = doc["knx"];
     if (knx) {
-        knxEnabled = knx["enabled"] | false;
+        knxEnabled = knx["enabled"] | true;
         JsonObject physical = knx["physical"];
         if (physical) {
             knxPhysicalAddress.area = physical["area"] | 1;
@@ -109,7 +112,7 @@ bool ConfigManager::loadConfig() {
     // Load MQTT settings
     JsonObject mqtt = doc["mqtt"];
     if (mqtt) {
-        mqttEnabled = mqtt["enabled"] | false;
+        mqttEnabled = mqtt["enabled"] | true;
         strlcpy(mqttServer, mqtt["server"] | "localhost", sizeof(mqttServer));
         mqttPort = mqtt["port"] | 1883;
         strlcpy(mqttUser, mqtt["username"] | "", sizeof(mqttUser));
@@ -132,27 +135,45 @@ bool ConfigManager::loadConfig() {
     return true;
 }
 
-void ConfigManager::saveConfig() {
-    StaticJsonDocument<1024> doc;
+bool ConfigManager::saveConfig() {
+    ESP_LOGI(TAG, "Attempting to save configuration...");
+    
+    // Create JSON document
+    StaticJsonDocument<2048> doc;
+    ESP_LOGI(TAG, "Created JSON document");
 
-    // Save device settings
-    doc["deviceName"] = deviceName;
+    // Read existing config (if it exists)
+    if (LittleFS.exists("/config.json")) {
+        File configFile = LittleFS.open("/config.json", "r");
+        if (configFile) {
+            DeserializationError error = deserializeJson(doc, configFile);
+            configFile.close();
+            if (error) {
+                ESP_LOGE(TAG, "Failed to parse existing config file: %s", error.c_str());
+                return false;
+            }
+            ESP_LOGI(TAG, "Loaded existing config file");
+        }
+    }
 
-    // Save web interface settings
-    JsonObject web = doc.createNestedObject("web");
+    // Populate JSON document with a nested structure
+    
+    // Web settings
+    JsonObject web = doc.containsKey("web") ? doc["web"].as<JsonObject>() : doc.createNestedObject("web");
     web["username"] = webUsername;
     web["password"] = webPassword;
-
-    // Save KNX settings
-    JsonObject knx = doc.createNestedObject("knx");
+    
+    // KNX settings
+    JsonObject knx = doc.containsKey("knx") ? doc["knx"].as<JsonObject>() : doc.createNestedObject("knx");
     knx["enabled"] = knxEnabled;
-    JsonObject physical = knx.createNestedObject("physical");
-    physical["area"] = knxPhysicalAddress.area;
-    physical["line"] = knxPhysicalAddress.line;
-    physical["member"] = knxPhysicalAddress.member;
-
-    // Save MQTT settings
-    JsonObject mqtt = doc.createNestedObject("mqtt");
+    
+    JsonObject knxPhysical = knx.containsKey("physical") ? knx["physical"].as<JsonObject>() : knx.createNestedObject("physical");
+    knxPhysical["area"] = knxPhysicalAddress.area;
+    knxPhysical["line"] = knxPhysicalAddress.line;
+    knxPhysical["member"] = knxPhysicalAddress.member;
+    
+    // MQTT settings
+    JsonObject mqtt = doc.containsKey("mqtt") ? doc["mqtt"].as<JsonObject>() : doc.createNestedObject("mqtt");
     mqtt["enabled"] = mqttEnabled;
     mqtt["server"] = mqttServer;
     mqtt["port"] = mqttPort;
@@ -160,9 +181,14 @@ void ConfigManager::saveConfig() {
     mqtt["password"] = mqttPassword;
     mqtt["clientId"] = mqttClientId;
     mqtt["topicPrefix"] = mqttTopicPrefix;
-
-    // Save PID settings
-    JsonObject pid = doc.createNestedObject("pid");
+    
+    // Device settings
+    JsonObject device = doc.containsKey("device") ? doc["device"].as<JsonObject>() : doc.createNestedObject("device");
+    device["name"] = deviceName;
+    device["sendInterval"] = sendInterval;
+    
+    // PID settings
+    JsonObject pid = doc.containsKey("pid") ? doc["pid"].as<JsonObject>() : doc.createNestedObject("pid");
     pid["kp"] = pidConfig.kp;
     pid["ki"] = pidConfig.ki;
     pid["kd"] = pidConfig.kd;
@@ -170,16 +196,40 @@ void ConfigManager::saveConfig() {
     pid["maxOutput"] = pidConfig.maxOutput;
     pid["sampleTime"] = pidConfig.sampleTime;
 
-    File file = LittleFS.open("/config.json", "w");
-    if (!file) {
-        ESP_LOGE(TAG, "Failed to open config file for writing");
-        return;
-    }
+    // Log the JSON content for debugging
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    ESP_LOGI(TAG, "JSON content: %s", jsonStr.c_str());
 
-    if (serializeJson(doc, file) == 0) {
-        ESP_LOGE(TAG, "Failed to write config file");
+    // Open config file for writing
+    File configFile = LittleFS.open("/config.json", "w");
+    if (!configFile) {
+        ESP_LOGE(TAG, "Failed to open config file for writing");
+        return false;
     }
-    file.close();
+    ESP_LOGI(TAG, "Opened config file for writing");
+
+    // Serialize JSON to file
+    if (serializeJson(doc, configFile) == 0) {
+        ESP_LOGE(TAG, "Failed to write config file");
+        configFile.close();
+        return false;
+    }
+    ESP_LOGI(TAG, "Serialized JSON to file");
+
+    // Close file
+    configFile.close();
+    ESP_LOGI(TAG, "Closed config file");
+
+    // Verify file exists
+    if (!LittleFS.exists("/config.json")) {
+        ESP_LOGE(TAG, "Config file does not exist after saving");
+        return false;
+    }
+    ESP_LOGI(TAG, "Config file exists after saving");
+
+    ESP_LOGI(TAG, "Configuration saved successfully");
+    return true;
 }
 
 void ConfigManager::resetToDefaults() {
@@ -192,11 +242,11 @@ void ConfigManager::resetToDefaults() {
     
     // Reset KNX settings
     knxEnabled = false;
-    knxPhysicalAddress = {1, 1, 1};
+    knxPhysicalAddress = {1, 1, 160};
     
     // Reset MQTT settings
     mqttEnabled = false;
-    strlcpy(mqttServer, "localhost", sizeof(mqttServer));
+    strlcpy(mqttServer, "192.168.178.32", sizeof(mqttServer));
     mqttPort = 1883;
     strlcpy(mqttUser, "", sizeof(mqttUser));
     strlcpy(mqttPassword, "", sizeof(mqttPassword));
@@ -310,53 +360,49 @@ void ConfigManager::setSetpoint(float value) {
 
 // Add a basic WiFi setup implementation
 bool ConfigManager::setupWiFi() {
-    // Hardcoded credentials for debugging
-    const char* DEBUG_SSID = "coolbox_down";
-    const char* DEBUG_PASSWORD = "1313131313131";
-    
-    ESP_LOGI(TAG, "Setting up WiFi with hardcoded credentials for debugging");
-    
-    // Disconnect if already connected
-    if (WiFi.status() == WL_CONNECTED) {
-        ESP_LOGI(TAG, "WiFi already connected, disconnecting first...");
-        WiFi.disconnect(true);
-        delay(1000);
-    }
-    
-    // Set WiFi mode to station
-    WiFi.mode(WIFI_STA);
-    
-    // Connect using hardcoded credentials
-    WiFi.begin(DEBUG_SSID, DEBUG_PASSWORD);
-    
-    // Wait for connection with timeout
-    int attempts = 0;
-    const int MAX_ATTEMPTS = 20;
-    
-    ESP_LOGI(TAG, "Attempting to connect to WiFi network: %s", DEBUG_SSID);
-    
-    while (attempts < MAX_ATTEMPTS) {
-        if (WiFi.status() == WL_CONNECTED) {
-            ESP_LOGI(TAG, "Successfully connected to WiFi! IP: %s", WiFi.localIP().toString().c_str());
-            return true;
-        }
+    // Load credentials from storage
+    if (strlen(wifiSSID) > 0 && strlen(wifiPassword) > 0) {
+        // Try connecting with stored credentials
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(wifiSSID, wifiPassword);
         
-        delay(500);
-        attempts++;
-        
-        // Only log every second attempt to reduce spam
-        if (attempts % 2 == 0) {
-            ESP_LOGI(TAG, "Still trying to connect... attempt %d/%d", attempts, MAX_ATTEMPTS);
+        // Wait for connection with timeout
+        for (int attempts = 0; attempts < 20; attempts++) {
+            if (WiFi.status() == WL_CONNECTED) {
+                ESP_LOGI(TAG, "Connected to WiFi: %s", wifiSSID);
+                return true;
+            }
+            delay(500);
         }
     }
     
-    ESP_LOGE(TAG, "Failed to connect to WiFi after %d attempts", MAX_ATTEMPTS);
+    // If we reach here, either no credentials or connection failed
+    ESP_LOGI(TAG, "Starting WiFi setup portal");
+    
+    // Create AP for configuration
+    DNSServer dns;
+    AsyncWebServer server(80);
+    AsyncWiFiManager wifiManager(&server, &dns);
+    
+    // Start portal and wait for configuration
+    if (wifiManager.startConfigPortal("ESP32-Thermostat")) {
+        // Successfully configured
+        String newSSID = WiFi.SSID();
+        String newPass = WiFi.psk();
+        
+        // Store new credentials
+        strncpy(wifiSSID, newSSID.c_str(), sizeof(wifiSSID) - 1);
+        wifiSSID[sizeof(wifiSSID) - 1] = '\0';
+        
+        strncpy(wifiPassword, newPass.c_str(), sizeof(wifiPassword) - 1);
+        wifiPassword[sizeof(wifiPassword) - 1] = '\0';
+        
+        // Save to persistent storage
+        saveConfig();
+        return true;
+    }
+    
     return false;
-}
-
-void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
-    knxTemperatureGA = {area, line, member};
-    ESP_LOGI(TAG, "KNX temperature GA set to: %d/%d/%d", area, line, member);
 }
 
 void ConfigManager::getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
@@ -396,4 +442,10 @@ void ConfigManager::getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) 
     area = knxModeGA.area;
     line = knxModeGA.line;
     member = knxModeGA.member;
+}
+
+void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
+    knxTemperatureGA.area = area;
+    knxTemperatureGA.line = line;
+    knxTemperatureGA.member = member;
 }

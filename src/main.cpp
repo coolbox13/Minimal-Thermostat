@@ -15,8 +15,9 @@
 #include "communication/mqtt/mqtt_interface.h"
 #include "communication/knx/knx_interface.h"
 #include "sensors/bme280_sensor_interface.h"
-#include "pid_controller.h"
-#include "web/web_interface.h"
+#include "control/pid_controller.h"
+#include "web_interface.h"
+#include "main.h"
 
 static const char* TAG = "Main";
 
@@ -25,7 +26,7 @@ ConfigManager configManager;
 ThermostatState thermostatState;
 ProtocolManager protocolManager(&thermostatState);
 BME280SensorInterface sensorInterface;
-PIDController pidController;
+PIDController pidController(&thermostatState);
 WebInterface webInterface(&configManager, &sensorInterface, &pidController, &thermostatState, &protocolManager);
 KNXInterface knxInterface(&thermostatState);
 MQTTInterface mqttInterface(&thermostatState);
@@ -52,9 +53,9 @@ void setup() {
     // List files in LittleFS
     webInterface.listFiles();
     
-    // Initialize configuration
+    // Initialize ConfigManager
     if (!configManager.begin()) {
-        Serial.println("Failed to initialize configuration");
+        ESP_LOGE(TAG, "Failed to initialize configuration");
         return;
     }
 
@@ -63,6 +64,9 @@ void setup() {
         Serial.println("Failed to connect to WiFi");
         return;
     }
+
+    // Test saveConfig()
+    testSaveConfig();
 
     // Initialize sensor - try once at startup
     if (!sensorInterface.begin()) {
@@ -116,10 +120,8 @@ void setup() {
     }
 
     // Initialize web server
-    if (!webInterface.begin()) {
-        Serial.println("Failed to start web interface");
-        return;
-    }
+    webInterface.begin();
+
 
     ESP_LOGI(TAG, "ESP32 KNX Thermostat initialized successfully");
 }
@@ -163,4 +165,13 @@ void loop() {
 
     // Small delay to prevent tight looping
     delay(10);
+}
+
+void testSaveConfig() {
+    ConfigManager configManager;
+    if (configManager.saveConfig()) {
+        ESP_LOGI(TAG, "Test saveConfig() succeeded");
+    } else {
+        ESP_LOGE(TAG, "Test saveConfig() failed");
+    }
 }
