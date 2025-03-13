@@ -140,8 +140,12 @@ void HomeAssistant::registerEntities() {
     _mqttClient.subscribe("esp32_thermostat/valve/mode");
     Serial.println("Subscribed to valve control topics");
     
-    // Publish initial mode
+    // In the registerEntities method of your HomeAssistant class
+    
+    // Publish initial mode only once during registration
     _mqttClient.publish("esp32_thermostat/valve/mode", "heat", true);
+    
+    // Make sure you're not publishing this repeatedly in updateStates or other methods
 }
 
 // Send state updates for each entity

@@ -3,19 +3,19 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-#include <esp-knx-ip.h>
+// Update the include path to use your local version
+#include "esp-knx-ip/esp-knx-ip.h"
 #include "bme280_sensor.h"
 #include "config.h"
 #include "utils.h"
 #include "knx_manager.h"
 #include "mqtt_manager.h"
 
-// commit
 // Global variables
 BME280Sensor bme280;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
-ESPKNXIP knxInstance;  // Renamed from 'knx' to 'knxInstance' to avoid conflict
+ESPKNXIP knxInstance;  // Using our local instance
 KNXManager knxManager(knxInstance);
 MQTTManager mqttManager(mqttClient);
 float temperature = 0;

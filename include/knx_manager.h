@@ -2,7 +2,8 @@
 #define KNX_MANAGER_H
 
 #include <Arduino.h>
-#include <esp-knx-ip.h>
+// Update the include path to use your local version
+#include "esp-knx-ip/esp-knx-ip.h"
 #include "config.h"
 
 // Forward declaration

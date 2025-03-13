@@ -88,6 +88,8 @@ void MQTTManager::mqttCallback(char* topic, byte* payload, unsigned int length) 
     }
 }
 
+// In the processMessage method of your MQTTManager class
+
 void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length) {
     // Convert payload to string
     char message[length + 1];
@@ -125,8 +127,12 @@ void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length
     
     // Handle valve mode (for climate entity)
     if (strcmp(topic, "esp32_thermostat/valve/mode") == 0) {
-        // Just acknowledge the mode, we don't actually use it
-        _mqttClient.publish("esp32_thermostat/valve/mode", message, true);
+        // Don't republish the mode - this is causing the feedback loop
+        // _mqttClient.publish("esp32_thermostat/valve/mode", message, true);
+        
+        // Just log that we received it
+        Serial.print("Valve mode received: ");
+        Serial.println(message);
     }
 }
 
