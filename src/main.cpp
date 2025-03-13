@@ -117,7 +117,8 @@ void setupKNX() {
   pressureAddress = knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
   
   // Register callback for KNX events
-  knx.callback_register("valve_control", knxCallback, nullptr);
+  // knx.callback_register("valve_control", knxCallback, nullptr);
+  knx.register_GA_callback(valveAddress.value, knxCallback, nullptr);
   
   Serial.println("KNX initialized");
 }
