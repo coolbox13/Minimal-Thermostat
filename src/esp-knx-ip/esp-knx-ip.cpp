@@ -258,6 +258,8 @@ void ESPKNXIP::loop()
   // The AsyncWebServer handles clients automatically
 }
 
+// Find the __loop_knx function and modify it to reduce debug output
+
 void ESPKNXIP::__loop_knx()
 {
   int read = udp.parsePacket();
@@ -347,6 +349,19 @@ void ESPKNXIP::__loop_knx()
     }
   }
 }
+
+// Replace the verbose debug output with a more concise summary
+#ifdef KNX_DEBUG_ENABLED
+// Only log a summary of the packet instead of each byte
+ESP_LOGD(DEBUG_TAG, "Received KNX packet: len=%d, source=%d.%d.%d, dest=%d.%d.%d", 
+           len,
+           (cemi_data->source.value >> 12) & 0x0F,
+           (cemi_data->source.value >> 8) & 0x0F,
+           cemi_data->source.value & 0xFF,
+           (cemi_data->destination.value >> 12) & 0x0F,
+           (cemi_data->destination.value >> 8) & 0x0F,
+           cemi_data->destination.value & 0xFF);
+#endif
 
 void ESPKNXIP::physical_address_set(address_t const &addr)
 {

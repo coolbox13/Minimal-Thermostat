@@ -7,8 +7,10 @@
 #define KNX_MEMBER 159
 
 // KNX Debug Configuration
-// Add this line if it doesn't exist
-#define KNX_DEBUG_ENABLED 1  // Set to 0 to disable KNX debug messages
+// Add this line to control KNX debug output
+#ifndef KNX_DEBUG_ENABLED
+#define KNX_DEBUG_ENABLED 1  // Set to 1 to enable KNX debug messages
+#endif
 
 // KNX Group Address components for valve control (format: main/mid/sub)
 #define KNX_GA_VALVE_MAIN 1

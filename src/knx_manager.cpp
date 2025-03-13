@@ -9,8 +9,12 @@ KNXManager::KNXManager(ESPKNXIP& knx)
 void KNXManager::begin() {
     Serial.println("Setting up KNX...");
     
-    // Configure KNX debug level - completely disable debug messages
-    esp_log_level_set("KNXIP", ESP_LOG_NONE);
+    // Set log level based on KNX_DEBUG_ENABLED
+#if KNX_DEBUG_ENABLED
+    esp_log_level_set("KNXIP", ESP_LOG_DEBUG);
+#else
+    esp_log_level_set("KNXIP", ESP_LOG_NONE);  // Completely disable logs
+#endif
     
     // The library might be using multiple log tags, so disable them all
     esp_log_level_set("esp-knx-ip", ESP_LOG_NONE);

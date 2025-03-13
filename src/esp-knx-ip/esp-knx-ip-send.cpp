@@ -10,11 +10,11 @@
  #include "config.h"
  #include "utils.h"
 
- // Redefine debug macros to use our custom logging
+ // Change these debug macros to use ESP_LOGD directly with conditional compilation
+ #define DEBUG_TAG "KNXIP"
  #ifdef KNX_DEBUG_ENABLED
-   #define DEBUG_TAG "KNXIP"
-   #define DEBUG_PRINT(fmt, ...) logKnxMessage(fmt, ##__VA_ARGS__)
-   #define DEBUG_PRINTLN(fmt, ...) logKnxMessage(fmt "\n", ##__VA_ARGS__)
+   #define DEBUG_PRINT(fmt, ...) ESP_LOGD(DEBUG_TAG, fmt, ##__VA_ARGS__)
+   #define DEBUG_PRINTLN(fmt, ...) ESP_LOGD(DEBUG_TAG, fmt "\n", ##__VA_ARGS__)
  #else
    #define DEBUG_PRINT(fmt, ...)
    #define DEBUG_PRINTLN(fmt, ...)
