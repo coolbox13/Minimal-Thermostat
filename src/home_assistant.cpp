@@ -9,7 +9,7 @@ HomeAssistant::HomeAssistant(PubSubClient& mqttClient, const char* nodeId)
     : _mqttClient(mqttClient), _nodeId(nodeId) {
     
     // Set up availability topic
-    _availabilityTopic = String("thermostat/") + _nodeId + "/status";
+    _availabilityTopic = String("esp32_thermostat/status");
 }
 
 // Initialize Home Assistant auto discovery
@@ -33,65 +33,62 @@ void HomeAssistant::begin() {
 
 // Register all entities for auto discovery
 void HomeAssistant::registerEntities() {
-    // Temperature sensor
-    publishConfig(
-        "sensor",                      // component type
-        "temperature",                 // object id 
-        "Temperature",                 // friendly name
-        "temperature",                 // device class
-        MQTT_TOPIC_TEMPERATURE,        // state topic
-        "°C"                           // unit of measurement
-    );
+    // Temperature sensor - very simplified config
+    String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
+    String tempPayload = "{\"name\":\"Temperature\",\"device_class\":\"temperature\",\"state_topic\":\"esp32_thermostat/temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{ value }}\"}";
+    
+    bool tempSuccess = _mqttClient.publish(tempTopic.c_str(), tempPayload.c_str(), true);
+    Serial.print("Published temperature config: ");
+    Serial.println(tempSuccess ? "Success" : "FAILED");
+    Serial.print("Topic: ");
+    Serial.println(tempTopic);
     
     // Humidity sensor
-    publishConfig(
-        "sensor", 
-        "humidity", 
-        "Humidity", 
-        "humidity", 
-        MQTT_TOPIC_HUMIDITY,
-        "%"
-    );
+    String humTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/humidity/config";
+    String humPayload = "{\"name\":\"Humidity\",\"device_class\":\"humidity\",\"state_topic\":\"esp32_thermostat/humidity\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\"}";
+    
+    bool humSuccess = _mqttClient.publish(humTopic.c_str(), humPayload.c_str(), true);
+    Serial.print("Published humidity config: ");
+    Serial.println(humSuccess ? "Success" : "FAILED");
     
     // Pressure sensor
-    publishConfig(
-        "sensor", 
-        "pressure", 
-        "Pressure", 
-        "pressure", 
-        MQTT_TOPIC_PRESSURE,
-        "hPa"
-    );
+    String presTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pressure/config";
+    String presPayload = "{\"name\":\"Pressure\",\"device_class\":\"pressure\",\"state_topic\":\"esp32_thermostat/pressure\",\"unit_of_measurement\":\"hPa\",\"value_template\":\"{{ value }}\"}";
+    
+    bool presSuccess = _mqttClient.publish(presTopic.c_str(), presPayload.c_str(), true);
+    Serial.print("Published pressure config: ");
+    Serial.println(presSuccess ? "Success" : "FAILED");
     
     // Valve position
-    publishConfig(
-        "sensor", 
-        "valve", 
-        "Valve Position", 
-        "None", 
-        MQTT_TOPIC_VALVE_STATUS,
-        "%"
-    );
+    String valveTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/valve/config";
+    String valvePayload = "{\"name\":\"Valve Position\",\"state_topic\":\"esp32_thermostat/valve/status\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\"}";
+    
+    bool valveSuccess = _mqttClient.publish(valveTopic.c_str(), valvePayload.c_str(), true);
+    Serial.print("Published valve config: ");
+    Serial.println(valveSuccess ? "Success" : "FAILED");
 }
 
 // Send state updates for each entity
 void HomeAssistant::updateStates(float temperature, float humidity, float pressure, int valvePosition) {
-    // Convert values to strings and publish
+    // Convert values to strings and publish to the actual topics you're using
     char tempStr[8];
     dtostrf(temperature, 1, 2, tempStr);
-    _mqttClient.publish(MQTT_TOPIC_TEMPERATURE, tempStr);
+    _mqttClient.publish("esp32_thermostat/temperature", tempStr);
     
     char humStr[8];
     dtostrf(humidity, 1, 2, humStr);
-    _mqttClient.publish(MQTT_TOPIC_HUMIDITY, humStr);
+    _mqttClient.publish("esp32_thermostat/humidity", humStr);
     
     char presStr[8];
     dtostrf(pressure, 1, 2, presStr);
-    _mqttClient.publish(MQTT_TOPIC_PRESSURE, presStr);
+    _mqttClient.publish("esp32_thermostat/pressure", presStr);
     
     char valveStr[4];
     itoa(valvePosition, valveStr, 10);
-    _mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+    _mqttClient.publish("esp32_thermostat/valve/status", valveStr);
+    
+    // Also publish a general "online" status message
+    _mqttClient.publish("esp32_thermostat/status", "online", true);
 }
 
 // Update availability status
@@ -99,54 +96,11 @@ void HomeAssistant::updateAvailability(bool isOnline) {
     _mqttClient.publish(_availabilityTopic.c_str(), isOnline ? "online" : "offline", true);
 }
 
-// Publish discovery configuration for a single entity
+// Publish discovery configuration for a single entity - Not used in simplified version
 void HomeAssistant::publishConfig(const char* component, const char* objectId, const char* name, 
                                const char* deviceClass, const char* stateTopic, const char* unit,
                                const char* commandTopic) {
-    
-    // Create discovery topic
-    String discoveryTopic = String(HA_DISCOVERY_PREFIX) + "/" + component + "/" + 
-                           _nodeId + "/" + objectId + "/config";
-    
-    // Build configuration JSON
-    String payload = "{";
-    
-    // Required fields
-    payload += "\"name\":\"" + String(name) + "\"";
-    payload += ",\"unique_id\":\"" + _nodeId + "_" + objectId + "\"";
-    payload += ",\"state_topic\":\"" + String(stateTopic) + "\"";
-    
-    // Add availability information
-    payload += ",\"availability_topic\":\"" + _availabilityTopic + "\"";
-    
-    // Optional fields
-    if (deviceClass && strcmp(deviceClass, "None") != 0) {
-        payload += ",\"device_class\":\"" + String(deviceClass) + "\"";
-    }
-    
-    if (unit) {
-        payload += ",\"unit_of_measurement\":\"" + String(unit) + "\"";
-    }
-    
-    if (commandTopic) {
-        payload += ",\"command_topic\":\"" + String(commandTopic) + "\"";
-    }
-    
-    // Device information
-    payload += ",\"device\":{";
-    payload += "\"identifiers\":[\"" + _nodeId + "\"]";
-    payload += ",\"name\":\"ESP32 KNX Thermostat\"";
-    payload += ",\"model\":\"ESP32-KNX-Thermostat\"";
-    payload += ",\"manufacturer\":\"DIY\"";
-    payload += "}";
-    
-    payload += "}";
-    
-    // Publish with retain flag
-    _mqttClient.publish(discoveryTopic.c_str(), payload.c_str(), true);
-    
-    Serial.print("Published Home Assistant discovery for ");
-    Serial.println(name);
+    // This function is not used in the simplified implementation
 }
 
 // Helper for publishing JSON messages

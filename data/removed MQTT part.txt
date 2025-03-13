@@ -1,0 +1,23 @@
+// The original code for publishing to MQTT is now handled by homeAssistant.updateStates()
+  // but we're keeping it in a commented form for reference
+  /*
+  // Publish temperature
+  char tempStr[8];
+  dtostrf(temperature, 1, 2, tempStr);
+  mqttClient.publish(MQTT_TOPIC_TEMPERATURE, tempStr);
+  
+  // Publish humidity
+  char humStr[8];
+  dtostrf(humidity, 1, 2, humStr);
+  mqttClient.publish(MQTT_TOPIC_HUMIDITY, humStr);
+  
+  // Publish pressure
+  char presStr[8];
+  dtostrf(pressure, 1, 2, presStr);
+  mqttClient.publish(MQTT_TOPIC_PRESSURE, presStr);
+  
+  // Publish valve position
+  char valveStr[4];
+  itoa(valvePosition, valveStr, 10);
+  mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+  */

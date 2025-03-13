@@ -8,11 +8,13 @@
 #include "bme280_sensor.h"
 #include "config.h"
 #include "utils.h"
+#include "home_assistant.h"
 
 // Global variables
 BME280Sensor bme280;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
+HomeAssistant homeAssistant(mqttClient, "esp32_thermostat");
 float temperature = 0;
 float humidity = 0;
 float pressure = 0;
@@ -33,7 +35,7 @@ void publishStatus();
 void setValvePosition(int position);
 
 // Define the callback function with the correct signature
-void knxCallback(knx_command_type_t ct, uint16_t src, uint16_t dst, uint8_t *data, uint8_t len, void *arg);
+void knxCallback(message_t const &msg, void *arg);
 
 void setup() {
   Serial.begin(115200);
@@ -89,6 +91,12 @@ void setupWiFi() {
 void setupMQTT() {
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
+  mqttClient.setBufferSize(512);
+  
+  // Initialize Home Assistant integration when connected
+  if (mqttClient.connected()) {
+    homeAssistant.begin();
+  }
 }
 
 // Update the function declaration to match the library's expected signature
@@ -97,11 +105,14 @@ void knxCallback(message_t const &msg, void *arg);
 void setupKNX() {
   Serial.println("Setting up KNX...");
   
+  // Set a higher threshold for KNX debug messages
+  esp_log_level_set("KNXIP", ESP_LOG_INFO);  // Change from ESP_LOG_DEBUG to ESP_LOG_INFO
+  
   // Configure KNX debug level based on configuration
   if (KNX_DEBUG_ENABLED) {
-    esp_log_level_set("KNXIP", ESP_LOG_INFO);
+    esp_log_level_set("KNXIP", ESP_LOG_ERROR);
   } else {
-    esp_log_level_set("KNXIP", ESP_LOG_WARN);
+    esp_log_level_set("KNXIP", ESP_LOG_ERROR);
   }
   
   // Start KNX without web server
@@ -116,9 +127,8 @@ void setupKNX() {
   humidityAddress = knx.GA_to_address(KNX_GA_HUMIDITY_MAIN, KNX_GA_HUMIDITY_MID, KNX_GA_HUMIDITY_SUB);
   pressureAddress = knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
   
-  // Register callback for KNX events
-  // knx.callback_register("valve_control", knxCallback, nullptr);
-  knx.register_GA_callback(valveAddress.value, knxCallback, nullptr);
+  // Register callback for KNX events - using original method
+  knx.callback_register("valve_control", knxCallback, nullptr);
   
   Serial.println("KNX initialized");
 }
@@ -134,6 +144,9 @@ void reconnectMQTT() {
       
       // Subscribe to topics
       mqttClient.subscribe(MQTT_TOPIC_VALVE_COMMAND);
+      
+      // Initialize Home Assistant discovery
+      homeAssistant.begin();
       
     } else {
       Serial.print("MQTT connection failed, rc=");
@@ -177,35 +190,15 @@ void updateSensorReadings() {
 }
 
 void publishStatus() {
-  // Publish temperature
-  char tempStr[8];
-  dtostrf(temperature, 1, 2, tempStr);
-  mqttClient.publish(MQTT_TOPIC_TEMPERATURE, tempStr);
+  // Use Home Assistant to update all states at once via MQTT
+  homeAssistant.updateStates(temperature, humidity, pressure, valvePosition);
   
-  // Send temperature to KNX (DPT 9.001 - 2-byte float)
+  // Also send to KNX
   knx.write_2byte_float(temperatureAddress, temperature);
-  
-  // Publish humidity
-  char humStr[8];
-  dtostrf(humidity, 1, 2, humStr);
-  mqttClient.publish(MQTT_TOPIC_HUMIDITY, humStr);
-  
-  // Send humidity to KNX (DPT 9.007 - 2-byte float)
   knx.write_2byte_float(humidityAddress, humidity);
-  
-  // Publish pressure
-  char presStr[8];
-  dtostrf(pressure, 1, 2, presStr);
-  mqttClient.publish(MQTT_TOPIC_PRESSURE, presStr);
-  
-  // Send pressure to KNX (DPT 9.006 - 2-byte float)
-  // Note: KNX typically uses hPa, so we don't need to convert
   knx.write_2byte_float(pressureAddress, pressure);
   
-  // Publish valve position
-  char valveStr[4];
-  itoa(valvePosition, valveStr, 10);
-  mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+  // Original direct MQTT publishing is now handled in the HomeAssistant class
 }
 
 void setValvePosition(int position) {
@@ -231,34 +224,32 @@ void setValvePosition(int position) {
 
 // KNX callback function
 void knxCallback(message_t const &msg, void *arg) {
-  // From the debug output, we can see that source address is printed as "Source: 0x11 0x4b"
-  // This means we need to extract this information from the message
-  // Print the raw message details for debugging
-  Serial.print("KNX Message - CT: 0x");
-  Serial.print(msg.ct, HEX);
-  Serial.print(", Dest: ");
-  
-  // Convert the destination group address to readable format
-  address_t dest = msg.received_on;
-  Serial.print(dest.ga.area);
-  Serial.print("/");
-  Serial.print(dest.ga.line);
-  Serial.print("/");
-  Serial.print(dest.ga.member);
-  
-  if (msg.data_len > 0) {
-    Serial.print(", Data: ");
-    for (int i = 0; i < msg.data_len; i++) {
-      Serial.print("0x");
-      Serial.print(msg.data[i], HEX);
-      Serial.print(" ");
+  // Check if this is a message for our valve control GA - add this filter to reduce processing
+  if (msg.received_on.value == valveAddress.value) {
+    // Print the raw message details for debugging
+    Serial.print("KNX Message - CT: 0x");
+    Serial.print(msg.ct, HEX);
+    Serial.print(", Dest: ");
+    
+    // Convert the destination group address to readable format
+    address_t dest = msg.received_on;
+    Serial.print(dest.ga.area);
+    Serial.print("/");
+    Serial.print(dest.ga.line);
+    Serial.print("/");
+    Serial.print(dest.ga.member);
+    
+    if (msg.data_len > 0) {
+      Serial.print(", Data: ");
+      for (int i = 0; i < msg.data_len; i++) {
+        Serial.print("0x");
+        Serial.print(msg.data[i], HEX);
+        Serial.print(" ");
+      }
     }
-  }
-  Serial.println();
-  
-  // Check if this is a message for our valve control GA
-  if (dest.value == valveAddress.value) {
-    // Check if we have data and it's a write command
+    Serial.println();
+    
+    // Process valve position command
     if (msg.data_len > 0 && msg.ct == KNX_CT_WRITE) {
       // Extract valve position value (assuming it's a scaling value 0-100%)
       int position = (int)msg.data[0];
