@@ -21,3 +21,6 @@
   itoa(valvePosition, valveStr, 10);
   mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
   */
+
+
+  ok, now it is time to split the main.cpp and extract KNX and MQTT in their own cpp's, Try to do that with knx_interface.cpp and mqtt_interface.cpp. What is your proposal for creating a bit more clarity in the code?

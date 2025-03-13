@@ -167,11 +167,26 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   // Handle valve position command from original topic
   if (strcmp(topic, MQTT_TOPIC_VALVE_COMMAND) == 0) {
     int position = atoi(message);
-    setValvePosition(position);
+    
+    // Update valve position locally without sending to KNX
+    valvePosition = constrain(position, 0, 100);
+    
+    // Only send to test address
+    address_t testValveAddress = knx.GA_to_address(10, 2, 2);
+    knx.write_1byte_int(testValveAddress, valvePosition);
+    
+    // Update MQTT status
+    char valveStr[4];
+    itoa(valvePosition, valveStr, 10);
+    mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+    
+    Serial.print("Updated valve position to: ");
+    Serial.print(valvePosition);
+    Serial.println("% (sent to test address only)");
     return;
   }
   
-  // Handle the new valve control topic
+  // Handle the valve control topic from Home Assistant
   if (strcmp(topic, "esp32_thermostat/valve/set") == 0) {
     // Try to parse the value - might be a direct number or JSON
     int position = 0;
@@ -200,15 +215,21 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.print("Parsed valve position: ");
     Serial.println(position);
     
-    // Set the position if valid
-    setValvePosition(position);
+    // Update valve position locally without calling setValvePosition()
+    valvePosition = constrain(position, 0, 100);
     
-    // Send to KNX test address for safety during testing
+    // Send only to test address
     address_t testValveAddress = knx.GA_to_address(10, 2, 2);
-    knx.write_1byte_int(testValveAddress, position);
+    knx.write_1byte_int(testValveAddress, valvePosition);
     
-    Serial.print("Sent valve position to KNX test address: ");
-    Serial.println(position);
+    // Update MQTT status
+    char valveStr[4];
+    itoa(valvePosition, valveStr, 10);
+    mqttClient.publish("esp32_thermostat/valve/status", valveStr);
+    
+    Serial.print("Updated valve position to: ");
+    Serial.print(valvePosition);
+    Serial.println("% (sent to test address only)");
   }
 }
 
@@ -244,8 +265,8 @@ void setValvePosition(int position) {
     Serial.print(valvePosition);
     Serial.println("%");
     
-    // Send to KNX - using the proper API method
-    knx.write_1byte_int(valveAddress, valvePosition);
+    // NOTE: We're not sending to KNX here anymore to avoid duplicates
+    // KNX messages are now sent explicitly from the MQTT callback
     
     // Publish to MQTT
     char valveStr[4];
@@ -254,38 +275,56 @@ void setValvePosition(int position) {
   }
 }
 
-// KNX callback function
+/// KNX callback function
 void knxCallback(message_t const &msg, void *arg) {
-  // Check if this is a message for our valve control GA - add this filter to reduce processing
-  if (msg.received_on.value == valveAddress.value) {
-    // Print the raw message details for debugging
-    Serial.print("KNX Message - CT: 0x");
-    Serial.print(msg.ct, HEX);
-    Serial.print(", Dest: ");
-    
-    // Convert the destination group address to readable format
-    address_t dest = msg.received_on;
-    Serial.print(dest.ga.area);
-    Serial.print("/");
-    Serial.print(dest.ga.line);
-    Serial.print("/");
-    Serial.print(dest.ga.member);
-    
-    if (msg.data_len > 0) {
-      Serial.print(", Data: ");
-      for (int i = 0; i < msg.data_len; i++) {
-        Serial.print("0x");
-        Serial.print(msg.data[i], HEX);
-        Serial.print(" ");
-      }
+  // Print the raw message details for debugging
+  Serial.print("KNX Message - CT: 0x");
+  Serial.print(msg.ct, HEX);
+  Serial.print(", Dest: ");
+  
+  // Convert the destination group address to readable format
+  address_t dest = msg.received_on;
+  Serial.print(dest.ga.area);
+  Serial.print("/");
+  Serial.print(dest.ga.line);
+  Serial.print("/");
+  Serial.print(dest.ga.member);
+  
+  if (msg.data_len > 0) {
+    Serial.print(", Data: ");
+    for (int i = 0; i < msg.data_len; i++) {
+      Serial.print("0x");
+      Serial.print(msg.data[i], HEX);
+      Serial.print(" ");
     }
-    Serial.println();
-    
+  }
+  Serial.println();
+  
+  // We're still processing KNX messages to update our internal state
+  // but we'll handle this without sending duplicates
+  
+  // 10/2/2 is our test valve address
+  address_t testValveAddress = knx.GA_to_address(10, 2, 2);
+  
+  // Check if this message is for our valve address from KNX
+  if (msg.received_on.value == valveAddress.value || 
+      msg.received_on.value == testValveAddress.value) {
+      
     // Process valve position command
     if (msg.data_len > 0 && msg.ct == KNX_CT_WRITE) {
       // Extract valve position value (assuming it's a scaling value 0-100%)
       int position = (int)msg.data[0];
-      setValvePosition(position);
+      
+      // Only update local state and MQTT, don't send back to KNX
+      valvePosition = constrain(position, 0, 100);
+      
+      // Publish to MQTT
+      char valveStr[4];
+      itoa(valvePosition, valveStr, 10);
+      mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+      
+      Serial.print("Updated valve position from KNX to: ");
+      Serial.println(valvePosition);
     }
   }
 }
