@@ -110,39 +110,24 @@ void HomeAssistant::registerEntities() {
     Serial.print("Payload: ");
     Serial.println(presPayload);
     
-    /// Valve control as a proper valve entity
-String valveControlTopic = String(HA_DISCOVERY_PREFIX) + "/valve/" + _nodeId + "/valve_control/config";
-String valveControlPayload = "{";
-valveControlPayload += "\"name\":\"Radiator Valve\",";
-valveControlPayload += "\"unique_id\":\"" + _nodeId + "_valve_control\",";
-valveControlPayload += "\"command_topic\":\"esp32_thermostat/valve/set\",";
-valveControlPayload += "\"state_topic\":\"esp32_thermostat/valve/position\",";
-valveControlPayload += "\"position_topic\":\"esp32_thermostat/valve/position\",";
-valveControlPayload += "\"set_position_topic\":\"esp32_thermostat/valve/set\",";
-valveControlPayload += "\"position_template\":\"{{ value }}\",";
-valveControlPayload += "\"value_template\":\"{{ value }}\",";
-valveControlPayload += "\"min_position\":0,";
-valveControlPayload += "\"max_position\":100,";
-valveControlPayload += "\"position_open\":100,";
-valveControlPayload += "\"position_closed\":0,";
-valveControlPayload += "\"payload_open\":\"100\",";
-valveControlPayload += "\"payload_close\":\"0\",";
-valveControlPayload += "\"payload_stop\":\"50\",";
-valveControlPayload += "\"state_open\":\"100\",";
-valveControlPayload += "\"state_closed\":\"0\",";
-valveControlPayload += "\"reports_position\":true,";
-valveControlPayload += "\"icon\":\"mdi:radiator-valve\",";
-valveControlPayload += "\"device_class\":\"valve\",";
-valveControlPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
-valveControlPayload += "\"device\":" + deviceInfo + ",";
-valveControlPayload += "\"timestamp\":\"" + timestamp + "\"";
-valveControlPayload += "}";
+    // Valve position sensor - with unique_id and device info
+    String valvePosTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/valve_position/config";
+    String valuePosPayload = "{";
+    valuePosPayload += "\"name\":\"Valve Position\",";
+    valuePosPayload += "\"unique_id\":\"" + _nodeId + "_valve_position\",";
+    valuePosPayload += "\"state_topic\":\"esp32_thermostat/valve/position\",";
+    valuePosPayload += "\"unit_of_measurement\":\"%\",";
+    valuePosPayload += "\"value_template\":\"{{ value }}\",";
+    valuePosPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    valuePosPayload += "\"device\":" + deviceInfo + ",";
+    valuePosPayload += "\"timestamp\":\"" + timestamp + "\"";
+    valuePosPayload += "}";
     
-    bool valveSuccess = _mqttClient.publish(valveTopic.c_str(), valvePayload.c_str(), true);
+    bool valvePosSuccess = _mqttClient.publish(valvePosTopic.c_str(), valuePosPayload.c_str(), true);
     Serial.print("Published valve position config: ");
-    Serial.println(valveSuccess ? "Success" : "FAILED");
+    Serial.println(valvePosSuccess ? "Success" : "FAILED");
     Serial.print("Payload: ");
-    Serial.println(valvePayload);
+    Serial.println(valuePosPayload);
     
     // Valve control as a number entity (cleaner than a light entity)
     String valveControlTopic = String(HA_DISCOVERY_PREFIX) + "/number/" + _nodeId + "/valve_control/config";
@@ -150,12 +135,12 @@ valveControlPayload += "}";
     valveControlPayload += "\"name\":\"Valve Control\",";
     valveControlPayload += "\"unique_id\":\"" + _nodeId + "_valve_control\",";
     valveControlPayload += "\"command_topic\":\"esp32_thermostat/valve/set\",";
-    valveControlPayload += "\"state_topic\":\"esp32_thermostat/valve/status\",";
+    valveControlPayload += "\"state_topic\":\"esp32_thermostat/valve/position\",";
     valveControlPayload += "\"min\":0,";
     valveControlPayload += "\"max\":100,";
     valveControlPayload += "\"step\":1,";
     valveControlPayload += "\"unit_of_measurement\":\"%\",";
-    valveControlPayload += "\"icon\":\"mdi:radiator\",";
+    valveControlPayload += "\"icon\":\"mdi:radiator-valve\",";
     valveControlPayload += "\"mode\":\"slider\",";
     valveControlPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     valveControlPayload += "\"device\":" + deviceInfo + ",";
@@ -197,14 +182,14 @@ void HomeAssistant::updateStates(float temperature, float humidity, float pressu
     // For new number entity (plain number)
     _mqttClient.publish("esp32_thermostat/valve/position", valveStr);
     
-    // For old light entity (JSON format)
+    // For old light entity (JSON format) - helps fix errors
     char jsonValveStr[50];
     sprintf(jsonValveStr, "{\"state\":\"%s\",\"brightness\":%d}", 
             valvePosition > 0 ? "ON" : "OFF", valvePosition);
     _mqttClient.publish("esp32_thermostat/valve/status", jsonValveStr, true);
     
     // Also publish a general "online" status message
-    _mqttClient.publish("esp32_thermostat/status", "online", true);
+    _mqttClient.publish(_availabilityTopic.c_str(), "online", true);
 }
 
 // Update availability status

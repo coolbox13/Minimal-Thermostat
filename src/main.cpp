@@ -175,10 +175,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     address_t testValveAddress = knx.GA_to_address(10, 2, 2);
     knx.write_1byte_int(testValveAddress, valvePosition);
     
-    // Update MQTT status
+    // Update MQTT status - both topics
     char valveStr[4];
     itoa(valvePosition, valveStr, 10);
-    mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+    mqttClient.publish("esp32_thermostat/valve/position", valveStr);
+    
+    char jsonValveStr[50];
+    sprintf(jsonValveStr, "{\"state\":\"%s\",\"brightness\":%d}", 
+            valvePosition > 0 ? "ON" : "OFF", valvePosition);
+    mqttClient.publish("esp32_thermostat/valve/status", jsonValveStr, true);
     
     Serial.print("Updated valve position to: ");
     Serial.print(valvePosition);
@@ -201,10 +206,15 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     address_t testValveAddress = knx.GA_to_address(10, 2, 2);
     knx.write_1byte_int(testValveAddress, valvePosition);
     
-    // Update MQTT status
+    // Update MQTT status - both topics
     char valveStr[4];
     itoa(valvePosition, valveStr, 10);
-    mqttClient.publish("esp32_thermostat/valve/status", valveStr);
+    mqttClient.publish("esp32_thermostat/valve/position", valveStr);
+    
+    char jsonValveStr[50];
+    sprintf(jsonValveStr, "{\"state\":\"%s\",\"brightness\":%d}", 
+            valvePosition > 0 ? "ON" : "OFF", valvePosition);
+    mqttClient.publish("esp32_thermostat/valve/status", jsonValveStr, true);
     
     Serial.print("Updated valve position to: ");
     Serial.print(valvePosition);
