@@ -13,7 +13,7 @@ void KNXManager::begin() {
     if (KNX_DEBUG_ENABLED) {
         esp_log_level_set("KNXIP", ESP_LOG_INFO);
     } else {
-        esp_log_level_set("KNXIP", ESP_LOG_WARN);
+        esp_log_level_set("KNXIP", ESP_LOG_ERROR);  // Only show errors
     }
     
     // Start KNX without web server

@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <Arduino.h>
+#include <esp_log.h>
 #include <esp-knx-ip.h>
 
 // Function to decode KNX command type
@@ -19,5 +20,11 @@ String decodeKnxMessage(knx_command_type_t ct, uint16_t src, uint16_t dst, uint8
 // New functions to monitor and decode KNX debug messages from serial output
 void monitorKnxDebugMessages();
 void decodeRawKnxDebugMessage(String &message);
+
+// Function to initialize custom log handler
+void setupCustomLogHandler();
+
+// Function to process KNX debug messages
+void processKnxDebugMessage(const char* message);
 
 #endif // UTILS_H

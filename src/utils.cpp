@@ -1,4 +1,6 @@
 #include "utils.h"
+#include "config.h"
+#include <esp_log.h>
 
 String decodeKnxCommandType(uint8_t ct) {
   switch (ct) {
@@ -98,36 +100,22 @@ String decodeKnxMessage(knx_command_type_t ct, uint16_t src, uint16_t dst, uint8
 
 // New function to decode the raw KNX debug messages from the serial output
 void monitorKnxDebugMessages() {
-  static String buffer = "";
-  static bool messageStarted = false;
-  static bool messageComplete = false;
-  
-  // Process characters from Serial
-  while (Serial.available()) {
-    char c = Serial.read();
-    
-    // Look for the start of a KNX debug message
-    if (c == '[' && !messageStarted) {
-      buffer = c;
-      messageStarted = true;
-    } 
-    else if (messageStarted) {
-      buffer += c;
-      
-      // Check for end of KNX message block
-      if (buffer.indexOf("[KNXIP] ==") > 0) {
-        messageComplete = true;
-      }
+    // Check if there's data available on Serial
+    while (Serial.available()) {
+        String line = Serial.readStringUntil('\n');
+        
+        // Skip KNX debug messages that contain specific patterns
+        if (line.indexOf("[KNXIP]") >= 0 && 
+            (line.indexOf("__loop_knx()") >= 0 || 
+             line.indexOf("Got packet") >= 0 ||
+             line.indexOf("LEN:") >= 0)) {
+            // Skip these common debug messages
+            continue;
+        }
+        
+        // Process other messages as needed
+        // ...
     }
-    
-    // Process complete message
-    if (messageComplete) {
-      decodeRawKnxDebugMessage(buffer);
-      buffer = "";
-      messageStarted = false;
-      messageComplete = false;
-    }
-  }
 }
 
 // Function to decode the raw KNX debug message
@@ -244,4 +232,105 @@ void decodeRawKnxDebugMessage(String &message) {
     
     Serial.println();
   }
+}
+
+// Buffer to store the last KNX message
+static char lastKnxMessage[256] = "";
+static unsigned long lastKnxMessageTime = 0;
+static int knxMessageRepeatCount = 0;
+
+// Custom log function that will be called by ESP-IDF logging
+// Changed return type from void to int to match vprintf_like_t signature
+static int customLogOutput(const char *fmt, va_list args) {
+    char buffer[256];
+    int result = vsnprintf(buffer, sizeof(buffer), fmt, args);
+    
+    // Check if this is a KNX message
+    if (strstr(buffer, "[KNXIP]") != NULL) {
+        processKnxDebugMessage(buffer);
+    } else {
+        // For non-KNX messages, print directly
+        Serial.print(buffer);
+    }
+    
+    // Return the number of characters that would have been written
+    return result;
+}
+
+void setupCustomLogHandler() {
+    // Set our custom log handler
+    esp_log_set_vprintf(customLogOutput);
+    
+    // Set the log level for KNX based on configuration
+    if (KNX_DEBUG_ENABLED) {
+        esp_log_level_set("KNXIP", ESP_LOG_INFO);
+    } else {
+        esp_log_level_set("KNXIP", ESP_LOG_ERROR);
+    }
+}
+
+void processKnxDebugMessage(const char* message) {
+    // Check if this is a message we want to process
+    if (strstr(message, "__loop_knx()") != NULL) {
+        // Compare with last message to detect repeats
+        if (strcmp(message, lastKnxMessage) == 0) {
+            knxMessageRepeatCount++;
+            
+            // Only print every 50th repeat or if more than 5 seconds passed
+            unsigned long now = millis();
+            if (knxMessageRepeatCount % 50 == 0 || now - lastKnxMessageTime > 5000) {
+                Serial.print("KNX debug (repeated ");
+                Serial.print(knxMessageRepeatCount);
+                Serial.print(" times): ");
+                
+                // Extract the important part of the message
+                const char* important = strstr(message, "[KNXIP]");
+                if (important) {
+                    Serial.println(important);
+                } else {
+                    Serial.println(message);
+                }
+                
+                lastKnxMessageTime = now;
+            }
+        } else {
+            // New message
+            if (knxMessageRepeatCount > 1) {
+                Serial.print("Previous KNX debug repeated ");
+                Serial.print(knxMessageRepeatCount);
+                Serial.println(" times");
+            }
+            
+            // Extract and print only the important part
+            const char* important = strstr(message, "[KNXIP]");
+            if (important) {
+                Serial.print("KNX debug: ");
+                Serial.println(important);
+            } else {
+                Serial.print("KNX debug: ");
+                Serial.println(message);
+            }
+            
+            // Store for comparison
+            strncpy(lastKnxMessage, message, sizeof(lastKnxMessage) - 1);
+            lastKnxMessage[sizeof(lastKnxMessage) - 1] = '\0';
+            knxMessageRepeatCount = 1;
+            lastKnxMessageTime = millis();
+        }
+    } else if (strstr(message, "Got packet") != NULL || 
+               strstr(message, "LEN:") != NULL) {
+        // These are very common messages, just count them without printing
+        static int packetCount = 0;
+        packetCount++;
+        
+        // Print a summary every 100 packets
+        if (packetCount % 100 == 0) {
+            Serial.print("KNX packets processed: ");
+            Serial.println(packetCount);
+        }
+    } else {
+        // For other KNX messages, print them directly but with a prefix
+        Serial.print("KNX: ");
+        Serial.println(message);
+    }
 }

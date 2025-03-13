@@ -30,6 +30,9 @@ void setup() {
   Serial.begin(115200);
   Serial.println("ESP32 KNX Thermostat - Modular Version");
   
+  // Setup custom log handler before initializing KNX
+  setupCustomLogHandler();
+  
   // Initialize BME280 sensor
   if (!bme280.begin()) {
     Serial.println("Failed to initialize BME280 sensor!");
