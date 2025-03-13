@@ -71,7 +71,7 @@ void HomeAssistant::registerEntities() {
     Serial.print("Payload: ");
     Serial.println(presPayload);
     
-    // Valve position
+    // Valve position sensor
     String valveTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/valve/config";
     String valvePayload = "{\"name\":\"Valve Position\",\"state_topic\":\"esp32_thermostat/valve/status\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\",\"timestamp\":\"" + timestamp + "\"}";
     
@@ -123,17 +123,18 @@ void HomeAssistant::updateStates(float temperature, float humidity, float pressu
 
 // Update availability status
 void HomeAssistant::updateAvailability(bool isOnline) {
-    _mqttClient.publish(_availabilityTopic.c_str(), isOnline ? "online" : "offline", true);
+    bool published = _mqttClient.publish(_availabilityTopic.c_str(), isOnline ? "online" : "offline", true);
+    Serial.print("Published availability status (");
+    Serial.print(isOnline ? "online" : "offline");
+    Serial.print(") to ");
+    Serial.print(_availabilityTopic);
+    Serial.println(published ? " - Success" : " - FAILED");
 }
 
-// Publish discovery configuration for a single entity - Not used in simplified version
+// Publish discovery configuration for a single entity - kept for backward compatibility
 void HomeAssistant::publishConfig(const char* component, const char* objectId, const char* name, 
                                const char* deviceClass, const char* stateTopic, const char* unit,
                                const char* commandTopic) {
-    // This function is not used in the simplified implementation
-}
-
-// Helper for publishing JSON messages
-void HomeAssistant::publishJson(const char* topic, const char* payload) {
-    _mqttClient.publish(topic, payload, true);
+    // This method is no longer used but kept for compatibility
+    Serial.println("Warning: Obsolete publishConfig method called");
 }

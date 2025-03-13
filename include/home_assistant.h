@@ -25,13 +25,10 @@ private:
     String _nodeId;
     String _availabilityTopic;
     
-    // Publish discovery configuration
+    // Kept for backward compatibility - not used anymore
     void publishConfig(const char* component, const char* objectId, const char* name, 
                       const char* deviceClass, const char* stateTopic, const char* unit = nullptr,
                       const char* commandTopic = nullptr);
-    
-    // Publish JSON message
-    void publishJson(const char* topic, const char* payload);
 };
 
 #endif // HOME_ASSISTANT_H

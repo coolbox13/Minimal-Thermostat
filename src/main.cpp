@@ -3,7 +3,6 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-// Update the include path to match the ESP32_ENVY_PORT library
 #include <esp-knx-ip.h>
 #include "bme280_sensor.h"
 #include "config.h"
@@ -28,13 +27,11 @@ address_t pressureAddress;
 void setupWiFi();
 void setupMQTT();
 void setupKNX();
-void registerValveControlWithHA();
 void reconnectMQTT();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void updateSensorReadings();
 void publishStatus();
 void setValvePosition(int position);
-void sendHardcodedDiscoveryMessage();
 
 // Define the callback function with the correct signature
 void knxCallback(message_t const &msg, void *arg);
@@ -50,12 +47,6 @@ void setup() {
   setupWiFi();
   setupMQTT();
   setupKNX();
-
-  // Send hardcoded discovery message for testing
-  sendHardcodedDiscoveryMessage();
-
-  // Then try the regular registration
-  registerValveControlWithHA();
 }
 
 void loop() {
@@ -107,9 +98,6 @@ void setupMQTT() {
   }
 }
 
-// Update the function declaration to match the library's expected signature
-void knxCallback(message_t const &msg, void *arg);
-
 void setupKNX() {
   Serial.println("Setting up KNX...");
   
@@ -149,6 +137,7 @@ void reconnectMQTT() {
       
       // Subscribe to topics
       mqttClient.subscribe(MQTT_TOPIC_VALVE_COMMAND);
+      mqttClient.subscribe("esp32_thermostat/valve/set");  // Subscribe to valve control topic
       
       // Initialize Home Assistant discovery
       homeAssistant.begin();
@@ -162,7 +151,6 @@ void reconnectMQTT() {
   }
 }
 
-// Update your existing MQTT callback to handle valve control messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   // Convert payload to string
   char message[length + 1];
@@ -209,6 +197,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       position = atoi(message);
     }
     
+    Serial.print("Parsed valve position: ");
+    Serial.println(position);
+    
     // Set the position if valid
     setValvePosition(position);
     
@@ -254,7 +245,6 @@ void setValvePosition(int position) {
     Serial.println("%");
     
     // Send to KNX - using the proper API method
-    uint8_t data = (uint8_t)valvePosition;
     knx.write_1byte_int(valveAddress, valvePosition);
     
     // Publish to MQTT
@@ -298,88 +288,4 @@ void knxCallback(message_t const &msg, void *arg) {
       setValvePosition(position);
     }
   }
-}
-
-void registerValveControlWithHA() {
-  if (!mqttClient.connected()) return;
-  
-  Serial.println("Registering valve control with Home Assistant...");
-  
-  // Create topics
-  String discoveryPrefix = "homeassistant";
-  String controlTopic = "esp32_thermostat/valve/set";
-  String statusTopic = "esp32_thermostat/valve/status";
-  
-  // Subscribe to the control topic
-  mqttClient.subscribe(controlTopic.c_str());
-  
-  // Valve position sensor config
-  String sensorTopic = discoveryPrefix + "/sensor/esp32_thermostat/valve_position/config";
-  String sensorPayload = "{";
-  sensorPayload += "\"name\":\"Valve Position\",";
-  sensorPayload += "\"state_topic\":\"" + statusTopic + "\",";
-  sensorPayload += "\"unit_of_measurement\":\"%\",";
-  sensorPayload += "\"icon\":\"mdi:valve\"";
-  sensorPayload += "}";
-  
-  bool sensorSuccess = mqttClient.publish(sensorTopic.c_str(), sensorPayload.c_str(), true);
-  Serial.print("Valve position sensor registration: ");
-  Serial.println(sensorSuccess ? "Success" : "Failed");
-  
-  // Valve control as a simple slider (using light with brightness)
-  String sliderTopic = discoveryPrefix + "/light/esp32_thermostat/valve_control/config";
-  String sliderPayload = "{";
-  sliderPayload += "\"name\":\"Valve Control\",";
-  sliderPayload += "\"schema\":\"json\",";
-  sliderPayload += "\"brightness\":true,";
-  sliderPayload += "\"command_topic\":\"" + controlTopic + "\",";
-  sliderPayload += "\"state_topic\":\"" + statusTopic + "\",";
-  sliderPayload += "\"brightness_scale\":100,";
-  sliderPayload += "\"icon\":\"mdi:radiator\"";
-  sliderPayload += "}";
-  
-  bool sliderSuccess = mqttClient.publish(sliderTopic.c_str(), sliderPayload.c_str(), true);
-  Serial.print("Valve control registration: ");
-  Serial.println(sliderSuccess ? "Success" : "Failed");
-  
-  // Initialize valve position
-  char valveStr[4];
-  itoa(valvePosition, valveStr, 10);
-  mqttClient.publish(statusTopic.c_str(), valveStr, true);
-  
-  Serial.println("Valve control registration complete");
-}
-
-// Add this function to your main.cpp
-void sendHardcodedDiscoveryMessage() {
-  if (!mqttClient.connected()) return;
-  
-  Serial.println("Sending hardcoded discovery message for testing...");
-  
-  // Create a discovery topic for valve control
-  String discoveryTopic = "homeassistant/light/esp32_thermostat/valve_control/config";
-  
-  // Create a simple discovery payload
-  String payload = "{";
-  payload += "\"name\":\"Valve Control Test\",";
-  payload += "\"schema\":\"json\",";
-  payload += "\"brightness\":true,";
-  payload += "\"command_topic\":\"esp32_thermostat/valve/set\",";
-  payload += "\"state_topic\":\"esp32_thermostat/valve/status\",";
-  payload += "\"brightness_scale\":100,";
-  payload += "\"icon\":\"mdi:radiator\"";
-  payload += "}";
-  
-  // Publish with retain flag
-  bool success = mqttClient.publish(discoveryTopic.c_str(), payload.c_str(), true);
-  
-  Serial.print("Published hardcoded discovery message: ");
-  Serial.println(success ? "SUCCESS" : "FAILED");
-  Serial.print("Topic: ");
-  Serial.println(discoveryTopic);
-  Serial.print("Payload: ");
-  Serial.println(payload);
-  
-  // Also publish an initial status
-  mqttClient.publish("esp32_thermostat/valve/status", "0", true);
 }
