@@ -10,6 +10,7 @@
 #include "knx_manager.h"
 #include "mqtt_manager.h"
 
+// commit
 // Global variables
 BME280Sensor bme280;
 WiFiClient espClient;
