@@ -7,10 +7,19 @@
 
  #include "esp-knx-ip.h"
  #include <esp_log.h>
- #define DEBUG_TAG "KNXIP"
- #define DEBUG_PRINT(fmt, ...) ESP_LOGD(DEBUG_TAG, fmt, ##__VA_ARGS__)
- #define DEBUG_PRINTLN(fmt, ...) ESP_LOGD(DEBUG_TAG, fmt "\n", ##__VA_ARGS__)
- 
+ #include "config.h"
+ #include "utils.h"
+
+ // Redefine debug macros to use our custom logging
+ #ifdef KNX_DEBUG_ENABLED
+   #define DEBUG_TAG "KNXIP"
+   #define DEBUG_PRINT(fmt, ...) logKnxMessage(fmt, ##__VA_ARGS__)
+   #define DEBUG_PRINTLN(fmt, ...) logKnxMessage(fmt "\n", ##__VA_ARGS__)
+ #else
+   #define DEBUG_PRINT(fmt, ...)
+   #define DEBUG_PRINTLN(fmt, ...)
+ #endif
+
  /**
   * Send functions
   */
@@ -63,12 +72,18 @@
    buf[len - 1] = cs;
  #endif
  
+   // Replace the debug output with our custom logging
+ #ifdef KNX_DEBUG_ENABLED
    DEBUG_PRINT("Sending packet:");
-   for (int i = 0; i < len; ++i)
-   {
-	 DEBUG_PRINT(" 0x%X", buf[i]);
-   }
-   DEBUG_PRINTLN("");
+   // Instead of logging each byte separately, create a summary
+   char packetSummary[64];
+   snprintf(packetSummary, sizeof(packetSummary), "KNX packet to %d.%d.%d, len=%d", 
+            (receiver.value >> 12) & 0x0F, 
+            (receiver.value >> 8) & 0x0F, 
+            receiver.value & 0xFF, 
+            len);
+   logKnxMessage(packetSummary);
+ #endif
  
    // ESP32 UDP multicast: use beginPacket() instead of specifying the local IP.
    udp.beginPacket(MULTICAST_IP, MULTICAST_PORT);

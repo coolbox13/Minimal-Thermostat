@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "config.h"
+#include <stdarg.h>
 #include <esp_log.h>
 
 String decodeKnxCommandType(uint8_t ct) {
@@ -332,5 +333,45 @@ void processKnxDebugMessage(const char* message) {
         // For other KNX messages, print them directly but with a prefix
         Serial.print("KNX: ");
         Serial.println(message);
+    }
+}
+
+// Add this function to handle KNX debug messages
+void logKnxMessage(const char* format, ...) {
+    static char lastMessage[256] = "";
+    static int repeatCount = 0;
+    
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    
+    // Check if this is a repeat of the last message
+    if (strcmp(buffer, lastMessage) == 0) {
+        repeatCount++;
+        
+        // Only print every 10th repeat
+        if (repeatCount % 10 == 0) {
+            Serial.print("KNX (repeated ");
+            Serial.print(repeatCount);
+            Serial.print(" times): ");
+            Serial.println(buffer);
+        }
+    } else {
+        // New message
+        if (repeatCount > 1) {
+            Serial.print("Previous KNX message repeated ");
+            Serial.print(repeatCount);
+            Serial.println(" times");
+        }
+        
+        Serial.print("KNX: ");
+        Serial.println(buffer);
+        
+        // Store for comparison
+        strncpy(lastMessage, buffer, sizeof(lastMessage) - 1);
+        lastMessage[sizeof(lastMessage) - 1] = '\0';
+        repeatCount = 1;
     }
 }

@@ -27,4 +27,7 @@ void setupCustomLogHandler();
 // Function to process KNX debug messages
 void processKnxDebugMessage(const char* message);
 
+// Function to log KNX messages with formatting
+void logKnxMessage(const char* format, ...);
+
 #endif // UTILS_H
