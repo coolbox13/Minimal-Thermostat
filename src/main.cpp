@@ -40,6 +40,9 @@ void setup() {
   Serial.begin(115200);
   Serial.println("ESP32 KNX Thermostat - Simplified Version");
   
+  // Increase MQTT buffer size
+  mqttClient.setBufferSize(512);  // Increase from default 256 bytes
+  
   if (!bme280.begin()) {
     Serial.println("Failed to initialize BME280 sensor!");
   }
