@@ -7,7 +7,7 @@
 #define KNX_MEMBER 159
 
 // KNX Debug Configuration
-#define KNX_DEBUG_ENABLED true  // Set to false to disable KNX debug messages
+#define KNX_DEBUG_ENABLED false  // Set to false to disable KNX debug messages
 
 // KNX Group Address components for valve control (format: main/mid/sub)
 #define KNX_GA_VALVE_MAIN 1

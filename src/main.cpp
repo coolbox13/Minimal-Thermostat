@@ -28,11 +28,13 @@ address_t pressureAddress;
 void setupWiFi();
 void setupMQTT();
 void setupKNX();
+void registerValveControlWithHA();
 void reconnectMQTT();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void updateSensorReadings();
 void publishStatus();
 void setValvePosition(int position);
+void sendHardcodedDiscoveryMessage();
 
 // Define the callback function with the correct signature
 void knxCallback(message_t const &msg, void *arg);
@@ -48,6 +50,12 @@ void setup() {
   setupWiFi();
   setupMQTT();
   setupKNX();
+
+  // Send hardcoded discovery message for testing
+  sendHardcodedDiscoveryMessage();
+
+  // Then try the regular registration
+  registerValveControlWithHA();
 }
 
 void loop() {
@@ -154,6 +162,7 @@ void reconnectMQTT() {
   }
 }
 
+// Update your existing MQTT callback to handle valve control messages
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   // Convert payload to string
   char message[length + 1];
@@ -167,10 +176,48 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("]: ");
   Serial.println(message);
   
-  // Handle valve position command
+  // Handle valve position command from original topic
   if (strcmp(topic, MQTT_TOPIC_VALVE_COMMAND) == 0) {
     int position = atoi(message);
     setValvePosition(position);
+    return;
+  }
+  
+  // Handle the new valve control topic
+  if (strcmp(topic, "esp32_thermostat/valve/set") == 0) {
+    // Try to parse the value - might be a direct number or JSON
+    int position = 0;
+    
+    // Check if it's JSON (from light entity)
+    if (message[0] == '{') {
+      // Simple JSON parsing - look for "brightness" field
+      String payloadStr = String(message);
+      int brightnessPos = payloadStr.indexOf("\"brightness\"");
+      if (brightnessPos > 0) {
+        int valueStart = payloadStr.indexOf(":", brightnessPos) + 1;
+        int valueEnd = payloadStr.indexOf(",", valueStart);
+        if (valueEnd < 0) valueEnd = payloadStr.indexOf("}", valueStart);
+        
+        if (valueStart > 0 && valueEnd > valueStart) {
+          String valueStr = payloadStr.substring(valueStart, valueEnd);
+          valueStr.trim();
+          position = valueStr.toInt();
+        }
+      }
+    } else {
+      // Try direct number parsing
+      position = atoi(message);
+    }
+    
+    // Set the position if valid
+    setValvePosition(position);
+    
+    // Send to KNX test address for safety during testing
+    address_t testValveAddress = knx.GA_to_address(10, 2, 2);
+    knx.write_1byte_int(testValveAddress, position);
+    
+    Serial.print("Sent valve position to KNX test address: ");
+    Serial.println(position);
   }
 }
 
@@ -251,4 +298,88 @@ void knxCallback(message_t const &msg, void *arg) {
       setValvePosition(position);
     }
   }
+}
+
+void registerValveControlWithHA() {
+  if (!mqttClient.connected()) return;
+  
+  Serial.println("Registering valve control with Home Assistant...");
+  
+  // Create topics
+  String discoveryPrefix = "homeassistant";
+  String controlTopic = "esp32_thermostat/valve/set";
+  String statusTopic = "esp32_thermostat/valve/status";
+  
+  // Subscribe to the control topic
+  mqttClient.subscribe(controlTopic.c_str());
+  
+  // Valve position sensor config
+  String sensorTopic = discoveryPrefix + "/sensor/esp32_thermostat/valve_position/config";
+  String sensorPayload = "{";
+  sensorPayload += "\"name\":\"Valve Position\",";
+  sensorPayload += "\"state_topic\":\"" + statusTopic + "\",";
+  sensorPayload += "\"unit_of_measurement\":\"%\",";
+  sensorPayload += "\"icon\":\"mdi:valve\"";
+  sensorPayload += "}";
+  
+  bool sensorSuccess = mqttClient.publish(sensorTopic.c_str(), sensorPayload.c_str(), true);
+  Serial.print("Valve position sensor registration: ");
+  Serial.println(sensorSuccess ? "Success" : "Failed");
+  
+  // Valve control as a simple slider (using light with brightness)
+  String sliderTopic = discoveryPrefix + "/light/esp32_thermostat/valve_control/config";
+  String sliderPayload = "{";
+  sliderPayload += "\"name\":\"Valve Control\",";
+  sliderPayload += "\"schema\":\"json\",";
+  sliderPayload += "\"brightness\":true,";
+  sliderPayload += "\"command_topic\":\"" + controlTopic + "\",";
+  sliderPayload += "\"state_topic\":\"" + statusTopic + "\",";
+  sliderPayload += "\"brightness_scale\":100,";
+  sliderPayload += "\"icon\":\"mdi:radiator\"";
+  sliderPayload += "}";
+  
+  bool sliderSuccess = mqttClient.publish(sliderTopic.c_str(), sliderPayload.c_str(), true);
+  Serial.print("Valve control registration: ");
+  Serial.println(sliderSuccess ? "Success" : "Failed");
+  
+  // Initialize valve position
+  char valveStr[4];
+  itoa(valvePosition, valveStr, 10);
+  mqttClient.publish(statusTopic.c_str(), valveStr, true);
+  
+  Serial.println("Valve control registration complete");
+}
+
+// Add this function to your main.cpp
+void sendHardcodedDiscoveryMessage() {
+  if (!mqttClient.connected()) return;
+  
+  Serial.println("Sending hardcoded discovery message for testing...");
+  
+  // Create a discovery topic for valve control
+  String discoveryTopic = "homeassistant/light/esp32_thermostat/valve_control/config";
+  
+  // Create a simple discovery payload
+  String payload = "{";
+  payload += "\"name\":\"Valve Control Test\",";
+  payload += "\"schema\":\"json\",";
+  payload += "\"brightness\":true,";
+  payload += "\"command_topic\":\"esp32_thermostat/valve/set\",";
+  payload += "\"state_topic\":\"esp32_thermostat/valve/status\",";
+  payload += "\"brightness_scale\":100,";
+  payload += "\"icon\":\"mdi:radiator\"";
+  payload += "}";
+  
+  // Publish with retain flag
+  bool success = mqttClient.publish(discoveryTopic.c_str(), payload.c_str(), true);
+  
+  Serial.print("Published hardcoded discovery message: ");
+  Serial.println(success ? "SUCCESS" : "FAILED");
+  Serial.print("Topic: ");
+  Serial.println(discoveryTopic);
+  Serial.print("Payload: ");
+  Serial.println(payload);
+  
+  // Also publish an initial status
+  mqttClient.publish("esp32_thermostat/valve/status", "0", true);
 }

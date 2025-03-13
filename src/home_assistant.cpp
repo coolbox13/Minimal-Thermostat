@@ -33,39 +33,69 @@ void HomeAssistant::begin() {
 
 // Register all entities for auto discovery
 void HomeAssistant::registerEntities() {
+    // Get current timestamp for debugging
+    unsigned long now = millis();
+    String timestamp = String(now);
+    
+    Serial.println("Registering entities with Home Assistant at time: " + timestamp);
+    
     // Temperature sensor - very simplified config
     String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
-    String tempPayload = "{\"name\":\"Temperature\",\"device_class\":\"temperature\",\"state_topic\":\"esp32_thermostat/temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{ value }}\"}";
+    String tempPayload = "{\"name\":\"Temperature\",\"device_class\":\"temperature\",\"state_topic\":\"esp32_thermostat/temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{ value }}\",\"timestamp\":\"" + timestamp + "\"}";
     
     bool tempSuccess = _mqttClient.publish(tempTopic.c_str(), tempPayload.c_str(), true);
     Serial.print("Published temperature config: ");
     Serial.println(tempSuccess ? "Success" : "FAILED");
     Serial.print("Topic: ");
     Serial.println(tempTopic);
+    Serial.print("Payload: ");
+    Serial.println(tempPayload);
     
     // Humidity sensor
     String humTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/humidity/config";
-    String humPayload = "{\"name\":\"Humidity\",\"device_class\":\"humidity\",\"state_topic\":\"esp32_thermostat/humidity\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\"}";
+    String humPayload = "{\"name\":\"Humidity\",\"device_class\":\"humidity\",\"state_topic\":\"esp32_thermostat/humidity\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\",\"timestamp\":\"" + timestamp + "\"}";
     
     bool humSuccess = _mqttClient.publish(humTopic.c_str(), humPayload.c_str(), true);
     Serial.print("Published humidity config: ");
     Serial.println(humSuccess ? "Success" : "FAILED");
+    Serial.print("Payload: ");
+    Serial.println(humPayload);
     
     // Pressure sensor
     String presTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pressure/config";
-    String presPayload = "{\"name\":\"Pressure\",\"device_class\":\"pressure\",\"state_topic\":\"esp32_thermostat/pressure\",\"unit_of_measurement\":\"hPa\",\"value_template\":\"{{ value }}\"}";
+    String presPayload = "{\"name\":\"Pressure\",\"device_class\":\"pressure\",\"state_topic\":\"esp32_thermostat/pressure\",\"unit_of_measurement\":\"hPa\",\"value_template\":\"{{ value }}\",\"timestamp\":\"" + timestamp + "\"}";
     
     bool presSuccess = _mqttClient.publish(presTopic.c_str(), presPayload.c_str(), true);
     Serial.print("Published pressure config: ");
     Serial.println(presSuccess ? "Success" : "FAILED");
+    Serial.print("Payload: ");
+    Serial.println(presPayload);
     
     // Valve position
     String valveTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/valve/config";
-    String valvePayload = "{\"name\":\"Valve Position\",\"state_topic\":\"esp32_thermostat/valve/status\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\"}";
+    String valvePayload = "{\"name\":\"Valve Position\",\"state_topic\":\"esp32_thermostat/valve/status\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\",\"timestamp\":\"" + timestamp + "\"}";
     
     bool valveSuccess = _mqttClient.publish(valveTopic.c_str(), valvePayload.c_str(), true);
     Serial.print("Published valve config: ");
     Serial.println(valveSuccess ? "Success" : "FAILED");
+    Serial.print("Payload: ");
+    Serial.println(valvePayload);
+    
+    // Valve control (as a light with brightness)
+    String valveControlTopic = String(HA_DISCOVERY_PREFIX) + "/light/" + _nodeId + "/valve_control/config";
+    String valveControlPayload = "{\"name\":\"Valve Control\",\"schema\":\"json\",\"brightness\":true,\"command_topic\":\"esp32_thermostat/valve/set\",\"state_topic\":\"esp32_thermostat/valve/status\",\"brightness_scale\":100,\"icon\":\"mdi:radiator\",\"timestamp\":\"" + timestamp + "\"}";
+    
+    bool valveControlSuccess = _mqttClient.publish(valveControlTopic.c_str(), valveControlPayload.c_str(), true);
+    Serial.print("Published valve control config: ");
+    Serial.println(valveControlSuccess ? "Success" : "FAILED");
+    Serial.print("Topic: ");
+    Serial.println(valveControlTopic);
+    Serial.print("Payload: ");
+    Serial.println(valveControlPayload);
+    
+    // Subscribe to the valve control topic
+    _mqttClient.subscribe("esp32_thermostat/valve/set");
+    Serial.println("Subscribed to valve control topic");
 }
 
 // Send state updates for each entity
