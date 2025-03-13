@@ -1,36 +1,57 @@
-// Add this include at the top of main.cpp
-#include "valve_control.h"
+#ifndef VALVE_CONTROL_H
+#define VALVE_CONTROL_H
 
-// Add this declaration after the other global variables
-ValveControl valveControl(mqttClient, knx);
+#include <Arduino.h>
+#include <PubSubClient.h>
+#include <esp-knx-ip.h>
 
-// Add to setup() after setupKNX()
-valveControl.begin();
-// Register valve control with Home Assistant
-valveControl.registerWithHA("esp32_thermostat");
+class ValveControl {
+public:
+    ValveControl(PubSubClient& mqttClient, ESPKNXIP& knx);
+    
+    // Initialize valve control
+    void begin();
+    
+    // Set valve position (0-100%)
+    void setPosition(int position);
+    
+    // Update valve status from KNX
+    void updateStatus(int status);
+    
+    // Get current valve position
+    int getPosition();
+    
+    // Get current valve status from KNX
+    int getStatus();
+    
+    // Register with Home Assistant
+    void registerWithHA(const char* nodeId);
+    
+    // Process incoming MQTT messages
+    bool processMQTTMessage(const char* topic, const char* payload);
 
-// Update mqttCallback function to handle valve control messages
-void mqttCallback(char* topic, byte* payload, unsigned int length) {
-  // Convert payload to string
-  char message[length + 1];
-  for (unsigned int i = 0; i < length; i++) {
-    message[i] = (char)payload[i];
-  }
-  message[length] = '\0';
-  
-  Serial.print("MQTT message received [");
-  Serial.print(topic);
-  Serial.print("]: ");
-  Serial.println(message);
-  
-  // Let valve control process the message first
-  if (valveControl.processMQTTMessage(topic, message)) {
-    return; // Message was handled by valve control
-  }
-  
-  // Handle other messages
-  if (strcmp(topic, MQTT_TOPIC_VALVE_COMMAND) == 0) {
-    int position = atoi(message);
-    setValvePosition(position);
-  }
-}
+private:
+    PubSubClient& _mqttClient;
+    ESPKNXIP& _knx;
+    
+    // Configuration
+    address_t _valveSetAddress;      // KNX address for valve control
+    address_t _valveStatusAddress;   // KNX address for valve status
+    address_t _testValveAddress;     // Test KNX address (10/2/2)
+    
+    // State
+    int _targetPosition;  // Target valve position (0-100%)
+    int _actualStatus;    // Actual status reported by KNX
+    
+    // Topics
+    String _positionTopic;     // MQTT topic for position command
+    String _statusTopic;       // MQTT topic for status
+    
+    // Publish valve position to MQTT
+    void publishStatus();
+    
+    // Send position to KNX (test address only)
+    void sendToKNX(int position);
+};
+
+#endif // VALVE_CONTROL_H

@@ -73,7 +73,7 @@ void ValveControl::registerWithHA(const char* nodeId) {
     // Create discovery topics
     String discoveryPrefix = "homeassistant";
     
-    // Valve position sensor config
+    // Valve position sensor config (still using sensor type)
     String sensorTopic = discoveryPrefix + "/sensor/" + nodeId + "/valve_position/config";
     String sensorPayload = "{";
     sensorPayload += "\"name\":\"Valve Position\",";
@@ -82,22 +82,27 @@ void ValveControl::registerWithHA(const char* nodeId) {
     sensorPayload += "\"icon\":\"mdi:valve\"";
     sensorPayload += "}";
     
-    _mqttClient.publish(sensorTopic.c_str(), sensorPayload.c_str(), true);
+    bool sensorPublished = _mqttClient.publish(sensorTopic.c_str(), sensorPayload.c_str(), true);
+    Serial.print("Valve position sensor registration: ");
+    Serial.println(sensorPublished ? "Success" : "Failed");
     
-    // Valve control slider config
-    String sliderTopic = discoveryPrefix + "/number/" + nodeId + "/valve_control/config";
+    // Valve control slider - using light type with brightness instead of number
+    String sliderTopic = discoveryPrefix + "/light/" + nodeId + "/valve_control/config";
     String sliderPayload = "{";
     sliderPayload += "\"name\":\"Valve Control\",";
+    sliderPayload += "\"schema\":\"json\",";
+    sliderPayload += "\"brightness\":true,";
     sliderPayload += "\"command_topic\":\"" + _positionTopic + "\",";
     sliderPayload += "\"state_topic\":\"" + _statusTopic + "\",";
-    sliderPayload += "\"min\":0,";
-    sliderPayload += "\"max\":100,";
-    sliderPayload += "\"step\":1,";
-    sliderPayload += "\"unit_of_measurement\":\"%\",";
-    sliderPayload += "\"icon\":\"mdi:radiator\"";
+    sliderPayload += "\"state_value_template\":\"{{ value }}\",";
+    sliderPayload += "\"brightness_scale\":100,";
+    sliderPayload += "\"icon\":\"mdi:radiator\",";
+    sliderPayload += "\"optimistic\":true";
     sliderPayload += "}";
     
-    _mqttClient.publish(sliderTopic.c_str(), sliderPayload.c_str(), true);
+    bool sliderPublished = _mqttClient.publish(sliderTopic.c_str(), sliderPayload.c_str(), true);
+    Serial.print("Valve control registration: ");
+    Serial.println(sliderPublished ? "Success" : "Failed");
     
     Serial.println("Valve control registered with Home Assistant");
 }
@@ -106,7 +111,34 @@ void ValveControl::registerWithHA(const char* nodeId) {
 bool ValveControl::processMQTTMessage(const char* topic, const char* payload) {
     // Check if this is a valve control message
     if (strcmp(topic, _positionTopic.c_str()) == 0) {
-        int position = atoi(payload);
+        Serial.print("Processing valve control message: ");
+        Serial.println(payload);
+        
+        // Try to parse the value - might be a direct number or JSON
+        int position = 0;
+        
+        // Check if it's JSON (from light entity)
+        if (payload[0] == '{') {
+            // Simple JSON parsing - look for "brightness" field
+            String payloadStr = String(payload);
+            int brightnessPos = payloadStr.indexOf("\"brightness\"");
+            if (brightnessPos > 0) {
+                int valueStart = payloadStr.indexOf(":", brightnessPos) + 1;
+                int valueEnd = payloadStr.indexOf(",", valueStart);
+                if (valueEnd < 0) valueEnd = payloadStr.indexOf("}", valueStart);
+                
+                if (valueStart > 0 && valueEnd > valueStart) {
+                    String valueStr = payloadStr.substring(valueStart, valueEnd);
+                    valueStr.trim();
+                    position = valueStr.toInt();
+                }
+            }
+        } else {
+            // Try direct number parsing
+            position = atoi(payload);
+        }
+        
+        // Set the position if valid
         setPosition(position);
         return true;
     }
@@ -120,20 +152,26 @@ void ValveControl::publishStatus() {
     
     char valveStr[4];
     itoa(_targetPosition, valveStr, 10);
-    _mqttClient.publish(_statusTopic.c_str(), valveStr, true);
+    bool published = _mqttClient.publish(_statusTopic.c_str(), valveStr, true);
+    
+    Serial.print("Published valve status (");
+    Serial.print(_targetPosition);
+    Serial.print("%) to ");
+    Serial.print(_statusTopic);
+    Serial.println(published ? " - Success" : " - FAILED");
 }
 
-// Send position to KNX (test address only for now)
+// Send position to KNX (test address only)
 void ValveControl::sendToKNX(int position) {
     // Send to the TEST KNX address, not the real valve address
     _knx.write_1byte_int(_testValveAddress, position);
     
     Serial.print("Sent valve position to KNX test address (");
-    Serial.print(_testValveAddress.ga.main);
+    Serial.print(_testValveAddress.ga.area);
     Serial.print("/");
-    Serial.print(_testValveAddress.ga.middle);
+    Serial.print(_testValveAddress.ga.line);
     Serial.print("/");  
-    Serial.print(_testValveAddress.ga.sub);
+    Serial.print(_testValveAddress.ga.member);
     Serial.print("): ");
     Serial.println(position);
 }

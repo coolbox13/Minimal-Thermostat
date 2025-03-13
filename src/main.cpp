@@ -91,7 +91,7 @@ void setupWiFi() {
 void setupMQTT() {
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
-  mqttClient.setBufferSize(512);
+  mqttClient.setBufferSize(512);  // Increased buffer size for discovery messages
   
   // Initialize Home Assistant integration when connected
   if (mqttClient.connected()) {
@@ -105,14 +105,11 @@ void knxCallback(message_t const &msg, void *arg);
 void setupKNX() {
   Serial.println("Setting up KNX...");
   
-  // Set a higher threshold for KNX debug messages
-  esp_log_level_set("KNXIP", ESP_LOG_INFO);  // Change from ESP_LOG_DEBUG to ESP_LOG_INFO
-  
   // Configure KNX debug level based on configuration
   if (KNX_DEBUG_ENABLED) {
-    esp_log_level_set("KNXIP", ESP_LOG_ERROR);
+    esp_log_level_set("KNXIP", ESP_LOG_INFO);
   } else {
-    esp_log_level_set("KNXIP", ESP_LOG_ERROR);
+    esp_log_level_set("KNXIP", ESP_LOG_WARN);
   }
   
   // Start KNX without web server
@@ -197,8 +194,6 @@ void publishStatus() {
   knx.write_2byte_float(temperatureAddress, temperature);
   knx.write_2byte_float(humidityAddress, humidity);
   knx.write_2byte_float(pressureAddress, pressure);
-  
-  // Original direct MQTT publishing is now handled in the HomeAssistant class
 }
 
 void setValvePosition(int position) {
