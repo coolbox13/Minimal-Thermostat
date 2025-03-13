@@ -188,35 +188,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   
   // Handle the valve control topic from Home Assistant
   if (strcmp(topic, "esp32_thermostat/valve/set") == 0) {
-    // Try to parse the value - might be a direct number or JSON
-    int position = 0;
-    
-    // Check if it's JSON (from light entity)
-    if (message[0] == '{') {
-      // Simple JSON parsing - look for "brightness" field
-      String payloadStr = String(message);
-      int brightnessPos = payloadStr.indexOf("\"brightness\"");
-      if (brightnessPos > 0) {
-        int valueStart = payloadStr.indexOf(":", brightnessPos) + 1;
-        int valueEnd = payloadStr.indexOf(",", valueStart);
-        if (valueEnd < 0) valueEnd = payloadStr.indexOf("}", valueStart);
-        
-        if (valueStart > 0 && valueEnd > valueStart) {
-          String valueStr = payloadStr.substring(valueStart, valueEnd);
-          valueStr.trim();
-          position = valueStr.toInt();
-        }
-      }
-    } else {
-      // Try direct number parsing
-      position = atoi(message);
-    }
+    int position = atoi(message);
+    position = constrain(position, 0, 100);
     
     Serial.print("Parsed valve position: ");
     Serial.println(position);
     
-    // Update valve position locally without calling setValvePosition()
-    valvePosition = constrain(position, 0, 100);
+    // Update valve position locally
+    valvePosition = position;
     
     // Send only to test address
     address_t testValveAddress = knx.GA_to_address(10, 2, 2);
@@ -265,17 +244,17 @@ void setValvePosition(int position) {
     Serial.print(valvePosition);
     Serial.println("%");
     
-    // NOTE: We're not sending to KNX here anymore to avoid duplicates
-    // KNX messages are now sent explicitly from the MQTT callback
-    
     // Publish to MQTT
     char valveStr[4];
     itoa(valvePosition, valveStr, 10);
-    mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+    mqttClient.publish("esp32_thermostat/valve/status", valveStr);
+    
+    // Note: We no longer send directly to KNX here to avoid duplicates
+    // KNX messages are sent from the MQTT callback
   }
 }
 
-/// KNX callback function
+// KNX callback function
 void knxCallback(message_t const &msg, void *arg) {
   // Print the raw message details for debugging
   Serial.print("KNX Message - CT: 0x");
@@ -300,9 +279,6 @@ void knxCallback(message_t const &msg, void *arg) {
   }
   Serial.println();
   
-  // We're still processing KNX messages to update our internal state
-  // but we'll handle this without sending duplicates
-  
   // 10/2/2 is our test valve address
   address_t testValveAddress = knx.GA_to_address(10, 2, 2);
   
@@ -321,7 +297,7 @@ void knxCallback(message_t const &msg, void *arg) {
       // Publish to MQTT
       char valveStr[4];
       itoa(valvePosition, valveStr, 10);
-      mqttClient.publish(MQTT_TOPIC_VALVE_STATUS, valveStr);
+      mqttClient.publish("esp32_thermostat/valve/status", valveStr);
       
       Serial.print("Updated valve position from KNX to: ");
       Serial.println(valvePosition);
