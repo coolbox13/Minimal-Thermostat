@@ -99,7 +99,7 @@ void setupKNX() {
   
   // Configure KNX debug level based on configuration
   if (KNX_DEBUG_ENABLED) {
-    esp_log_level_set("KNXIP", ESP_LOG_DEBUG);
+    esp_log_level_set("KNXIP", ESP_LOG_INFO);
   } else {
     esp_log_level_set("KNXIP", ESP_LOG_WARN);
   }
