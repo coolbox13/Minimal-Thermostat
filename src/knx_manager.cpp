@@ -11,7 +11,7 @@ void KNXManager::begin() {
     
     // Set log level based on KNX_DEBUG_ENABLED
 #if KNX_DEBUG_ENABLED
-    esp_log_level_set("KNXIP", ESP_LOG_DEBUG);
+    esp_log_level_set("KNXIP", ESP_LOG_NONE);
 #else
     esp_log_level_set("KNXIP", ESP_LOG_NONE);  // Completely disable logs
 #endif
