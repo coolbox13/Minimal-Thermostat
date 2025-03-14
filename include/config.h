@@ -17,6 +17,11 @@
 #define KNX_GA_VALVE_MID 1
 #define KNX_GA_VALVE_SUB 1
 
+// KNX Test valve address - Used for PID output
+#define KNX_GA_TEST_VALVE_MAIN 10
+#define KNX_GA_TEST_VALVE_MID 2
+#define KNX_GA_TEST_VALVE_SUB 2
+
 // KNX Group Addresses for BME280 sensor data
 #define KNX_GA_TEMPERATURE_MAIN 0
 #define KNX_GA_TEMPERATURE_MID 0
@@ -42,5 +47,15 @@
 #define MQTT_TOPIC_PRESSURE "thermostat/pressure"
 #define MQTT_TOPIC_VALVE_STATUS "thermostat/valve/status"
 #define MQTT_TOPIC_VALVE_COMMAND "thermostat/valve/set"
+
+// PID Configuration
+#define PID_SETPOINT 22.0       // Default temperature setpoint (°C)
+#define PID_UPDATE_INTERVAL 10000 // Update PID controller every 10 seconds
+
+// Initial PID Parameters (will be auto-tuned)
+#define PID_KP_INITIAL 2.0      // Proportional gain
+#define PID_KI_INITIAL 0.1      // Integral gain
+#define PID_KD_INITIAL 0.5      // Derivative gain
+#define PID_DEADBAND 0.2        // Temperature deadband (±°C)
 
 #endif // CONFIG_H
