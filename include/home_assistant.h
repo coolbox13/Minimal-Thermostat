@@ -19,6 +19,12 @@ public:
     
     // Send state updates for all sensors
     void updateStates(float temperature, float humidity, float pressure, int valvePosition);
+    
+    // NEW: Update setpoint temperature
+    void updateSetpointTemperature(float setpoint);
+    
+    // NEW: Update thermostat mode
+    void updateMode(const char* mode);
 
 private:
     PubSubClient& _mqttClient;

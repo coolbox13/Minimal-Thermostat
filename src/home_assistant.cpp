@@ -42,17 +42,13 @@ void HomeAssistant::registerEntities() {
     // Create device info JSON string that will be reused for all entities
     String deviceInfo = "{\"identifiers\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"model\":\"ESP32-KNX-Thermostat\",\"manufacturer\":\"DIY\",\"sw_version\":\"1.0\"}";
     
-    // Temperature sensor - very simplified config
+    // Temperature sensor (still needed for raw temperature data)
     String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
     String tempPayload = "{\"name\":\"Temperature\",\"unique_id\":\"" + String(_nodeId) + "_temperature\",\"device_class\":\"temperature\",\"state_topic\":\"esp32_thermostat/temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{ value }}\",\"availability_topic\":\"esp32_thermostat/status\",\"device\":" + deviceInfo + ",\"timestamp\":\"" + timestamp + "\"}";
     
     bool tempSuccess = _mqttClient.publish(tempTopic.c_str(), tempPayload.c_str(), true);
     Serial.print("Published temperature config: ");
     Serial.println(tempSuccess ? "Success" : "FAILED");
-    Serial.print("Topic: ");
-    Serial.println(tempTopic);
-    Serial.print("Payload: ");
-    Serial.println(tempPayload);
     
     // Humidity sensor
     String humTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/humidity/config";
@@ -61,10 +57,8 @@ void HomeAssistant::registerEntities() {
     bool humSuccess = _mqttClient.publish(humTopic.c_str(), humPayload.c_str(), true);
     Serial.print("Published humidity config: ");
     Serial.println(humSuccess ? "Success" : "FAILED");
-    Serial.print("Payload: ");
-    Serial.println(humPayload);
     
-    // Pressure sensor - with unique_id and device info
+    // Pressure sensor
     String presTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pressure/config";
     String presPayload = "{";
     presPayload += "\"name\":\"Pressure\",";
@@ -81,19 +75,15 @@ void HomeAssistant::registerEntities() {
     bool presSuccess = _mqttClient.publish(presTopic.c_str(), presPayload.c_str(), true);
     Serial.print("Published pressure config: ");
     Serial.println(presSuccess ? "Success" : "FAILED");
-    Serial.print("Payload: ");
-    Serial.println(presPayload);
     
-    // In the registerEntities method, update the valve position sensor:
-    
-    // Valve position sensor - with unique_id and device info
+    // Valve position sensor - for raw data
     String valvePosTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/valve_position/config";
     String valuePosPayload = "{";
     valuePosPayload += "\"name\":\"Valve Position\",";
     valuePosPayload += "\"unique_id\":\"" + _nodeId + "_valve_position\",";
-    valuePosPayload += "\"state_topic\":\"esp32_thermostat/valve/position\",";  // Make sure this matches where you publish
+    valuePosPayload += "\"state_topic\":\"esp32_thermostat/valve/position\",";
     valuePosPayload += "\"unit_of_measurement\":\"%\",";
-    valuePosPayload += "\"value_template\":\"{{ value }}\",";  // Simple template that just passes the value
+    valuePosPayload += "\"value_template\":\"{{ value }}\",";
     valuePosPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     valuePosPayload += "\"device\":" + deviceInfo + ",";
     valuePosPayload += "\"timestamp\":\"" + timestamp + "\"";
@@ -102,57 +92,52 @@ void HomeAssistant::registerEntities() {
     bool valvePosSuccess = _mqttClient.publish(valvePosTopic.c_str(), valuePosPayload.c_str(), true);
     Serial.print("Published valve position config: ");
     Serial.println(valvePosSuccess ? "Success" : "FAILED");
-    Serial.print("Payload: ");
-    Serial.println(valuePosPayload);
     
-    // Valve control - update to use the deviceInfo variable
-    // Replace the climate entity with a number entity:
+    // NEW: Climate entity for thermostat
+    String climateTopic = String(HA_DISCOVERY_PREFIX) + "/climate/" + _nodeId + "/thermostat/config";
+    String climatePayload = "{";
+    climatePayload += "\"name\":\"KNX Thermostat\",";
+    climatePayload += "\"unique_id\":\"" + String(_nodeId) + "_thermostat\",";
+    climatePayload += "\"modes\":[\"off\",\"heat\"],";
+    climatePayload += "\"mode_command_topic\":\"esp32_thermostat/mode/set\",";
+    climatePayload += "\"mode_state_topic\":\"esp32_thermostat/mode/state\",";
+    climatePayload += "\"temperature_command_topic\":\"esp32_thermostat/temperature/set\",";
+    climatePayload += "\"temperature_state_topic\":\"esp32_thermostat/temperature/setpoint\",";
+    climatePayload += "\"current_temperature_topic\":\"esp32_thermostat/temperature\",";
+    climatePayload += "\"temperature_unit\":\"C\",";
+    climatePayload += "\"min_temp\":\"15\",";
+    climatePayload += "\"max_temp\":\"30\",";
+    climatePayload += "\"temp_step\":\"0.5\",";
+    climatePayload += "\"action_topic\":\"esp32_thermostat/action\",";
+    climatePayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    climatePayload += "\"device\":" + deviceInfo;
+    climatePayload += "}";
     
-    // Valve control - use number entity which is simpler
-    String valveControlTopic = String(HA_DISCOVERY_PREFIX) + "/number/" + _nodeId + "/valve_control/config";
-    String valveControlPayload = "{";
-    valveControlPayload += "\"name\":\"Valve Control\",";
-    valveControlPayload += "\"unique_id\":\"" + String(_nodeId) + "_valve_control\",";
-    valveControlPayload += "\"command_topic\":\"esp32_thermostat/valve/set\",";
-    valveControlPayload += "\"state_topic\":\"esp32_thermostat/valve/position\",";  // Use the same topic as the sensor
-    valveControlPayload += "\"min\":0,";
-    valveControlPayload += "\"max\":100,";
-    valveControlPayload += "\"step\":1,";
-    valveControlPayload += "\"unit_of_measurement\":\"%\",";
-    valveControlPayload += "\"icon\":\"mdi:radiator\",";
-    valveControlPayload += "\"mode\":\"slider\",";
-    valveControlPayload += "\"availability_topic\":\"esp32_thermostat/status\",";
-    valveControlPayload += "\"device\":" + deviceInfo;
-    valveControlPayload += "}";
+    delay(100); // Small delay to ensure MQTT client can process
+    bool climateSuccess = _mqttClient.publish(climateTopic.c_str(), climatePayload.c_str(), true);
+    Serial.print("Published climate config: ");
+    Serial.println(climateSuccess ? "Success" : "FAILED");
     
-    // Try publishing with a delay to ensure MQTT client has time to process
-    delay(100);
-    bool valveControlSuccess = _mqttClient.publish(valveControlTopic.c_str(), valveControlPayload.c_str(), true);
-    Serial.print("Published valve control config: ");
-    Serial.println(valveControlSuccess ? "Success" : "FAILED");
-    Serial.print("Topic: ");
-    Serial.println(valveControlTopic);
-    Serial.print("Payload: ");
-    Serial.println(valveControlPayload);
+    // Subscribe to the thermostat control topics
+    _mqttClient.subscribe("esp32_thermostat/mode/set");
+    _mqttClient.subscribe("esp32_thermostat/temperature/set");
+    Serial.println("Subscribed to thermostat control topics");
     
-    // Subscribe to the valve control topic
-    _mqttClient.subscribe("esp32_thermostat/valve/set");
-    _mqttClient.subscribe("esp32_thermostat/valve/mode");
-    Serial.println("Subscribed to valve control topics");
+    // Publish initial states
+    _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
     
-    // In the registerEntities method of your HomeAssistant class
+    // Publish initial setpoint from PID config
+    char setpointStr[8];
+    dtostrf(PID_SETPOINT, 1, 1, setpointStr);
+    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
     
-    // Publish initial mode only once during registration
-    _mqttClient.publish("esp32_thermostat/valve/mode", "heat", true);
-    
-    // Make sure you're not publishing this repeatedly in updateStates or other methods
+    // Add restart command option
+    _mqttClient.subscribe("esp32_thermostat/restart");
 }
 
 // Send state updates for each entity
-// In the updateStates method, modify how you publish valve position data:
-
 void HomeAssistant::updateStates(float temperature, float humidity, float pressure, int valvePosition) {
-    // Convert values to strings and publish to the actual topics you're using
+    // Convert values to strings and publish
     char tempStr[8];
     dtostrf(temperature, 1, 2, tempStr);
     _mqttClient.publish("esp32_thermostat/temperature", tempStr);
@@ -165,16 +150,17 @@ void HomeAssistant::updateStates(float temperature, float humidity, float pressu
     dtostrf(pressure, 1, 2, presStr);
     _mqttClient.publish("esp32_thermostat/pressure", presStr);
     
-    // For the valve position, ensure we're sending consistent formats
+    // For the valve position
     char valveStr[4];
     itoa(valvePosition, valveStr, 10);
-    
-    // For the sensor entity - send ONLY the numeric value
     _mqttClient.publish("esp32_thermostat/valve/position", valveStr);
     
-    // For the climate entity - also send the numeric value
-    // This ensures both entities receive compatible data
-    _mqttClient.publish("esp32_thermostat/valve/status", valveStr);
+    // Update action state based on valve position
+    if (valvePosition > 0) {
+        _mqttClient.publish("esp32_thermostat/action", "heating");
+    } else {
+        _mqttClient.publish("esp32_thermostat/action", "idle");
+    }
     
     // Also publish a general "online" status message
     _mqttClient.publish(_availabilityTopic.c_str(), "online", true);
@@ -196,4 +182,16 @@ void HomeAssistant::publishConfig(const char* component, const char* objectId, c
                                const char* commandTopic) {
     // This method is no longer used but kept for compatibility
     Serial.println("Warning: Obsolete publishConfig method called");
+}
+
+// NEW: Update the setpoint temperature
+void HomeAssistant::updateSetpointTemperature(float setpoint) {
+    char setpointStr[8];
+    dtostrf(setpoint, 1, 1, setpointStr);
+    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+}
+
+// NEW: Update the thermostat mode
+void HomeAssistant::updateMode(const char* mode) {
+    _mqttClient.publish("esp32_thermostat/mode/state", mode, true);
 }
