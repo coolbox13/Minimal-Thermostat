@@ -3,7 +3,7 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
-// Update the include path to use your local version
+#include <esp_task_wdt.h>
 #include "esp-knx-ip/esp-knx-ip.h"
 #include "bme280_sensor.h"
 #include "config.h"
@@ -48,6 +48,11 @@ void setup() {
   Serial.begin(115200);
   Serial.println("ESP32 KNX Thermostat - With Adaptive PID Controller");
   
+  // Initialize watchdog timer (45 minutes)
+  esp_task_wdt_init(WATCHDOG_TIMEOUT / 1000, true); // Convert ms to seconds, true = reboot on timeout
+  esp_task_wdt_add(NULL); // Add current thread to watchdog
+  Serial.println("Watchdog timer initialized (45 minutes)");
+
   // Setup custom log handler before initializing KNX
   setupCustomLogHandler();
   
@@ -87,6 +92,9 @@ void setup() {
 }
 
 void loop() {
+  // Reset watchdog timer to prevent reboot
+  esp_task_wdt_reset();
+  
   // Check WiFi connection status periodically
   if (millis() - lastWifiCheck > WIFI_CHECK_INTERVAL) {
     checkWiFiConnection();
