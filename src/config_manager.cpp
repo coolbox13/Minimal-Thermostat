@@ -20,7 +20,28 @@ ConfigManager::ConfigManager() {
 
 bool ConfigManager::begin() {
     LOG_I(TAG, "Initializing configuration storage");
-    return _preferences.begin("thermostat", false);
+    if (!_preferences.begin("thermostat", false)) {
+        return false;
+    }
+
+    // Check if this is first run and initialize defaults
+    if (!_preferences.isKey("initialized")) {
+        // Set defaults for first run
+        setWifiSSID("");
+        setWifiPassword("");
+        setMqttServer("192.168.178.32");
+        setMqttPort(1883);
+        setPidKp(DEFAULT_KP);
+        setPidKi(DEFAULT_KI);
+        setPidKd(DEFAULT_KD);
+        setSetpoint(DEFAULT_SETPOINT);
+        
+        // Mark as initialized
+        _preferences.putBool("initialized", true);
+        LOG_I(TAG, "First run - initialized defaults");
+    }
+
+    return true;
 }
 
 void ConfigManager::end() {

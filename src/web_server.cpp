@@ -285,9 +285,9 @@ void WebServerManager::setupDefaultRoutes() {
         request->send(404, "text/html", html);
     });
 
-    // Redirect all KNX library URLs to 404
     _server->on(ROOT_PREFIX, HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->redirect("/not-found");
+        // Send 404 directly instead of redirecting
+        request->send(404, "text/html", "404 - Not Found");
     });
 
     // Explicitly start the server
