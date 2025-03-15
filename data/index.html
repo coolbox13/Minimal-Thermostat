@@ -109,6 +109,36 @@
         .save-button:hover {
             background-color: #1976D2;
         }
+        .persistence-form {
+            display: grid;
+            gap: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .form-group {
+            display: grid;
+            gap: 5px;
+        }
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .save-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -119,7 +149,7 @@
         <div class="tabs">
             <a href="/" class="tab" id="tab-dashboard">Dashboard</a>
             <a href="/knx" class="tab" id="tab-knx">KNX Config</a>
-            <a href="/persistence" class="tab" id="tab-persistence">Persistence</a>
+            <a href="/api/persistence" class="tab" id="tab-persistence">Persistence</a>
             <a href="/update" class="tab" id="tab-firmware">Firmware Update</a>
             <a href="/servertest" class="tab" id="tab-system">System</a>
         </div>
