@@ -114,57 +114,8 @@ void WebServerManager::setupDefaultRoutes() {
     _server->serveStatic("/", SPIFFS, "/")
         .setCacheControl("max-age=600");
 
-    // Add firmware update page
-    _server->on("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/html", 
-            "<html><body>"
-            "<h1>ESP32 KNX Thermostat Firmware Update</h1>"
-            "<form method='POST' action='/doUpdate' enctype='multipart/form-data'>"
-            "<input type='file' name='update'><br><br>"
-            "<input type='submit' value='Update Firmware'>"
-            "</form>"
-            "</body></html>");
-    });
-    
-    // Handler for the actual update
-    _server->on("/doUpdate", HTTP_POST, 
-        [](AsyncWebServerRequest *request) {
-            bool shouldReboot = !Update.hasError();
-            AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", 
-                shouldReboot ? "Update successful! Rebooting..." : "Update failed!");
-            response->addHeader("Connection", "close");
-            request->send(response);
-            if (shouldReboot) {
-                delay(1000);
-                ESP.restart();
-            }
-        },
-        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-            if (!index) {
-                Serial.printf("OTA: Update start: %s\n", filename.c_str());
-                if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-                    Serial.println("OTA: Failed to begin update");
-                    Update.printError(Serial);
-                    return request->send(400, "text/plain", "OTA could not begin");
-                }
-            }
-            
-            if (Update.write(data, len) != len) {
-                Serial.println("OTA: Failed to write update");
-                Update.printError(Serial);
-                return request->send(400, "text/plain", "OTA could not proceed");
-            }
-            
-            if (final) {
-                if (!Update.end(true)) {
-                    Serial.println("OTA: Failed to complete update");
-                    Update.printError(Serial);
-                    return request->send(400, "text/plain", "OTA failed to complete");
-                }
-                Serial.println("OTA: Update complete");
-            }
-        }
-    );
+    // REMOVE THE DUPLICATE OTA ROUTES - they're handled in ota_manager.cpp
+    // DO NOT include "/update" and "/doUpdate" routes here
 
     // Test route
     _server->on("/test", HTTP_GET, handleTest);
@@ -212,64 +163,62 @@ void WebServerManager::setupDefaultRoutes() {
         }
     });
 
-// Get current configuration
-_server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
-    ConfigManager* configManager = ConfigManager::getInstance();
-    StaticJsonDocument<1024> doc;
-    
-    configManager->getJson(doc);
-    
-    String response;
-    serializeJson(doc, response);
-    request->send(200, "application/json", response);
-});
+    // Get current configuration
+    _server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+        StaticJsonDocument<1024> doc;
+        
+        configManager->getJson(doc);
+        
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
 
-// Update configuration
-_server->on("/api/config", HTTP_POST, 
-    [](AsyncWebServerRequest *request) {
-        // This is called after body parsing is complete
-        request->send(200, "application/json", "{\"success\":true}");
-    },
-    NULL, // Upload handler is NULL
-    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-        // Body handler
-        static DynamicJsonDocument jsonDoc(1024);
-        static String jsonBuffer;
-        
-        if (index == 0) {
-            jsonBuffer = "";
-        }
-        
-        for (size_t i = 0; i < len; i++) {
-            jsonBuffer += (char)data[i];
-        }
-        
-        if (index + len == total) {
-            // All data received, process it
-            DeserializationError error = deserializeJson(jsonDoc, jsonBuffer);
-            if (error) {
-                request->send(400, "application/json", "{\"success\":false,\"message\":\"Invalid JSON\"}");
-                return;
+    // Update configuration
+    _server->on("/api/config", HTTP_POST, 
+        [](AsyncWebServerRequest *request) {
+            request->send(200, "application/json", "{\"success\":true}");
+        },
+        NULL, // Upload handler is NULL
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            static DynamicJsonDocument jsonDoc(1024);
+            static String jsonBuffer;
+            
+            if (index == 0) {
+                jsonBuffer = "";
             }
             
-            // Update configuration
-            ConfigManager* configManager = ConfigManager::getInstance();
-            bool success = configManager->setFromJson(jsonDoc);
+            for (size_t i = 0; i < len; i++) {
+                jsonBuffer += (char)data[i];
+            }
             
-            if (!success) {
-                request->send(500, "application/json", "{\"success\":false,\"message\":\"Failed to update configuration\"}");
+            if (index + len == total) {
+                // All data received, process it
+                DeserializationError error = deserializeJson(jsonDoc, jsonBuffer);
+                if (error) {
+                    request->send(400, "application/json", "{\"success\":false,\"message\":\"Invalid JSON\"}");
+                    return;
+                }
+                
+                // Update configuration
+                ConfigManager* configManager = ConfigManager::getInstance();
+                bool success = configManager->setFromJson(jsonDoc);
+                
+                if (!success) {
+                    request->send(500, "application/json", "{\"success\":false,\"message\":\"Failed to update configuration\"}");
+                }
             }
         }
-    }
-);
+    );
 
-// Reboot device
-_server->on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest *request) {
-    request->send(200, "application/json", "{\"success\":true,\"message\":\"Rebooting...\"}");
-    // Schedule reboot after response is sent
-    delay(500);
-    ESP.restart();
-});
+    // Reboot device
+    _server->on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest *request) {
+        request->send(200, "application/json", "{\"success\":true,\"message\":\"Rebooting...\"}");
+        // Schedule reboot after response is sent
+        delay(500);
+        ESP.restart();
+    });
 
     // Set up 404 handler last to ensure it catches unmatched routes
     _server->onNotFound([](AsyncWebServerRequest *request) {
