@@ -12,6 +12,7 @@
 #include "mqtt_manager.h"
 #include "adaptive_pid_controller.h"
 #include "ota_manager.h"
+#include "valve_control.h"
 
 // Global variables
 BME280Sensor bme280;
@@ -21,6 +22,7 @@ ESPKNXIP knxInstance;  // Using our local instance
 KNXManager knxManager(knxInstance);
 MQTTManager mqttManager(mqttClient);
 OTAManager otaManager;
+ValveControl valveControl(mqttClient, knxInstance);
 float temperature = 0;
 float humidity = 0;
 float pressure = 0;

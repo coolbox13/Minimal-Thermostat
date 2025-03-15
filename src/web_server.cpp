@@ -1,6 +1,9 @@
 #include "web_server.h"
 #include "SPIFFS.h"
 #include <Update.h>
+#include "bme280_sensor.h"
+#include "valve_control.h"
+#include "adaptive_pid_controller.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -129,6 +132,24 @@ void WebServerManager::setupDefaultRoutes() {
 
     // Server functionality verification
     _server->on("/servertest", HTTP_GET, handleServerTest);
+
+    // Sensor data endpoint
+    _server->on("/api/sensor-data", HTTP_GET, [](AsyncWebServerRequest *request) {
+        extern BME280Sensor bme280;
+        extern ValveControl valveControl;
+        extern AdaptivePID_Input g_pid_input;
+        
+        StaticJsonDocument<200> doc;
+        doc["temperature"] = bme280.readTemperature();
+        doc["humidity"] = bme280.readHumidity();
+        doc["pressure"] = bme280.readPressure();
+        doc["valve"] = valveControl.getPosition();
+        doc["setpoint"] = g_pid_input.setpoint_temp;
+        
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
 
     // Serve static files from SPIFFS if available
     if(SPIFFS.exists("/")) {

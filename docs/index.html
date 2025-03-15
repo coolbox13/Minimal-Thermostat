@@ -22,36 +22,41 @@
         h1 {
             color: #333;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
         .tabs {
             display: flex;
-            border-bottom: 2px solid #ccc;
-            margin-bottom: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
         }
         .tab {
             padding: 10px 20px;
             border: 1px solid #ccc;
-            border-bottom: none;
+            border-radius: 5px 5px 0 0;
             cursor: pointer;
+            margin-right: 5px;
             background-color: #f8f8f8;
-            flex-grow: 1;
-            text-align: center;
-            text-decoration: none;
-            color: black;
         }
         .tab:hover {
             background-color: #eee;
         }
-        .tab.active {
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 0 5px 5px 5px;
+            margin-top: -1px;
+        }
+        input[type="radio"] {
+            display: none;
+        }
+        input[type="radio"]:checked + label {
             background-color: #2196F3;
             color: white;
             border-color: #2196F3;
         }
-        .tab-content {
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 0 0 5px 5px;
+        input[type="radio"]:checked + label + .tab-content {
+            display: block;
         }
         .sensor-data {
             display: grid;
@@ -76,25 +81,30 @@
             color: #666;
             font-size: 14px;
         }
+        .endpoint-info {
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        .endpoint-info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .endpoint-info p {
+            margin: 0;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>ESP32 KNX Thermostat</h1>
 
-        <!-- Navigation Tabs -->
         <div class="tabs">
-            <a href="/" class="tab" id="tab-dashboard">Dashboard</a>
-            <a href="/knx-config" class="tab" id="tab-knx">KNX Config</a>
-            <a href="/firmware-update" class="tab" id="tab-firmware">Firmware Update</a>
-            <a href="/system" class="tab" id="tab-system">System</a>
-        </div>
-
-        <!-- Page-Specific Content -->
-        <div class="tab-content">
-            <!-- If on the Dashboard -->
-            <div id="dashboard-content">
-                <h2>Dashboard</h2>
+            <input type="radio" id="tab1" name="tabs" checked>
+            <label for="tab1" class="tab">Dashboard</label>
+            <div class="tab-content">
                 <div class="sensor-data">
                     <div class="sensor-card">
                         <div class="sensor-label">Temperature</div>
@@ -112,28 +122,54 @@
                         <div class="sensor-label">Valve Position</div>
                         <div class="sensor-value" id="valve">--%</div>
                     </div>
-                    <div class="sensor-card">
-                        <div class="sensor-label">Setpoint</div>
-                        <div class="sensor-value" id="setpoint">--°C</div>
-                    </div>
+                </div>
+            </div>
+
+            <input type="radio" id="tab2" name="tabs">
+            <label for="tab2" class="tab">KNX Config</label>
+            <div class="tab-content">
+                <div class="endpoint-info">
+                    <h3>KNX Configuration</h3>
+                    <p>Configure KNX network settings and monitor communication status.</p>
+                    <p>Endpoint: <code>/knx</code></p>
+                </div>
+            </div>
+
+            <input type="radio" id="tab3" name="tabs">
+            <label for="tab3" class="tab">Firmware Update</label>
+            <div class="tab-content">
+                <div class="endpoint-info">
+                    <h3>Firmware Update</h3>
+                    <p>Upload and install new firmware versions.</p>
+                    <p>Endpoint: <code>/update</code></p>
+                </div>
+            </div>
+
+            <input type="radio" id="tab4" name="tabs">
+            <label for="tab4" class="tab">System</label>
+            <div class="tab-content">
+                <div class="endpoint-info">
+                    <h3>Test Endpoint</h3>
+                    <p>Verify server functionality.</p>
+                    <p>Endpoint: <code>/test</code></p>
+                </div>
+
+                <div class="endpoint-info">
+                    <h3>Ping</h3>
+                    <p>Check server health status.</p>
+                    <p>Endpoint: <code>/ping</code></p>
+                </div>
+
+                <div class="endpoint-info">
+                    <h3>Server Test</h3>
+                    <p>Detailed server functionality verification.</p>
+                    <p>Endpoint: <code>/servertest</code></p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Highlight active tab based on URL
-        const tabs = document.querySelectorAll(".tab");
-        const currentPath = window.location.pathname;
-
-        tabs.forEach(tab => {
-            if ((currentPath === "/" && tab.getAttribute("href") === "/") || 
-                (currentPath !== "/" && tab.getAttribute("href") === currentPath)) {
-                tab.classList.add("active");
-            }
-        });
-
-        // Fetch sensor data for dashboard
         function updateSensorData() {
             fetch('/api/sensor-data')
                 .then(response => response.json())
@@ -142,16 +178,14 @@
                     document.getElementById('humidity').textContent = data.humidity.toFixed(2) + '%';
                     document.getElementById('pressure').textContent = data.pressure.toFixed(2) + ' hPa';
                     document.getElementById('valve').textContent = data.valve + '%';
-                    document.getElementById('setpoint').textContent = data.setpoint.toFixed(2) + '°C';
                 })
                 .catch(error => console.error('Error fetching sensor data:', error));
         }
 
-        // Update sensor data every 5 seconds (only if we're on the dashboard)
-        if (currentPath === "/") {
-            setInterval(updateSensorData, 5000);
-            updateSensorData();
-        }
+        // Update sensor data every 5 seconds
+        setInterval(updateSensorData, 5000);
+        // Initial update
+        updateSensorData();
     </script>
 </body>
 </html>
