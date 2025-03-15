@@ -5,6 +5,9 @@
 #include <ArduinoJson.h>
 #include "config.h"
 
+// Forward declaration of embedded HTML
+extern const char* THERMOSTAT_HTML;
+
 class WebServerManager {
 public:
     static WebServerManager* getInstance();
@@ -26,7 +29,6 @@ private:
     static void handleRoot(AsyncWebServerRequest *request);
     static void handleTest(AsyncWebServerRequest *request);
     static void handlePing(AsyncWebServerRequest *request);
-    static void handleServerTest(AsyncWebServerRequest *request);
 };
 
 #endif // WEB_SERVER_H

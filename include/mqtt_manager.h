@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <PubSubClient.h>
+#include <memory>
 #include "home_assistant.h"
 #include "config.h"
 
@@ -44,7 +45,7 @@ public:
 private:
     PubSubClient& _mqttClient;
     KNXManager* _knxManager;
-    HomeAssistant* _homeAssistant;
+    std::unique_ptr<HomeAssistant> _homeAssistant;
     int _valvePosition;
     
     // Static pointer to instance for callback

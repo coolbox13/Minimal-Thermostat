@@ -6,14 +6,16 @@
 MQTTManager* MQTTManager::_instance = nullptr;
 
 MQTTManager::MQTTManager(PubSubClient& mqttClient)
-    : _mqttClient(mqttClient), _knxManager(nullptr), _homeAssistant(nullptr), _valvePosition(0) {
+    : _mqttClient(mqttClient), _knxManager(nullptr), _valvePosition(0) {
     // Store instance for static callback
     _instance = this;
 }
 
 MQTTManager::~MQTTManager() {
-    if (_homeAssistant) {
-        delete _homeAssistant;
+    // HomeAssistant will be cleaned up automatically by unique_ptr
+    // Reset static instance if it points to this instance
+    if (_instance == this) {
+        _instance = nullptr;
     }
 }
 
@@ -28,8 +30,8 @@ void MQTTManager::begin() {
     // Try to connect
     reconnect();
     
-    // Initialize Home Assistant integration
-    _homeAssistant = new HomeAssistant(_mqttClient, "esp32_thermostat");
+    // Initialize Home Assistant integration using unique_ptr
+    _homeAssistant = std::unique_ptr<HomeAssistant>(new HomeAssistant(_mqttClient, "esp32_thermostat"));
     _homeAssistant->begin();
     
     Serial.println("MQTT initialized");
@@ -88,8 +90,6 @@ void MQTTManager::mqttCallback(char* topic, byte* payload, unsigned int length) 
     }
 }
 
-// In the processMessage method of your MQTTManager class
-
 void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length) {
     // Convert payload to string
     char message[length + 1];
@@ -125,14 +125,28 @@ void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length
         }
     }
     
-    // Handle valve mode (for climate entity)
-    if (strcmp(topic, "esp32_thermostat/valve/mode") == 0) {
-        // Don't republish the mode - this is causing the feedback loop
-        // _mqttClient.publish("esp32_thermostat/valve/mode", message, true);
+    // Handle temperature setpoint
+    if (strcmp(topic, "esp32_thermostat/temperature/set") == 0) {
+        float setpoint = atof(message);
+        Serial.print("Setting temperature setpoint to: ");
+        Serial.println(setpoint);
         
-        // Just log that we received it
-        Serial.print("Valve mode received: ");
-        Serial.println(message);
+        // Update PID controller setpoint
+        extern void setTemperatureSetpoint(float);
+        setTemperatureSetpoint(setpoint);
+        
+        // Publish the new setpoint back to MQTT
+        char setpointStr[8];
+        dtostrf(setpoint, 1, 1, setpointStr);
+        _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+    }
+    
+    // Handle system restart command
+    if (strcmp(topic, "esp32_thermostat/restart") == 0) {
+        Serial.println("Restart command received via MQTT");
+        _mqttClient.publish("esp32_thermostat/status", "Restarting...", true);
+        delay(500);
+        ESP.restart();
     }
 }
 
@@ -153,7 +167,8 @@ void MQTTManager::reconnect() {
             // Subscribe to topics
             _mqttClient.subscribe(MQTT_TOPIC_VALVE_COMMAND);
             _mqttClient.subscribe("esp32_thermostat/valve/set");
-            _mqttClient.subscribe("esp32_thermostat/valve/mode");
+            _mqttClient.subscribe("esp32_thermostat/temperature/set");
+            _mqttClient.subscribe("esp32_thermostat/restart");
             
             // Update availability
             if (_homeAssistant) {
