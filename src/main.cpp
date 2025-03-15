@@ -23,8 +23,21 @@ float temperature = 0;
 float humidity = 0;
 float pressure = 0;
 
+// Make WiFiManager persistent
+WiFiManager wifiManager;
+
+// WiFi monitoring variables
+unsigned long lastWifiCheck = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 60000; // Check WiFi every minute
+unsigned long lastConnectedTime = 0;
+const unsigned long WIFI_WATCHDOG_TIMEOUT = 1800000; // 30 minutes in milliseconds
+int reconnectAttempts = 0;
+const int MAX_RECONNECT_ATTEMPTS = 10; // Increased to 10 attempts
+bool configPortalActive = false;
+
 // Function declarations
 void setupWiFi();
+void checkWiFiConnection();
 void updateSensorReadings();
 void updatePIDControl();
 
@@ -66,9 +79,20 @@ void setup() {
   
   // Initial sensor readings
   updateSensorReadings();
+  
+  // Initialize last connected time
+  if (WiFi.status() == WL_CONNECTED) {
+    lastConnectedTime = millis();
+  }
 }
 
 void loop() {
+  // Check WiFi connection status periodically
+  if (millis() - lastWifiCheck > WIFI_CHECK_INTERVAL) {
+    checkWiFiConnection();
+    lastWifiCheck = millis();
+  }
+  
   // Handle KNX communications
   knxManager.loop();
   
@@ -91,12 +115,26 @@ void loop() {
     updatePIDControl();
     lastPIDUpdate = currentTime;
   }
+  
+  // Process WiFiManager in non-blocking mode
+  wifiManager.process();
+  
+  // WiFi watchdog - reboot if disconnected for too long
+  if (WiFi.status() != WL_CONNECTED && !configPortalActive) {
+    if (millis() - lastConnectedTime > WIFI_WATCHDOG_TIMEOUT) {
+      Serial.println("WiFi disconnected for 30 minutes. Rebooting device...");
+      delay(1000);
+      ESP.restart();
+    }
+  }
 }
 
 void setupWiFi() {
   Serial.println("Setting up WiFi...");
-  WiFiManager wifiManager;
+  
+  // Configure WiFiManager
   wifiManager.setConfigPortalTimeout(180);
+  wifiManager.setConnectRetries(10); // Set to 10 reconnection attempts
   
   if (!wifiManager.autoConnect("ESP32-Thermostat-AP")) {
     Serial.println("Failed to connect and hit timeout");
@@ -107,6 +145,67 @@ void setupWiFi() {
   Serial.println("WiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  lastConnectedTime = millis(); // Update last connected time
+}
+
+void checkWiFiConnection() {
+  if (WiFi.status() == WL_CONNECTED) {
+    // Update last connected time when WiFi is connected
+    lastConnectedTime = millis();
+    reconnectAttempts = 0;
+  } else {
+    Serial.println("WiFi connection lost. Attempting to reconnect...");
+    
+    // Increment reconnect attempts
+    reconnectAttempts++;
+    
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      // Try to reconnect using WiFi.begin() with saved credentials
+      WiFi.disconnect();
+      delay(1000);
+      WiFi.begin();
+      
+      // Wait up to 10 seconds for connection
+      unsigned long startAttemptTime = millis();
+      while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
+        delay(500);
+        Serial.print(".");
+      }
+      Serial.println();
+      
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("Reconnected to WiFi");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+        lastConnectedTime = millis(); // Update last connected time
+      } else {
+        Serial.println("Reconnection attempt failed");
+        Serial.print("Attempt ");
+        Serial.print(reconnectAttempts);
+        Serial.print(" of ");
+        Serial.println(MAX_RECONNECT_ATTEMPTS);
+      }
+    } else {
+      // After several failed attempts, start config portal
+      Serial.println("Multiple reconnection attempts failed. Starting config portal...");
+      configPortalActive = true;
+      wifiManager.startConfigPortal("ESP32-Thermostat-Recovery");
+    }
+    
+    // Print time since last connection
+    unsigned long disconnectedTime = (millis() - lastConnectedTime) / 1000;
+    Serial.print("Time since last connection: ");
+    Serial.print(disconnectedTime);
+    Serial.println(" seconds");
+    
+    // Print time remaining before watchdog reboot
+    if (disconnectedTime > 0) {
+      unsigned long timeToReboot = (WIFI_WATCHDOG_TIMEOUT / 1000) - disconnectedTime;
+      Serial.print("Device will reboot in ");
+      Serial.print(timeToReboot);
+      Serial.println(" seconds if WiFi remains disconnected");
+    }
+  }
 }
 
 void updateSensorReadings() {
