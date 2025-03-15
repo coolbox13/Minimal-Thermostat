@@ -4,6 +4,7 @@
 #include "bme280_sensor.h"
 #include "valve_control.h"
 #include "adaptive_pid_controller.h"
+#include "persistence_manager.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -18,6 +19,9 @@ WebServerManager::WebServerManager() : _server(nullptr) {}
 
 void WebServerManager::begin(AsyncWebServer* server) {
     _server = server;
+    
+    // Print persistence values during bootup
+    PersistenceManager::getInstance()->printStoredValues();
     
     // Enable CORS
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
@@ -132,6 +136,15 @@ void WebServerManager::setupDefaultRoutes() {
 
     // Server functionality verification
     _server->on("/servertest", HTTP_GET, handleServerTest);
+
+    // Persistence values endpoint
+    _server->on("/api/persistence", HTTP_GET, [](AsyncWebServerRequest *request) {
+        StaticJsonDocument<512> doc;
+        PersistenceManager::getInstance()->getStoredValues(doc);
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
 
     // Sensor data endpoint
     _server->on("/api/sensor-data", HTTP_GET, [](AsyncWebServerRequest *request) {

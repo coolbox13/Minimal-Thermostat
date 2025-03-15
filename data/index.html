@@ -76,6 +76,39 @@
             color: #666;
             font-size: 14px;
         }
+        .persistence-form {
+            display: grid;
+            gap: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .form-group {
+            display: grid;
+            gap: 5px;
+        }
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .save-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .save-button:hover {
+            background-color: #1976D2;
+        }
     </style>
 </head>
 <body>
@@ -86,6 +119,7 @@
         <div class="tabs">
             <a href="/" class="tab" id="tab-dashboard">Dashboard</a>
             <a href="/knx" class="tab" id="tab-knx">KNX Config</a>
+            <a href="/persistence" class="tab" id="tab-persistence">Persistence</a>
             <a href="/update" class="tab" id="tab-firmware">Firmware Update</a>
             <a href="/servertest" class="tab" id="tab-system">System</a>
         </div>
@@ -118,6 +152,30 @@
                     </div>
                 </div>
             </div>
+
+            <!-- If on the Persistence page -->
+            <div id="persistence-content" style="display: none;">
+                <h2>Persistence Configuration</h2>
+                <form class="persistence-form" id="persistenceForm">
+                    <div class="form-group">
+                        <label for="setpoint_temp">Setpoint Temperature (°C)</label>
+                        <input type="number" id="setpoint_temp" name="setpoint_temp" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="kp">PID Proportional Gain (Kp)</label>
+                        <input type="number" id="kp" name="kp" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ki">PID Integral Gain (Ki)</label>
+                        <input type="number" id="ki" name="ki" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="kd">PID Derivative Gain (Kd)</label>
+                        <input type="number" id="kd" name="kd" step="0.01" required>
+                    </div>
+                    <button type="submit" class="save-button">Save Changes</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -126,12 +184,28 @@
         const tabs = document.querySelectorAll(".tab");
         const currentPath = window.location.pathname;
 
+        // Show/hide content based on current path
+        const dashboardContent = document.getElementById('dashboard-content');
+        const persistenceContent = document.getElementById('persistence-content');
+
+        function updateContentVisibility() {
+            if (currentPath === '/') {
+                dashboardContent.style.display = 'block';
+                persistenceContent.style.display = 'none';
+            } else if (currentPath === '/persistence') {
+                dashboardContent.style.display = 'none';
+                persistenceContent.style.display = 'block';
+            }
+        }
+
         tabs.forEach(tab => {
             if ((currentPath === "/" && tab.getAttribute("href") === "/") || 
                 (currentPath !== "/" && tab.getAttribute("href") === currentPath)) {
                 tab.classList.add("active");
             }
         });
+
+        updateContentVisibility();
 
         // Fetch sensor data for dashboard
         function updateSensorData() {
@@ -147,10 +221,55 @@
                 .catch(error => console.error('Error fetching sensor data:', error));
         }
 
+        // Load persistence data
+        function loadPersistenceData() {
+            fetch('/api/persistence')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('setpoint_temp').value = data.setpoint_temp;
+                    document.getElementById('kp').value = data.kp;
+                    document.getElementById('ki').value = data.ki;
+                    document.getElementById('kd').value = data.kd;
+                })
+                .catch(error => console.error('Error loading persistence data:', error));
+        }
+
+        // Handle persistence form submission
+        document.getElementById('persistenceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = {
+                setpoint_temp: parseFloat(document.getElementById('setpoint_temp').value),
+                kp: parseFloat(document.getElementById('kp').value),
+                ki: parseFloat(document.getElementById('ki').value),
+                kd: parseFloat(document.getElementById('kd').value)
+            };
+
+            fetch('/api/persistence', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Settings saved successfully!');
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+                alert('Error saving settings. Please try again.');
+            });
+        });
+
         // Update sensor data every 5 seconds (only if we're on the dashboard)
         if (currentPath === "/") {
             setInterval(updateSensorData, 5000);
             updateSensorData();
+        }
+
+        // Load persistence data if we're on the persistence page
+        if (currentPath === "/persistence") {
+            loadPersistenceData();
         }
     </script>
 </body>
