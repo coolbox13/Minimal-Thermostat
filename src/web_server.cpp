@@ -222,12 +222,72 @@ void WebServerManager::setupDefaultRoutes() {
 
     // Set up 404 handler last to ensure it catches unmatched routes
     _server->onNotFound([](AsyncWebServerRequest *request) {
-        request->send(404, "text/html", 
-            "<html><body>"
-            "<h1>404 - Page Not Found</h1>"
-            "<p>The requested page could not be found on this server.</p>"
-            "<p><a href='/'>Return to Home</a></p>"
-            "</body></html>");
+        String html = R"(<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>404 - Page Not Found</title>
+        <link rel="stylesheet" href="style.css">
+        <style>
+            .error-container {
+                text-align: center;
+                padding: 40px 20px;
+            }
+            
+            .error-code {
+                font-size: 80px;
+                font-weight: bold;
+                color: #e74c3c;
+                margin: 0;
+            }
+            
+            .error-message {
+                font-size: 24px;
+                margin: 20px 0;
+            }
+            
+            .error-details {
+                margin-bottom: 30px;
+                color: #7f8c8d;
+            }
+            
+            .home-button {
+                display: inline-block;
+                padding: 10px 20px;
+                background-color: #1e88e5;
+                color: white;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>ESP32 KNX Thermostat</h1>
+        </header>
+        
+        <div class="container">
+            <div class="card error-container">
+                <h2 class="error-code">404</h2>
+                <h3 class="error-message">Page Not Found</h3>
+                <p class="error-details">
+                    The page you requested could not be found on this server.<br>
+                    You might have followed a broken link or typed the address incorrectly.
+                </p>
+                <a href="/" class="home-button">Return to Dashboard</a>
+            </div>
+        </div>
+    </body>
+    </html>)";
+        
+        request->send(404, "text/html", html);
+    });
+
+    // Redirect all KNX library URLs to 404
+    _server->on(ROOT_PREFIX, HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->redirect("/not-found");
     });
 
     // Explicitly start the server

@@ -16,11 +16,11 @@
 
 #define ALLOW_MULTIPLE_CALLBACKS_PER_ADDRESS  0
 
-#define USE_BOOTSTRAP             1
+#define USE_BOOTSTRAP             0
 #define ROOT_PREFIX               ""
-#define DISABLE_EEPROM_BUTTONS    0
-#define DISABLE_REBOOT_BUTTON     0
-#define DISABLE_RESTORE_BUTTON    0
+#define DISABLE_EEPROM_BUTTONS    1
+#define DISABLE_REBOOT_BUTTON     1
+#define DISABLE_RESTORE_BUTTON    1
 
 #ifndef MULTICAST_PORT
 #define MULTICAST_PORT            3671

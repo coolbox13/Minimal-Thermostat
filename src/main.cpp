@@ -97,14 +97,14 @@ void setup() {
     WebServerManager* webServerManager = WebServerManager::getInstance();
     webServerManager->begin(&webServer);
     LOG_I(TAG_MAIN, "Web server started on port 80");
-    
-    // Setup KNX and MQTT managers
-    knxManager.begin();
-    mqttManager.begin();
 
     // Initialize OTA using WebServerManager
     otaManager.begin(webServerManager);
     LOG_I(TAG_MAIN, "OTA manager initialized with web server");
+    
+    // Setup KNX and MQTT managers
+    knxManager.begin();
+    mqttManager.begin();
     
     // Connect the managers for cross-communication
     knxManager.setMQTTManager(&mqttManager);
