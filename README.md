@@ -8,12 +8,12 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 - **Advanced Climate Control**: Adaptive PID-based temperature regulation for precise comfort
 - **Sensor Integration**: BME280 temperature/humidity/pressure monitoring
 - **Robust Connectivity**: Advanced WiFi reconnection system with fallback mechanisms and watchdog protection
-- **Flexible Operation Modes**: Comfort, Eco, Away, Boost, and Anti-freeze
-- **Secure Connectivity**: Optional TLS support for MQTT connections
 - **Modular Architecture**: Interface-based design for easy extension
 - **Planned Features**:
   - OTA Updates: Remote firmware upgrades (coming soon)
   - Web Interface: Mobile-responsive configuration dashboard (in development)
+  - **Flexible Operation Modes**: Comfort, Eco, Away, Boost, and Anti-freeze
+  - Secure Connectivity**: Optional TLS support for MQTT connections
 
 ## Hardware Requirements
 
