@@ -21,8 +21,9 @@ void KNXManager::begin() {
     esp_log_level_set("esp-knx-ip-send", ESP_LOG_NONE);
     esp_log_level_set("esp-knx-ip-receive", ESP_LOG_NONE);
     
-    // Start KNX without web server
-    _knx.start(nullptr);
+    // Start KNX with web server
+    // In case no webserver needed use: _knx.start(nullptr);
+    _knx.start();
     
     // Set physical address (area, line, member)
     _knx.physical_address_set(_knx.PA_to_address(KNX_AREA, KNX_LINE, KNX_MEMBER));
