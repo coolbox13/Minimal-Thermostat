@@ -4,6 +4,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include "config.h"
+#include "config_manager.h"
 
 // Forward declaration of embedded HTML
 extern const char* THERMOSTAT_HTML;

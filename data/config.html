@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 KNX Thermostat - Configuration</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .form-row {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: inline-block;
+            width: 150px;
+            font-weight: bold;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        input[type="password"] {
+            width: 250px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .action-buttons {
+            margin-top: 20px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            padding: 10px 15px;
+            background-color: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab-button.active {
+            background-color: #1e88e5;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>ESP32 KNX Thermostat - Configuration</h1>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2 class="card-title">System Configuration</h2>
+            
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="network">Network</button>
+                <button class="tab-button" data-tab="mqtt">MQTT</button>
+                <button class="tab-button" data-tab="knx">KNX</button>
+                <button class="tab-button" data-tab="pid">PID Control</button>
+            </div>
+            
+            <form id="config-form">
+                <div id="network" class="tab-content active">
+                    <h3>Network Settings</h3>
+                    <div class="form-row">
+                        <label for="wifi_ssid">WiFi SSID:</label>
+                        <input type="text" id="wifi_ssid" name="wifi_ssid">
+                    </div>
+                    <div class="form-row">
+                        <label for="wifi_pass">WiFi Password:</label>
+                        <input type="password" id="wifi_pass" name="wifi_pass">
+                    </div>
+                </div>
+                
+                <div id="mqtt" class="tab-content">
+                    <h3>MQTT Settings</h3>
+                    <div class="form-row">
+                        <label for="mqtt_server">MQTT Server:</label>
+                        <input type="text" id="mqtt_server" name="mqtt_server">
+                    </div>
+                    <div class="form-row">
+                        <label for="mqtt_port">MQTT Port:</label>
+                        <input type="number" id="mqtt_port" name="mqtt_port" min="1" max="65535">
+                    </div>
+                </div>
+                
+                <div id="knx" class="tab-content">
+                    <h3>KNX Settings</h3>
+                    <div class="form-row">
+                        <label for="knx_area">KNX Area:</label>
+                        <input type="number" id="knx_area" name="knx_area" min="0" max="15">
+                    </div>
+                    <div class="form-row">
+                        <label for="knx_line">KNX Line:</label>
+                        <input type="number" id="knx_line" name="knx_line" min="0" max="15">
+                    </div>
+                    <div class="form-row">
+                        <label for="knx_member">KNX Member:</label>
+                        <input type="number" id="knx_member" name="knx_member" min="0" max="255">
+                    </div>
+                    <div class="form-row">
+                        <label for="knx_test">Use Test Addresses:</label>
+                        <input type="checkbox" id="knx_test" name="knx_test">
+                    </div>
+                </div>
+                
+                <div id="pid" class="tab-content">
+                    <h3>PID Controller Settings</h3>
+                    <div class="form-row">
+                        <label for="pid_kp">Kp (Proportional):</label>
+                        <input type="number" id="pid_kp" name="pid_kp" step="0.1" min="0">
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_ki">Ki (Integral):</label>
+                        <input type="number" id="pid_ki" name="pid_ki" step="0.01" min="0">
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_kd">Kd (Derivative):</label>
+                        <input type="number" id="pid_kd" name="pid_kd" step="0.01" min="0">
+                    </div>
+                    <div class="form-row">
+                        <label for="setpoint">Default Setpoint:</label>
+                        <input type="number" id="setpoint" name="setpoint" step="0.5" min="5" max="30">
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button type="submit" id="save-config">Save Configuration</button>
+                    <button type="button" id="reboot-device">Reboot Device</button>
+                    <a href="/"><button type="button">Back to Dashboard</button></a>
+                </div>
+                
+                <div id="config-status" class="status"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons and tabs
+                    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding tab
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Load current configuration
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(data => {
+                    // Network settings
+                    if (data.network) {
+                        document.getElementById('wifi_ssid').value = data.network.wifi_ssid || '';
+                        // Don't set password for security reasons
+                    }
+                    
+                    // MQTT settings
+                    if (data.mqtt) {
+                        document.getElementById('mqtt_server').value = data.mqtt.server || '';
+                        document.getElementById('mqtt_port').value = data.mqtt.port || 1883;
+                    }
+                    
+                    // KNX settings
+                    if (data.knx) {
+                        document.getElementById('knx_area').value = data.knx.area || 1;
+                        document.getElementById('knx_line').value = data.knx.line || 1;
+                        document.getElementById('knx_member').value = data.knx.member || 1;
+                        document.getElementById('knx_test').checked = data.knx.use_test || false;
+                    }
+                    
+                    // PID settings
+                    if (data.pid) {
+                        document.getElementById('pid_kp').value = data.pid.kp || 2.0;
+                        document.getElementById('pid_ki').value = data.pid.ki || 0.1;
+                        document.getElementById('pid_kd').value = data.pid.kd || 0.5;
+                        document.getElementById('setpoint').value = data.pid.setpoint || 22.0;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading configuration:', error);
+                    document.getElementById('config-status').textContent = 'Error loading configuration';
+                });
+            
+            // Save configuration
+            document.getElementById('config-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const config = {
+                    network: {
+                        wifi_ssid: formData.get('wifi_ssid'),
+                        wifi_pass: formData.get('wifi_pass')
+                    },
+                    mqtt: {
+                        server: formData.get('mqtt_server'),
+                        port: parseInt(formData.get('mqtt_port'))
+                    },
+                    knx: {
+                        area: parseInt(formData.get('knx_area')),
+                        line: parseInt(formData.get('knx_line')),
+                        member: parseInt(formData.get('knx_member')),
+                        use_test: formData.get('knx_test') === 'on'
+                    },
+                    pid: {
+                        kp: parseFloat(formData.get('pid_kp')),
+                        ki: parseFloat(formData.get('pid_ki')),
+                        kd: parseFloat(formData.get('pid_kd')),
+                        setpoint: parseFloat(formData.get('setpoint'))
+                    }
+                };
+                
+                fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('config-status').textContent = 'Configuration saved successfully';
+                    } else {
+                        document.getElementById('config-status').textContent = 'Error saving configuration: ' + data.message;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving configuration:', error);
+                    document.getElementById('config-status').textContent = 'Error saving configuration';
+                });
+            });
+            
+            // Reboot device
+            document.getElementById('reboot-device').addEventListener('click', function() {
+                if (confirm('Are you sure you want to reboot the device?')) {
+                    fetch('/api/reboot', { method: 'POST' })
+                        .then(() => {
+                            document.getElementById('config-status').textContent = 'Rebooting...';
+                        })
+                        .catch(error => {
+                            console.error('Error rebooting device:', error);
+                            document.getElementById('config-status').textContent = 'Error rebooting device';
+                        });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

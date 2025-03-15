@@ -212,6 +212,65 @@ void WebServerManager::setupDefaultRoutes() {
         }
     });
 
+// Get current configuration
+_server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+    ConfigManager* configManager = ConfigManager::getInstance();
+    StaticJsonDocument<1024> doc;
+    
+    configManager->getJson(doc);
+    
+    String response;
+    serializeJson(doc, response);
+    request->send(200, "application/json", response);
+});
+
+// Update configuration
+_server->on("/api/config", HTTP_POST, 
+    [](AsyncWebServerRequest *request) {
+        // This is called after body parsing is complete
+        request->send(200, "application/json", "{\"success\":true}");
+    },
+    NULL, // Upload handler is NULL
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        // Body handler
+        static DynamicJsonDocument jsonDoc(1024);
+        static String jsonBuffer;
+        
+        if (index == 0) {
+            jsonBuffer = "";
+        }
+        
+        for (size_t i = 0; i < len; i++) {
+            jsonBuffer += (char)data[i];
+        }
+        
+        if (index + len == total) {
+            // All data received, process it
+            DeserializationError error = deserializeJson(jsonDoc, jsonBuffer);
+            if (error) {
+                request->send(400, "application/json", "{\"success\":false,\"message\":\"Invalid JSON\"}");
+                return;
+            }
+            
+            // Update configuration
+            ConfigManager* configManager = ConfigManager::getInstance();
+            bool success = configManager->setFromJson(jsonDoc);
+            
+            if (!success) {
+                request->send(500, "application/json", "{\"success\":false,\"message\":\"Failed to update configuration\"}");
+            }
+        }
+    }
+);
+
+// Reboot device
+_server->on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest *request) {
+    request->send(200, "application/json", "{\"success\":true,\"message\":\"Rebooting...\"}");
+    // Schedule reboot after response is sent
+    delay(500);
+    ESP.restart();
+});
+
     // Set up 404 handler last to ensure it catches unmatched routes
     _server->onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/html", 
