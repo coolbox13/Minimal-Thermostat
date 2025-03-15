@@ -311,6 +311,9 @@ class ESPKNXIP {
     void          physical_address_set(address_t const &addr);
     address_t     physical_address_get();
 
+    // Get the web server instance for OTA updates
+    AsyncWebServer* getWebServer() { return server; }
+
     /* Configuration functions */
     config_id_t   config_register_string(String name, uint8_t len, String _default, enable_condition_t cond = nullptr);
     config_id_t   config_register_int(String name, int32_t _default, enable_condition_t cond = nullptr);

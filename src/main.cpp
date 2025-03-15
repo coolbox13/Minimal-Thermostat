@@ -11,6 +11,7 @@
 #include "knx_manager.h"
 #include "mqtt_manager.h"
 #include "adaptive_pid_controller.h"
+#include "ota_manager.h"
 
 // Global variables
 BME280Sensor bme280;
@@ -19,6 +20,7 @@ PubSubClient mqttClient(espClient);
 ESPKNXIP knxInstance;  // Using our local instance
 KNXManager knxManager(knxInstance);
 MQTTManager mqttManager(mqttClient);
+OTAManager otaManager;
 float temperature = 0;
 float humidity = 0;
 float pressure = 0;
@@ -67,6 +69,16 @@ void setup() {
   // Setup KNX and MQTT managers
   knxManager.begin();
   mqttManager.begin();
+
+  // Initialize OTA using the KNX web server
+  // Get the web server instance from knxInstance
+  AsyncWebServer* webServer = knxInstance.getWebServer();
+  if (webServer) {
+    otaManager.begin(webServer);
+    Serial.println("OTA manager initialized with KNX web server");
+  } else {
+    Serial.println("Failed to initialize OTA - no web server available");
+  }
   
   // Connect the managers for cross-communication
   knxManager.setMQTTManager(&mqttManager);
@@ -94,7 +106,7 @@ void setup() {
 void loop() {
   // Reset watchdog timer to prevent reboot
   esp_task_wdt_reset();
-  
+
   // Check WiFi connection status periodically
   if (millis() - lastWifiCheck > WIFI_CHECK_INTERVAL) {
     checkWiFiConnection();
