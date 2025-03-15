@@ -43,6 +43,9 @@ void checkWiFiConnection();
 void updateSensorReadings();
 void updatePIDControl();
 
+// Create a global web server
+AsyncWebServer webServer(80);
+
 // Timing for PID updates
 unsigned long lastPIDUpdate = 0;
 
@@ -51,8 +54,8 @@ void setup() {
   Serial.println("ESP32 KNX Thermostat - With Adaptive PID Controller");
   
   // Initialize watchdog timer (45 minutes)
-  esp_task_wdt_init(WATCHDOG_TIMEOUT / 1000, true); // Convert ms to seconds, true = reboot on timeout
-  esp_task_wdt_add(NULL); // Add current thread to watchdog
+  esp_task_wdt_init(WATCHDOG_TIMEOUT / 1000, true);
+  esp_task_wdt_add(NULL);
   Serial.println("Watchdog timer initialized (45 minutes)");
 
   // Setup custom log handler before initializing KNX
@@ -66,19 +69,20 @@ void setup() {
   // Setup WiFi
   setupWiFi();
   
+  // Start the web server
+  webServer.begin();
+  Serial.println("Web server started on port 80");
+  
+  // Start KNX with our web server instance
+  knxInstance.start(&webServer);
+  
   // Setup KNX and MQTT managers
   knxManager.begin();
   mqttManager.begin();
 
-  // Initialize OTA using the KNX web server
-  // Get the web server instance from knxInstance
-  AsyncWebServer* webServer = knxInstance.getWebServer();
-  if (webServer) {
-    otaManager.begin(webServer);
-    Serial.println("OTA manager initialized with KNX web server");
-  } else {
-    Serial.println("Failed to initialize OTA - no web server available");
-  }
+  // Initialize OTA using our web server
+  otaManager.begin(&webServer);
+  Serial.println("OTA manager initialized with web server");
   
   // Connect the managers for cross-communication
   knxManager.setMQTTManager(&mqttManager);
