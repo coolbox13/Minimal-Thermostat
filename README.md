@@ -228,7 +228,7 @@ sequenceDiagram
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/ESP32-KNX-Thermostat.git
+   git clone https://github.com/coolbox13/ESP32-KNX-Thermostat.git
    ```
 
 2. Open the project in PlatformIO or configure Arduino IDE with required libraries:
