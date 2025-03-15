@@ -67,14 +67,23 @@ void WebServerManager::addEndpoint(const char* uri, WebRequestMethodComposite me
 void WebServerManager::setupDefaultRoutes() {
     if (!_server) return;
 
-    // Root route - Serve index.html from SPIFFS if available
-    _server->on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        if(SPIFFS.exists("/index.html")) {
-            request->send(SPIFFS, "/index.html", "text/html");
-        } else {
-            handleRoot(request);
-        }
+    // Set up 404 handler first to ensure it catches unmatched routes
+    _server->onNotFound([](AsyncWebServerRequest *request) {
+        request->send(404, "text/html", 
+            "<html><body>"
+            "<h1>404 - Page Not Found</h1>"
+            "<p>The requested page could not be found on this server.</p>"
+            "<p><a href='/'>Return to Home</a></p>"
+            "</body></html>");
     });
+
+    // Serve static files from SPIFFS with proper MIME types
+    if (SPIFFS.exists("/")) {
+        _server->serveStatic("/", SPIFFS, "/")
+            .setDefaultFile("index.html")
+            .setCacheControl("max-age=600")
+            .setTemplateProcessor([](const String& var) -> String { return String(); });
+    }
 
     // Add firmware update page
     _server->on("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -163,13 +172,9 @@ void WebServerManager::setupDefaultRoutes() {
         serializeJson(doc, response);
         request->send(200, "application/json", response);
     });
+  
 
-    // Serve static files from SPIFFS if available
-    if(SPIFFS.exists("/")) {
-        _server->serveStatic("/", SPIFFS, "/");
-    }
-    
-    // Explicitly start the server
+// Explicitly start the server
     _server->begin();
 }
 
