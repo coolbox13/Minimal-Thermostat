@@ -1,18 +1,16 @@
 #include "ota_manager.h"
 
-OTAManager::OTAManager() : _server(nullptr) {
+OTAManager::OTAManager() {
 }
 
-void OTAManager::begin(AsyncWebServer* server) {
-    _server = server;
-    
-    if (!_server) {
-        Serial.println("OTA Manager: No web server provided");
+void OTAManager::begin(WebServerManager* webServerManager) {
+    if (!webServerManager) {
+        Serial.println("OTA Manager: No web server manager provided");
         return;
     }
     
     // Add handler for firmware update page
-    _server->on("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
+    webServerManager->addEndpoint("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(200, "text/html", 
             "<html><body>"
             "<h1>ESP32 KNX Thermostat Firmware Update</h1>"
@@ -24,7 +22,7 @@ void OTAManager::begin(AsyncWebServer* server) {
     });
     
     // Handler for the actual update
-    _server->on("/doUpdate", HTTP_POST, 
+    webServerManager->addEndpoint("/doUpdate", HTTP_POST, 
         [](AsyncWebServerRequest *request) {
             bool shouldReboot = !Update.hasError();
             AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", 

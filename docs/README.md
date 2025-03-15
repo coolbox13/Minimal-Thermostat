@@ -52,13 +52,48 @@ This project implements a KNX gateway using an ESP32 microcontroller, featuring 
 2. Monitor the serial output for connection details
 3. Access the web interface at `http://<esp32-ip-address>`
 
-### Available Endpoints
+### API Endpoints
 
-- `/` - Main dashboard
-- `/test` - Test page
-- `/ping` - Server health check
-- `/servertest` - Server functionality verification
-- `/knx` - KNX interface
+#### Core Endpoints
+
+- **GET `/`**
+  - Description: Main dashboard interface
+  - Response: HTML page with thermostat dashboard
+
+- **GET `/test`**
+  - Description: Test endpoint for server verification
+  - Response: Plain text "Test endpoint working"
+
+- **GET `/ping`**
+  - Description: Server health check endpoint
+  - Response: Plain text "pong"
+
+- **GET `/servertest`**
+  - Description: Server functionality verification with JSON response
+  - Response: JSON `{"status": "ok", "message": "Server is functioning correctly"}`
+
+#### Firmware Update Endpoints
+
+- **GET `/update`**
+  - Description: Firmware update interface
+  - Response: HTML page with firmware upload form
+
+- **POST `/doUpdate`**
+  - Description: Handles firmware update process
+  - Request: Multipart form data with firmware file
+  - Response: Update status message
+
+#### Static File Serving
+
+- **GET `/*`**
+  - Description: Serves static files from SPIFFS filesystem
+  - Response: Requested file if exists
+
+#### KNX Interface
+
+- **GET `/knx`**
+  - Description: KNX network interface and configuration
+  - Response: KNX status and configuration interface
 
 ## Features in Detail
 
@@ -99,4 +134,4 @@ The system is currently operational with:
 
 ## Contributing
 
-Contributions are welcome! Please read the API documentation in `API.md` for detailed information about the available functions and their usage. 
+Contributions are welcome! Please read the API documentation in `API.md` for detailed information about the available functions and their usage.

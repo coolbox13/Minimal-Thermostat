@@ -1,6 +1,7 @@
 #include "knx_manager.h"
 #include "mqtt_manager.h"
 #include "config.h"
+#include "web_server.h"
 
 KNXManager::KNXManager(ESPKNXIP& knx)
     : _knx(knx), _mqttManager(nullptr), _valvePosition(0) {
@@ -8,32 +9,37 @@ KNXManager::KNXManager(ESPKNXIP& knx)
 
 void KNXManager::begin() {
     Serial.println("Setting up KNX...");
-    
+
     // Set log level based on KNX_DEBUG_ENABLED
-#if KNX_DEBUG_ENABLED
+    #if KNX_DEBUG_ENABLED
     esp_log_level_set("KNXIP", ESP_LOG_NONE);
-#else
+    #else
     esp_log_level_set("KNXIP", ESP_LOG_NONE);  // Completely disable logs
-#endif
-    
-    // The library might be using multiple log tags, so disable them all
+    #endif
+
     esp_log_level_set("esp-knx-ip", ESP_LOG_NONE);
     esp_log_level_set("esp-knx-ip-send", ESP_LOG_NONE);
     esp_log_level_set("esp-knx-ip-receive", ESP_LOG_NONE);
-    
-    // Start KNX with web server
-    // In case no webserver needed use: _knx.start(nullptr);
-    _knx.start();
-    
-    // Set physical address (area, line, member)
+
+    // Get WebServerManager instance
+    WebServerManager* webServerManager = WebServerManager::getInstance();
+    if (webServerManager) {
+        // Start KNX with web server
+        _knx.start(webServerManager->getServer());
+    } else {
+        // Start KNX without web server
+        _knx.start();
+    }
+
+    // Set physical address
     _knx.physical_address_set(_knx.PA_to_address(KNX_AREA, KNX_LINE, KNX_MEMBER));
-    
-    // Setup group addresses
+
+    // Setup addresses
     setupAddresses();
-    
+
     // Register callback for KNX events
     _knx.callback_register("valve_control", knxCallback, this);
-    
+
     Serial.println("KNX initialized");
 }
 

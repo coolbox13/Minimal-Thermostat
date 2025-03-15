@@ -69,19 +69,20 @@ void setup() {
   // Setup WiFi
   setupWiFi();
   
-  // Start the web server
-  webServer.begin();
+  // Initialize WebServerManager singleton
+  WebServerManager* webServerManager = WebServerManager::getInstance();
+  webServerManager->begin(&webServer);
   Serial.println("Web server started on port 80");
   
   // Start KNX with our web server instance
-  knxInstance.start(&webServer);
+  knxInstance.start(webServerManager->getServer());
   
   // Setup KNX and MQTT managers
   knxManager.begin();
   mqttManager.begin();
 
-  // Initialize OTA using our web server
-  otaManager.begin(&webServer);
+  // Initialize OTA using WebServerManager
+  otaManager.begin(webServerManager);
   Serial.println("OTA manager initialized with web server");
   
   // Connect the managers for cross-communication

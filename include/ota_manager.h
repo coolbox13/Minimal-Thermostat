@@ -1,19 +1,18 @@
 #ifndef OTA_MANAGER_H
 #define OTA_MANAGER_H
 
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
 #include <Update.h>
+#include "web_server.h"
 
 class OTAManager {
 public:
     OTAManager();
     
-    // Initialize OTA with existing web server
-    void begin(AsyncWebServer* server);
+    // Initialize OTA with WebServerManager
+    void begin(WebServerManager* webServerManager);
 
 private:
-    AsyncWebServer* _server;
+    // No need to store server pointer as we use WebServerManager
 };
 
 #endif // OTA_MANAGER_H

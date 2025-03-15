@@ -46,10 +46,18 @@
 #define DEBUG_PRINTER Serial
 #endif
 
-// Updated debug macros to support format specifiers
+// Undefine any existing debug macros to prevent conflicts
+#ifdef DEBUG_PRINT
+#undef DEBUG_PRINT
+#endif
+#ifdef DEBUG_PRINTLN
+#undef DEBUG_PRINTLN
+#endif
+
+// Define debug macros based on ESP_KNX_DEBUG flag
 #ifdef ESP_KNX_DEBUG
-  #define DEBUG_PRINT(fmt, ...) { DEBUG_PRINTER.printf(fmt, ##__VA_ARGS__); }
-  #define DEBUG_PRINTLN(fmt, ...) { DEBUG_PRINTER.printf(fmt "\n", ##__VA_ARGS__); }
+  #define DEBUG_PRINT(fmt, ...) ESP_LOGD(DEBUG_TAG, fmt, ##__VA_ARGS__)
+  #define DEBUG_PRINTLN(fmt, ...) ESP_LOGD(DEBUG_TAG, fmt "\n", ##__VA_ARGS__)
 #else
   #define DEBUG_PRINT(...) {}
   #define DEBUG_PRINTLN(...) {}
