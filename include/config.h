@@ -1,13 +1,15 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Toggle between test and production KNX addresses
+#define USE_KNX_TEST_ADDRESSES 1  // Set to 0 for production addresses
+
 // KNX Configuration
 #define KNX_AREA 1
 #define KNX_LINE 1
 #define KNX_MEMBER 159
 
 // KNX Debug Configuration
-// Add this line to control KNX debug output
 #ifndef KNX_DEBUG_ENABLED
 #define KNX_DEBUG_ENABLED 0  // Set to 1 to enable KNX debug messages
 #endif
@@ -57,5 +59,8 @@
 #define PID_KI_INITIAL 0.1      // Integral gain
 #define PID_KD_INITIAL 0.5      // Derivative gain
 #define PID_DEADBAND 0.2        // Temperature deadband (±°C)
+
+// Watchdog timeout (in milliseconds)
+#define WATCHDOG_TIMEOUT 2700000 // 45 minutes
 
 #endif // CONFIG_H
