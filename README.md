@@ -505,7 +505,7 @@ Check the serial console for diagnostic messages:
 
 ## Contributing
 
-No intention of developing further for borader use besides my own home. Please fork and go ahead.
+No intention of developing further for other use besides my own home. Please fork and go ahead.
 
 Special thanks to Nico Weichbrodt <envy> for building an ESP library for KNX communiocation. I used it to port to ESP32 and make this thermostat possible.
 
