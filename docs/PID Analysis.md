@@ -1,4 +1,4 @@
-Let me continue with the analysis to determine appropriate thermostat parameters based on your valve position and temperature data.
+I fed claude.ai with 90 days of temperature and valve position data. I asked it to give parametr advice for my personal situation based on that analysis. Here's the analysis:
 
 Based on my analysis of your temperature and valve position data, I can provide recommendations for thermostat tuning parameters. 
 
