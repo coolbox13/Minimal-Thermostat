@@ -35,4 +35,5 @@ __pycache__/
 *.code-workspace
 
 # Ignore backup files
+docs_not_included/
 *~
