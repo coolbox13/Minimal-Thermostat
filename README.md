@@ -374,19 +374,146 @@ Check the serial console for diagnostic messages:
 [WIFI] Multiple reconnection attempts failed. Starting config portal...
 ```
 
-### KNX Communication
+## Hardware-Encoded Settings Table
 
-The system logs all KNX messages:
-```
-[KNX] Sending temperature to KNX: 21.50°C
-[KNX] Sending humidity to KNX: 45.20%
-[KNX] Sending pressure to KNX: 1013.40 hPa
-```
+|Setting|Current Change Method|Recommended Change Method|
+|---|---|---|
+|WiFi credentials|Web interface, WiFiManager|Keep current|
+|KNX physical address|KNX web interface|Keep current|
+|KNX group addresses|KNX web interface|Add to web config|
+|MQTT server & port|Web interface|Keep current|
+|PID parameters (Kp, Ki, Kd)|Web interface|Keep current|
+|Temperature setpoint|Web, MQTT, KNX|Keep current|
+|Valve position|Web, MQTT, KNX|Keep current|
+|BME280 I²C address|Hardcoded (0x76)|Add to web config|
+|I²C pins (SDA/SCL)|Hardcoded (21/22)|Add to web config|
+|Debug level|Hardcoded|Add to web config|
+|MQTT topics|Hardcoded|Add to web config|
+|KNX test addresses|Hardcoded|Add to web config|
+|Watchdog timeout|Hardcoded (45 min)|Add to web config|
+|WIFI reconnect attempts|Hardcoded (10)|Add to web config|
+|Sensor update interval|Hardcoded (30s)|Add to web config|
+|PID update interval|Hardcoded (10s)|Add to web config|
+
+## Bus Communication Table
+
+### MQTT Bus
+
+|Direction|Topic|Purpose|
+|---|---|---|
+|Input|esp32_thermostat/mode/set|Set thermostat mode (heat/off)|
+|Input|esp32_thermostat/temperature/set|Set temperature setpoint|
+|Input|esp32_thermostat/valve/set|Set valve position directly|
+|Input|esp32_thermostat/restart|Trigger device restart|
+|Output|esp32_thermostat/status|Device online status|
+|Output|esp32_thermostat/temperature|Current temperature|
+|Output|esp32_thermostat/humidity|Current humidity|
+|Output|esp32_thermostat/pressure|Current pressure|
+|Output|esp32_thermostat/valve/position|Current valve position|
+|Output|esp32_thermostat/mode/state|Current thermostat mode|
+|Output|esp32_thermostat/temperature/setpoint|Current temperature setpoint|
+|Output|esp32_thermostat/action|Current action (heating/idle)|
+
+### KNX Bus
+
+|Direction|Group Address|Purpose|
+|---|---|---|
+|Input|10/2/2 (test)|Valve control input|
+|Input|1/1/1 (production)|Valve control input|
+|Output|0/0/4|Temperature sensor value|
+|Output|0/0/5|Humidity sensor value|
+|Output|0/0/6|Pressure sensor value|
+|Output|10/2/2|Valve position output (test address)|
+|Output|1/1/1|Valve position output (production address)|
+
+## Recommendations
+
+1. **Hardcoded Settings**: Add configuration options in the web interface for all hardcoded settings, particularly:
+    
+    - I²C address and pins for BME280
+    - MQTT topics structure
+    - KNX group addresses
+    - Timing parameters (watchdog, intervals)
+    
+2. **Communication Protocol**:
+    
+    - Implement bidirectional feedback for the valve position in KNX
+    - Add proper KNX datapoint types for thermostat mode (DPT 20.102)
+    - Enable temperature setpoint control via KNX (currently only implemented in MQTT)
+    
+3. **Security Improvements**:
+    
+    - Add MQTT username/password to web configuration
+    - Implement secure storage for credentials
+    - Add authentication for the web interface
+    - Consider TLS for MQTT connections
+    
+4. **User Experience**:
+    
+    - Create a settings export/import feature
+    - Implement profiles for different operating modes
+    - Add factory reset option
+    - Improve mobile responsiveness of the web interface
+    
+5. **Robustness**:
+    
+    - Log important events to persistent storage
+    - Implement sensor failure detection and fallback
+    - Add energy-saving mode
+    - Consider adding a battery backup option
+
+## Home Assistant Integration Table
+
+|Direction|Entity Type|Entity ID|Purpose|Data Type|
+|---|---|---|---|---|
+|Input|climate|esp32_thermostat_thermostat|Set mode, temperature|modes, temperature|
+|Output|climate|esp32_thermostat_thermostat|Thermostat status|temperature, setpoint, mode, action|
+|Output|sensor|esp32_thermostat_temperature|Current temperature|°C|
+|Output|sensor|esp32_thermostat_humidity|Current humidity|%|
+|Output|sensor|esp32_thermostat_pressure|Current pressure|hPa|
+|Output|sensor|esp32_thermostat_valve_position|Valve position|%|
+|Output|sensor|availability|Device online status|online/offline|
+
+## Recommendations for Home Assistant Integration
+
+1. **Additional Entities to Implement**:
+    
+    - **Energy sensor**: Add power consumption tracking for energy dashboards
+    - **Thermostat mode sensor**: More detailed operating modes (comfort, away, night)
+    - **Diagnostic entities**: WiFi signal strength, uptime, last error
+    - **Maintenance sensor**: BME280 sensor health status
+    
+2. **Entity Customization**:
+    
+    - Add device class and state class attributes for proper categorization
+    - Implement unit_of_measurement consistently
+    - Add min/max attributes for numerical sensors
+    
+3. **Advanced Integration**:
+    
+    - Create a dashboard template that can be easily imported
+    - Add energy management entities for consumption tracking
+    - Implement proper device class for climate entity for better automation compatibility
+    - Add service calls for advanced functions like PID parameter tuning
+    
+4. **Additional Features**:
+    
+    - Weekly schedule programming via Home Assistant
+    - Presence detection integration for smarter heating
+    - Enable multiple temperature presets (comfort, eco, away)
+    - Implement temperature offset calibration capability
 
 ## Contributing
 
-Contributions are welcome! Please follow the existing architecture and coding style when submitting pull requests.
+No intention of developing further for borader use besides my own home. Please fork and go ahead.
+
+Special thanks to Nico Weichbrodt <envy> for building an ESP library for KNX communiocation. I used it to port to ESP32 and make this thermostat possible.
+
+esp-knx-ip library for KNX/IP communication on an ESP32
+ * Ported from ESP8266 version
+ * Author: Nico Weichbrodt <envy> (Original), Modified for ESP32
+ * License: MIT
 
 ## License
 
-This project is released under the MIT License. See the LICENSE file for details.
+This project is released under the MIT License.
