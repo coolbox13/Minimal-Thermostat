@@ -5,84 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 KNX Thermostat - Configuration</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .form-row {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: inline-block;
-            width: 150px;
-            font-weight: bold;
-        }
-        
-        input[type="text"],
-        input[type="number"],
-        input[type="password"] {
-            width: 250px;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        
-        .action-buttons {
-            margin-top: 20px;
-        }
-        
-        .tab-buttons {
-            display: flex;
-            margin-bottom: 20px;
-        }
-        
-        .tab-button {
-            padding: 10px 15px;
-            background-color: #f0f0f0;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px 4px 0 0;
-            margin-right: 5px;
-        }
-        
-        .tab-button.active {
-            background-color: #1e88e5;
-            color: white;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        /* Added styles for error highlighting and status messages */
-        .error-highlight {
-            border-color: #e74c3c !important;
-            background-color: #fdf3f2 !important;
-        }
-
-        .status {
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 15px;
-        }
-
-        .status-success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .status-error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-loading {
-            background-color: #e9ecef;
-            color: #495057;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -97,6 +19,7 @@
                 <button class="tab-button active" data-tab="network">Network</button>
                 <button class="tab-button" data-tab="mqtt">MQTT</button>
                 <button class="tab-button" data-tab="knx">KNX</button>
+                <button class="tab-button" data-tab="bme280">BME280</button>
                 <button class="tab-button" data-tab="pid">PID Control</button>
             </div>
             
@@ -106,11 +29,13 @@
                     <h3>Network Settings</h3>
                     <div class="form-row">
                         <label for="wifi_ssid">WiFi SSID:</label>
-                        <input type="text" id="wifi_ssid" name="wifi_ssid">
+                        <input type="text" id="wifi_ssid" name="wifi_ssid" class="form-input">
+                        <span class="form-hint">Your WiFi network name</span>
                     </div>
                     <div class="form-row">
                         <label for="wifi_pass">WiFi Password:</label>
-                        <input type="password" id="wifi_pass" name="wifi_pass">
+                        <input type="password" id="wifi_pass" name="wifi_pass" class="form-input">
+                        <span class="form-hint">Leave empty to keep current password</span>
                     </div>
                 </div>
                 
@@ -119,32 +44,68 @@
                     <h3>MQTT Settings</h3>
                     <div class="form-row">
                         <label for="mqtt_server">MQTT Server:</label>
-                        <input type="text" id="mqtt_server" name="mqtt_server">
+                        <input type="text" id="mqtt_server" name="mqtt_server" class="form-input">
+                        <span class="form-hint">IP address or hostname</span>
                     </div>
                     <div class="form-row">
                         <label for="mqtt_port">MQTT Port:</label>
-                        <input type="number" id="mqtt_port" name="mqtt_port" min="1" max="65535">
+                        <input type="number" id="mqtt_port" name="mqtt_port" min="1" max="65535" class="form-input">
+                        <span class="form-hint">Default: 1883</span>
                     </div>
                 </div>
                 
-                <!-- KNX Settings Tab - Ensure consistent styling -->
+                <!-- KNX Settings Tab -->
                 <div id="knx" class="tab-content">
                     <h3>KNX Settings</h3>
                     <div class="form-row">
                         <label for="knx_area">KNX Area:</label>
-                        <input type="number" id="knx_area" name="knx_area" min="0" max="15">
+                        <input type="number" id="knx_area" name="knx_area" min="0" max="15" class="form-input">
+                        <span class="form-hint">Range: 0-15</span>
                     </div>
                     <div class="form-row">
                         <label for="knx_line">KNX Line:</label>
-                        <input type="number" id="knx_line" name="knx_line" min="0" max="15">
+                        <input type="number" id="knx_line" name="knx_line" min="0" max="15" class="form-input">
+                        <span class="form-hint">Range: 0-15</span>
                     </div>
                     <div class="form-row">
                         <label for="knx_member">KNX Member:</label>
-                        <input type="number" id="knx_member" name="knx_member" min="0" max="255">
+                        <input type="number" id="knx_member" name="knx_member" min="0" max="255" class="form-input">
+                        <span class="form-hint">Range: 0-255</span>
+                    </div>
+                    <div class="form-row checkbox-row">
+                        <label for="knx_test">Use Test Addresses:</label>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="knx_test" name="knx_test" class="form-checkbox">
+                            <span class="form-hint">Enable test addresses instead of production</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- BME280 Settings Tab -->
+                <div id="bme280" class="tab-content">
+                    <h3>BME280 Sensor Settings</h3>
+                    <div class="form-row">
+                        <label for="bme280_address">I²C Address:</label>
+                        <select id="bme280_address" name="bme280_address" class="form-input">
+                            <option value="0x76">0x76 (default)</option>
+                            <option value="0x77">0x77</option>
+                        </select>
+                        <span class="form-hint">BME280 I²C address</span>
                     </div>
                     <div class="form-row">
-                        <label for="knx_test">Use Test Addresses:</label>
-                        <input type="checkbox" id="knx_test" name="knx_test">
+                        <label for="bme280_sda">SDA Pin:</label>
+                        <input type="number" id="bme280_sda" name="bme280_sda" min="0" max="39" value="21" class="form-input">
+                        <span class="form-hint">Default: 21</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="bme280_scl">SCL Pin:</label>
+                        <input type="number" id="bme280_scl" name="bme280_scl" min="0" max="39" value="22" class="form-input">
+                        <span class="form-hint">Default: 22</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="bme280_interval">Update Interval:</label>
+                        <input type="number" id="bme280_interval" name="bme280_interval" min="1" max="3600" value="30" class="form-input">
+                        <span class="form-hint">Seconds between readings (1-3600)</span>
                     </div>
                 </div>
                 
@@ -153,19 +114,23 @@
                     <h3>PID Controller Settings</h3>
                     <div class="form-row">
                         <label for="pid_kp">Kp (Proportional):</label>
-                        <input type="number" id="pid_kp" name="pid_kp" step="0.1" min="0">
+                        <input type="number" id="pid_kp" name="pid_kp" step="0.1" min="0" class="form-input">
+                        <span class="form-hint">Recommended: 2.0-4.0</span>
                     </div>
                     <div class="form-row">
                         <label for="pid_ki">Ki (Integral):</label>
-                        <input type="number" id="pid_ki" name="pid_ki" step="0.01" min="0">
+                        <input type="number" id="pid_ki" name="pid_ki" step="0.01" min="0" class="form-input">
+                        <span class="form-hint">Recommended: 0.08-0.12</span>
                     </div>
                     <div class="form-row">
                         <label for="pid_kd">Kd (Derivative):</label>
-                        <input type="number" id="pid_kd" name="pid_kd" step="0.01" min="0">
+                        <input type="number" id="pid_kd" name="pid_kd" step="0.01" min="0" class="form-input">
+                        <span class="form-hint">Recommended: 0.1-0.5</span>
                     </div>
                     <div class="form-row">
                         <label for="setpoint">Default Setpoint:</label>
-                        <input type="number" id="setpoint" name="setpoint" step="0.5" min="5" max="30">
+                        <input type="number" id="setpoint" name="setpoint" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Range: 5°C - 30°C</span>
                     </div>
                 </div>
                 
@@ -180,197 +145,6 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Tab switching
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove active class from all buttons and tabs
-                    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    // Add active class to clicked button and corresponding tab
-                    this.classList.add('active');
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-            
-            // Load current configuration
-            fetch('/api/config')
-                .then(response => response.json())
-                .then(data => {
-                    // Network settings
-                    if (data.network) {
-                        document.getElementById('wifi_ssid').value = data.network.wifi_ssid || '';
-                        // Don't set password for security reasons
-                    }
-                    
-                    // MQTT settings
-                    if (data.mqtt) {
-                        document.getElementById('mqtt_server').value = data.mqtt.server || '';
-                        document.getElementById('mqtt_port').value = data.mqtt.port || 1883;
-                    }
-                    
-                    // KNX settings
-                    if (data.knx) {
-                        document.getElementById('knx_area').value = data.knx.area || 1;
-                        document.getElementById('knx_line').value = data.knx.line || 1;
-                        document.getElementById('knx_member').value = data.knx.member || 1;
-                        document.getElementById('knx_test').checked = data.knx.use_test || false;
-                    }
-                    
-                    // PID settings
-                    if (data.pid) {
-                        document.getElementById('pid_kp').value = data.pid.kp || 2.0;
-                        document.getElementById('pid_ki').value = data.pid.ki || 0.1;
-                        document.getElementById('pid_kd').value = data.pid.kd || 0.5;
-                        document.getElementById('setpoint').value = data.pid.setpoint || 22.0;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading configuration:', error);
-                    document.getElementById('config-status').textContent = 'Error loading configuration';
-                    document.getElementById('config-status').className = 'status status-error';
-                });
-            
-            // Save configuration
-            document.getElementById('config-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Show loading status
-                const statusElement = document.getElementById('config-status');
-                statusElement.textContent = 'Saving configuration...';
-                statusElement.className = 'status status-loading';
-                
-                const formData = new FormData(this);
-                const config = {
-                    network: {
-                        wifi_ssid: formData.get('wifi_ssid'),
-                        wifi_pass: formData.get('wifi_pass')
-                    },
-                    mqtt: {
-                        server: formData.get('mqtt_server'),
-                        port: parseInt(formData.get('mqtt_port'))
-                    },
-                    knx: {
-                        area: parseInt(formData.get('knx_area')),
-                        line: parseInt(formData.get('knx_line')),
-                        member: parseInt(formData.get('knx_member')),
-                        use_test: formData.get('knx_test') === 'on'
-                    },
-                    pid: {
-                        kp: parseFloat(formData.get('pid_kp')),
-                        ki: parseFloat(formData.get('pid_ki')),
-                        kd: parseFloat(formData.get('pid_kd')),
-                        setpoint: parseFloat(formData.get('setpoint'))
-                    }
-                };
-                
-                // Reset any previous validation errors
-                document.querySelectorAll('.error-highlight').forEach(el => {
-                    el.classList.remove('error-highlight');
-                });
-                
-                fetch('/api/config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(config)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        statusElement.textContent = 'Configuration saved successfully';
-                        statusElement.className = 'status status-success';
-                        
-                        // Reload the form data to show current values
-                        setTimeout(() => {
-                            fetch('/api/config')
-                                .then(response => response.json())
-                                .then(data => {
-                                    // Refresh the form with the saved data
-                                    if (data.network) {
-                                        document.getElementById('wifi_ssid').value = data.network.wifi_ssid || '';
-                                    }
-                                    
-                                    if (data.mqtt) {
-                                        document.getElementById('mqtt_server').value = data.mqtt.server || '';
-                                        document.getElementById('mqtt_port').value = data.mqtt.port || 1883;
-                                    }
-                                    
-                                    if (data.knx) {
-                                        document.getElementById('knx_area').value = data.knx.area || 1;
-                                        document.getElementById('knx_line').value = data.knx.line || 1;
-                                        document.getElementById('knx_member').value = data.knx.member || 1;
-                                        document.getElementById('knx_test').checked = data.knx.use_test || false;
-                                    }
-                                    
-                                    if (data.pid) {
-                                        document.getElementById('pid_kp').value = data.pid.kp || 2.0;
-                                        document.getElementById('pid_ki').value = data.pid.ki || 0.1;
-                                        document.getElementById('pid_kd').value = data.pid.kd || 0.5;
-                                        document.getElementById('setpoint').value = data.pid.setpoint || 22.0;
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('Error reloading configuration:', error);
-                                });
-                        }, 1000); // Reload after 1 second
-                    } else {
-                        // Show error message
-                        statusElement.textContent = 'Error saving configuration: ' + data.message;
-                        statusElement.className = 'status status-error';
-                        
-                        // Highlight the field with the error if we can identify it
-                        const errorMessage = data.message.toLowerCase();
-                        if (errorMessage.includes('wifi')) {
-                            document.querySelector('[name="wifi_ssid"]').classList.add('error-highlight');
-                            document.querySelector('[name="wifi_pass"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('mqtt')) {
-                            document.querySelector('[name="mqtt_server"]').classList.add('error-highlight');
-                            document.querySelector('[name="mqtt_port"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('knx area')) {
-                            document.querySelector('[name="knx_area"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('knx line')) {
-                            document.querySelector('[name="knx_line"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('knx member')) {
-                            document.querySelector('[name="knx_member"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('kp')) {
-                            document.querySelector('[name="pid_kp"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('ki')) {
-                            document.querySelector('[name="pid_ki"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('kd')) {
-                            document.querySelector('[name="pid_kd"]').classList.add('error-highlight');
-                        } else if (errorMessage.includes('setpoint')) {
-                            document.querySelector('[name="setpoint"]').classList.add('error-highlight');
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error saving configuration:', error);
-                    statusElement.textContent = 'Error connecting to server. Check your network connection.';
-                    statusElement.className = 'status status-error';
-                });
-            });
-            
-            // Reboot device
-            document.getElementById('reboot-device').addEventListener('click', function() {
-                if (confirm('Are you sure you want to reboot the device?')) {
-                    fetch('/api/reboot', { method: 'POST' })
-                        .then(() => {
-                            document.getElementById('config-status').textContent = 'Rebooting...';
-                            document.getElementById('config-status').className = 'status status-loading';
-                        })
-                        .catch(error => {
-                            console.error('Error rebooting device:', error);
-                            document.getElementById('config-status').textContent = 'Error rebooting device';
-                            document.getElementById('config-status').className = 'status status-error';
-                        });
-                }
-            });
-        });
-    </script>
+    <script src="config.js"></script>
 </body>
 </html>

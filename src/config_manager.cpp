@@ -163,6 +163,12 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["knx"]["member"] = getKnxMember();
     doc["knx"]["use_test"] = getUseTestAddresses();
     
+    // Add BME280 settings as hardcoded defaults for now
+    doc["bme280"]["address"] = "0x76";  // Default BME280 address
+    doc["bme280"]["sda_pin"] = 21;      // Default SDA pin
+    doc["bme280"]["scl_pin"] = 22;      // Default SCL pin 
+    doc["bme280"]["interval"] = 30;     // Default 30 second interval
+    
     doc["pid"]["kp"] = getPidKp();
     doc["pid"]["ki"] = getPidKi();
     doc["pid"]["kd"] = getPidKd();
@@ -257,6 +263,49 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
         
         if (doc["knx"].containsKey("use_test")) {
             setUseTestAddresses(doc["knx"]["use_test"].as<bool>());
+        }
+    }
+    
+    // BME280 settings - just validate but don't store yet
+    if (doc.containsKey("bme280")) {
+        if (doc["bme280"].containsKey("address")) {
+            String address = doc["bme280"]["address"].as<String>();
+            if (address != "0x76" && address != "0x77") {
+                errorMessage = "BME280 address must be 0x76 or 0x77";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            // BME280 address stored in config.h for now
+        }
+        
+        if (doc["bme280"].containsKey("sda_pin")) {
+            uint8_t pin = doc["bme280"]["sda_pin"].as<uint8_t>();
+            if (pin > 39) {
+                errorMessage = "BME280 SDA pin must be 0-39";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            // BME280 SDA pin stored in config.h for now
+        }
+        
+        if (doc["bme280"].containsKey("scl_pin")) {
+            uint8_t pin = doc["bme280"]["scl_pin"].as<uint8_t>();
+            if (pin > 39) {
+                errorMessage = "BME280 SCL pin must be 0-39";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            // BME280 SCL pin stored in config.h for now
+        }
+        
+        if (doc["bme280"].containsKey("interval")) {
+            uint16_t interval = doc["bme280"]["interval"].as<uint16_t>();
+            if (interval < 1 || interval > 3600) {
+                errorMessage = "BME280 interval must be 1-3600 seconds";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            // BME280 interval stored in config.h for now
         }
     }
     
