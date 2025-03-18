@@ -87,6 +87,7 @@ void WebServerManager::addEndpoint(const char* uri, WebRequestMethodComposite me
     }
 }
 
+// Fixed version of web server routes to handle static files properly
 void WebServerManager::setupDefaultRoutes() {
     if (!_server) return;
 
@@ -96,17 +97,25 @@ void WebServerManager::setupDefaultRoutes() {
         if (SPIFFS.exists("/index.html")) {
             request->send(SPIFFS, "/index.html", "text/html");
         } else {
-            // Serve inline HTML if file doesn't exist
-            request->send(200, "text/html", THERMOSTAT_HTML);
+            // Serve a basic HTML with error message if file doesn't exist
+            request->send(200, "text/html", 
+                "<html><head><title>ESP32 KNX Thermostat</title></head>"
+                "<body style='font-family:Arial;text-align:center;'>"
+                "<h1>ESP32 KNX Thermostat</h1>"
+                "<div style='color:red;margin:20px;'>"
+                "Web interface files not found. Please upload the data files using 'platformio run --target uploadfs'."
+                "</div>"
+                "<p><a href='/api/config'>View current configuration (JSON)</a></p>"
+                "</body></html>");
         }
     });
 
-    // Explicit route for index.html
-    _server->on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if (SPIFFS.exists("/index.html")) {
-            request->send(SPIFFS, "/index.html", "text/html");
+    // Explicitly route to config.html
+    _server->on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (SPIFFS.exists("/config.html")) {
+            request->send(SPIFFS, "/config.html", "text/html");
         } else {
-            request->send(200, "text/html", THERMOSTAT_HTML);
+            request->send(404, "text/plain", "Configuration page not found. Please upload the data files.");
         }
     });
 
@@ -114,25 +123,7 @@ void WebServerManager::setupDefaultRoutes() {
     _server->serveStatic("/", SPIFFS, "/")
         .setCacheControl("max-age=600");
 
-    // REMOVE THE DUPLICATE OTA ROUTES - they're handled in ota_manager.cpp
-    // DO NOT include "/update" and "/doUpdate" routes here
-
-    // Test route
-    _server->on("/test", HTTP_GET, handleTest);
-
-    // Server health check
-    _server->on("/ping", HTTP_GET, handlePing);
-
     // API endpoints
-    _server->on("/api/persistence", HTTP_GET, [](AsyncWebServerRequest *request) {
-        StaticJsonDocument<512> doc;
-        PersistenceManager::getInstance()->getStoredValues(doc);
-        String response;
-        serializeJson(doc, response);
-        request->send(200, "application/json", response);
-    });
-
-    // Sensor data endpoint
     _server->on("/api/sensor-data", HTTP_GET, [](AsyncWebServerRequest *request) {
         extern BME280Sensor bme280;
         extern float temperature;
@@ -178,7 +169,7 @@ void WebServerManager::setupDefaultRoutes() {
     // Update configuration
     _server->on("/api/config", HTTP_POST, 
         [](AsyncWebServerRequest *request) {
-            request->send(200, "application/json", "{\"success\":true}");
+            // Response will be sent after processing is complete via the onBody handler
         },
         NULL, // Upload handler is NULL
         [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
@@ -189,24 +180,37 @@ void WebServerManager::setupDefaultRoutes() {
                 jsonBuffer = "";
             }
             
-            for (size_t i = 0; i < len; i++) {
-                jsonBuffer += (char)data[i];
+            // Add data to buffer with size check
+            if (jsonBuffer.length() + len < 1024) {
+                for (size_t i = 0; i < len; i++) {
+                    jsonBuffer += (char)data[i];
+                }
+            } else {
+                // Buffer would overflow
+                request->send(400, "application/json", 
+                    "{\"success\":false,\"message\":\"Configuration data too large\"}");
+                return;
             }
             
             if (index + len == total) {
                 // All data received, process it
                 DeserializationError error = deserializeJson(jsonDoc, jsonBuffer);
                 if (error) {
-                    request->send(400, "application/json", "{\"success\":false,\"message\":\"Invalid JSON\"}");
+                    request->send(400, "application/json", 
+                        "{\"success\":false,\"message\":\"Invalid JSON: " + String(error.c_str()) + "\"}");
                     return;
                 }
                 
                 // Update configuration
                 ConfigManager* configManager = ConfigManager::getInstance();
-                bool success = configManager->setFromJson(jsonDoc);
+                String errorMessage;
+                bool success = configManager->setFromJson(jsonDoc, errorMessage);
                 
-                if (!success) {
-                    request->send(500, "application/json", "{\"success\":false,\"message\":\"Failed to update configuration\"}");
+                if (success) {
+                    request->send(200, "application/json", "{\"success\":true}");
+                } else {
+                    request->send(500, "application/json", 
+                        "{\"success\":false,\"message\":\"" + errorMessage + "\"}");
                 }
             }
         }
@@ -228,30 +232,54 @@ void WebServerManager::setupDefaultRoutes() {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>404 - Page Not Found</title>
-        <link rel="stylesheet" href="style.css">
         <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f5f5f5;
+                color: #333;
+            }
+            header {
+                background-color: #1e88e5;
+                color: white;
+                padding: 15px 20px;
+                text-align: center;
+            }
+            h1 {
+                margin: 0;
+                font-size: 24px;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .card {
+                background-color: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+                padding: 20px;
+            }
             .error-container {
                 text-align: center;
                 padding: 40px 20px;
             }
-            
             .error-code {
                 font-size: 80px;
                 font-weight: bold;
                 color: #e74c3c;
                 margin: 0;
             }
-            
             .error-message {
                 font-size: 24px;
                 margin: 20px 0;
             }
-            
             .error-details {
                 margin-bottom: 30px;
                 color: #7f8c8d;
             }
-            
             .home-button {
                 display: inline-block;
                 padding: 10px 20px;
@@ -280,359 +308,12 @@ void WebServerManager::setupDefaultRoutes() {
             </div>
         </div>
     </body>
-    </html>)";
+</html>)";
         
         request->send(404, "text/html", html);
-    });
-
-    _server->on(ROOT_PREFIX, HTTP_GET, [](AsyncWebServerRequest *request) {
-        // Send 404 directly instead of redirecting
-        request->send(404, "text/html", "404 - Not Found");
     });
 
     // Explicitly start the server
     _server->begin();
     Serial.println("Web server started");
 }
-
-void WebServerManager::handleTest(AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "Test endpoint working");
-}
-
-void WebServerManager::handlePing(AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "pong");
-}
-
-// Add the embedded HTML with CSS and JS as a constant
-const char* THERMOSTAT_HTML = R"(<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 KNX Thermostat</title>
-    <style>
-        /* Embedded CSS */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        header {
-            background-color: #1e88e5;
-            color: white;
-            padding: 15px 20px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        .card {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            padding: 20px;
-        }
-        .card-title {
-            margin-top: 0;
-            color: #1e88e5;
-            font-size: 18px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .reading {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-radius: 4px;
-        }
-        .reading-label {
-            font-weight: bold;
-        }
-        .reading-value {
-            font-size: 18px;
-        }
-        .control-row {
-            display: flex;
-            align-items: center;
-            margin: 15px 0;
-        }
-        .control-label {
-            width: 120px;
-            font-weight: bold;
-        }
-        .slider-container {
-            flex-grow: 1;
-            margin: 0 15px;
-        }
-        input[type="range"] {
-            width: 100%;
-        }
-        button {
-            background-color: #1e88e5;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover {
-            background-color: #1976d2;
-        }
-        .value-display {
-            min-width: 60px;
-            text-align: center;
-        }
-        .status {
-            font-size: 14px;
-            height: 20px;
-            margin-top: 10px;
-            color: #777;
-        }
-        .flex-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .flex-column {
-            flex: 1;
-            min-width: 300px;
-        }
-        @media (max-width: 650px) {
-            .flex-container {
-                flex-direction: column;
-            }
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>ESP32 KNX Thermostat</h1>
-    </header>
-    
-    <div class="container">
-        <div class="flex-container">
-            <div class="flex-column">
-                <div class="card">
-                    <h2 class="card-title">Current Readings</h2>
-                    <div class="reading">
-                        <span class="reading-label">Temperature</span>
-                        <span class="reading-value" id="temperature">--</span>
-                    </div>
-                    <div class="reading">
-                        <span class="reading-label">Humidity</span>
-                        <span class="reading-value" id="humidity">--</span>
-                    </div>
-                    <div class="reading">
-                        <span class="reading-label">Pressure</span>
-                        <span class="reading-value" id="pressure">--</span>
-                    </div>
-                    <div class="reading">
-                        <span class="reading-label">Valve Position</span>
-                        <span class="reading-value" id="valve">--</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex-column">
-                <div class="card">
-                    <h2 class="card-title">Controls</h2>
-                    <div class="control-row">
-                        <span class="control-label">Temperature Setpoint</span>
-                        <div class="slider-container">
-                            <input type="range" id="setpoint-slider" min="15" max="30" step="0.5" value="22">
-                        </div>
-                        <span id="setpoint-value" class="value-display">22.0°C</span>
-                    </div>
-                    <div class="control-row">
-                        <button id="set-temperature">Set Temperature</button>
-                        <div id="status" class="status"></div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h2 class="card-title">System</h2>
-                    <div class="control-row">
-                        <button id="refresh-data">Refresh Data</button>
-                    </div>
-                    <div class="control-row">
-                        <a href="/update"><button>Firmware Update</button></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Embedded JavaScript
-        document.addEventListener('DOMContentLoaded', function() {
-        // Get DOM elements
-        const temperatureElement = document.getElementById('temperature');
-        const humidityElement = document.getElementById('humidity');
-        const pressureElement = document.getElementById('pressure');
-        const valveElement = document.getElementById('valve');
-        const setpointSlider = document.getElementById('setpoint-slider');
-        const setpointValue = document.getElementById('setpoint-value');
-        const setTemperatureButton = document.getElementById('set-temperature');
-        const refreshButton = document.getElementById('refresh-data');
-        const statusElement = document.getElementById('status');
-        
-        // Check if elements exist before modifying them
-        function updateElement(element, value) {
-            if (element) {
-                element.textContent = value;
-            }
-        }
-        
-        // Update setpoint display when slider changes
-        if (setpointSlider) {
-            setpointSlider.addEventListener('input', function() {
-                if (setpointValue) {
-                    setpointValue.textContent = `${setpointSlider.value}°C`;
-                }
-            });
-        }
-        
-        // Set temperature when button is clicked
-        if (setTemperatureButton) {
-            setTemperatureButton.addEventListener('click', function() {
-                const setpoint = setpointSlider ? setpointSlider.value : 22.0;
-                if (statusElement) {
-                    statusElement.textContent = `Setting temperature to ${setpoint}°C...`;
-                }
-                
-                fetch('/api/setpoint', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `value=${setpoint}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        if (statusElement) {
-                            statusElement.textContent = `Temperature set to ${data.setpoint}°C`;
-                        }
-                        setTimeout(() => {
-                            fetchSensorData();
-                        }, 500);
-                    } else {
-                        if (statusElement) {
-                            statusElement.textContent = `Error: ${data.message}`;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error setting temperature:', error);
-                    if (statusElement) {
-                        statusElement.textContent = `Error: ${error.message}`;
-                    }
-                });
-            });
-        }
-        
-        // Refresh data when button is clicked
-        if (refreshButton) {
-            refreshButton.addEventListener('click', fetchSensorData);
-        }
-        
-        // Function to fetch sensor data
-        function fetchSensorData() {
-            if (statusElement) {
-                statusElement.textContent = 'Fetching data...';
-            }
-            
-            fetch('/api/sensor-data')
-            .then(response => response.json())
-            .then(data => {
-                if (temperatureElement) {
-                    temperatureElement.textContent = `${data.temperature.toFixed(1)}°C`;
-                }
-                if (humidityElement) {
-                    humidityElement.textContent = `${data.humidity.toFixed(1)}%`;
-                }
-                if (pressureElement) {
-                    pressureElement.textContent = `${data.pressure.toFixed(1)} hPa`;
-                }
-                if (valveElement) {
-                    valveElement.textContent = `${data.valve.toFixed(0)}%`;
-                }
-                
-                // Update slider if setpoint has changed
-                if (data.setpoint && setpointSlider) {
-                    setpointSlider.value = data.setpoint;
-                    if (setpointValue) {
-                        setpointValue.textContent = `${data.setpoint.toFixed(1)}°C`;
-                    }
-                }
-                
-                if (statusElement) {
-                    statusElement.textContent = `Data updated at ${new Date().toLocaleTimeString()}`;
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching sensor data:', error);
-                if (statusElement) {
-                    statusElement.textContent = `Error: ${error.message}`;
-                }
-            });
-        }
-        
-        // Fetch data on page load
-        fetchSensorData();
-        
-        // Fetch data every 30 seconds
-        setInterval(fetchSensorData, 30000);
-    });
-            
-            // Refresh data when button is clicked
-            refreshButton.addEventListener('click', fetchSensorData);
-            
-            // Function to fetch sensor data
-            function fetchSensorData() {
-                statusElement.textContent = 'Fetching data...';
-                
-                fetch('/api/sensor-data')
-                .then(response => response.json())
-                .then(data => {
-                    temperatureElement.textContent = `${data.temperature.toFixed(1)}°C`;
-                    humidityElement.textContent = `${data.humidity.toFixed(1)}%`;
-                    pressureElement.textContent = `${data.pressure.toFixed(1)} hPa`;
-                    valveElement.textContent = `${data.valve.toFixed(0)}%`;
-                    
-                    // Update slider if setpoint has changed
-                    if (data.setpoint) {
-                        setpointSlider.value = data.setpoint;
-                        setpointValue.textContent = `${data.setpoint.toFixed(1)}°C`;
-                    }
-                    
-                    statusElement.textContent = `Data updated at ${new Date().toLocaleTimeString()}`;
-                })
-                .catch(error => {
-                    statusElement.textContent = `Error: ${error.message}`;
-                });
-            }
-            
-            // Fetch data on page load
-            fetchSensorData();
-            
-            // Fetch data every 30 seconds
-            setInterval(fetchSensorData, 30000);
-        });
-    </script>
-</body>
-</html>)";

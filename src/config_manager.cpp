@@ -21,6 +21,7 @@ ConfigManager::ConfigManager() {
 bool ConfigManager::begin() {
     LOG_I(TAG, "Initializing configuration storage");
     if (!_preferences.begin("thermostat", false)) {
+        LOG_E(TAG, "Failed to open preferences namespace");
         return false;
     }
 
@@ -172,16 +173,36 @@ void ConfigManager::getJson(JsonDocument& doc) {
 
 // Import settings from JSON
 bool ConfigManager::setFromJson(const JsonDocument& doc) {
-    bool success = true;
+    String errorMessage; // Unused in this version
+    return setFromJson(doc, errorMessage);
+}
+
+// Enhanced setFromJson with error reporting
+bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     LOG_I(TAG, "Importing configuration from JSON");
     
     // Network settings
     if (doc.containsKey("network")) {
         if (doc["network"].containsKey("wifi_ssid")) {
-            setWifiSSID(doc["network"]["wifi_ssid"].as<String>());
+            String ssid = doc["network"]["wifi_ssid"].as<String>();
+            if (ssid.length() > 32) {
+                errorMessage = "WiFi SSID too long (max 32 characters)";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setWifiSSID(ssid);
         }
+        
         if (doc["network"].containsKey("wifi_pass")) {
-            setWifiPassword(doc["network"]["wifi_pass"].as<String>());
+            String pass = doc["network"]["wifi_pass"].as<String>();
+            if (pass.length() > 0 && pass != "**********") {  // Only update if changed
+                if (pass.length() > 64) {
+                    errorMessage = "WiFi password too long (max 64 characters)";
+                    LOG_W(TAG, "%s", errorMessage.c_str());
+                    return false;
+                }
+                setWifiPassword(pass);
+            }
         }
     }
     
@@ -190,22 +211,50 @@ bool ConfigManager::setFromJson(const JsonDocument& doc) {
         if (doc["mqtt"].containsKey("server")) {
             setMqttServer(doc["mqtt"]["server"].as<String>());
         }
+        
         if (doc["mqtt"].containsKey("port")) {
-            setMqttPort(doc["mqtt"]["port"].as<uint16_t>());
+            uint16_t port = doc["mqtt"]["port"].as<uint16_t>();
+            if (port == 0) {
+                errorMessage = "Invalid MQTT port";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setMqttPort(port);
         }
     }
     
     // KNX settings
     if (doc.containsKey("knx")) {
         if (doc["knx"].containsKey("area")) {
-            setKnxArea(doc["knx"]["area"].as<uint8_t>());
+            uint8_t area = doc["knx"]["area"].as<uint8_t>();
+            if (area > 15) {
+                errorMessage = "KNX area must be 0-15";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxArea(area);
         }
+        
         if (doc["knx"].containsKey("line")) {
-            setKnxLine(doc["knx"]["line"].as<uint8_t>());
+            uint8_t line = doc["knx"]["line"].as<uint8_t>();
+            if (line > 15) {
+                errorMessage = "KNX line must be 0-15";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxLine(line);
         }
+        
         if (doc["knx"].containsKey("member")) {
-            setKnxMember(doc["knx"]["member"].as<uint8_t>());
+            uint8_t member = doc["knx"]["member"].as<uint8_t>();
+            if (member > 255) {
+                errorMessage = "KNX member must be 0-255";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxMember(member);
         }
+        
         if (doc["knx"].containsKey("use_test")) {
             setUseTestAddresses(doc["knx"]["use_test"].as<bool>());
         }
@@ -214,19 +263,46 @@ bool ConfigManager::setFromJson(const JsonDocument& doc) {
     // PID settings
     if (doc.containsKey("pid")) {
         if (doc["pid"].containsKey("kp")) {
-            setPidKp(doc["pid"]["kp"].as<float>());
+            float kp = doc["pid"]["kp"].as<float>();
+            if (kp < 0) {
+                errorMessage = "PID Kp must be >= 0";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setPidKp(kp);
         }
+        
         if (doc["pid"].containsKey("ki")) {
-            setPidKi(doc["pid"]["ki"].as<float>());
+            float ki = doc["pid"]["ki"].as<float>();
+            if (ki < 0) {
+                errorMessage = "PID Ki must be >= 0";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setPidKi(ki);
         }
+        
         if (doc["pid"].containsKey("kd")) {
-            setPidKd(doc["pid"]["kd"].as<float>());
+            float kd = doc["pid"]["kd"].as<float>();
+            if (kd < 0) {
+                errorMessage = "PID Kd must be >= 0";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setPidKd(kd);
         }
+        
         if (doc["pid"].containsKey("setpoint")) {
-            setSetpoint(doc["pid"]["setpoint"].as<float>());
+            float setpoint = doc["pid"]["setpoint"].as<float>();
+            if (setpoint < 5 || setpoint > 30) {
+                errorMessage = "Temperature setpoint must be between 5°C and 30°C";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setSetpoint(setpoint);
         }
     }
     
     LOG_I(TAG, "Configuration imported successfully");
-    return success;
+    return true;
 }

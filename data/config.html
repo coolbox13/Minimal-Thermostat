@@ -55,6 +55,33 @@
         .tab-content.active {
             display: block;
         }
+        
+        /* Added styles for error highlighting and status messages */
+        .error-highlight {
+            border-color: #e74c3c !important;
+            background-color: #fdf3f2 !important;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-loading {
+            background-color: #e9ecef;
+            color: #495057;
+        }
     </style>
 </head>
 <body>
@@ -74,6 +101,7 @@
             </div>
             
             <form id="config-form">
+                <!-- Network Settings Tab -->
                 <div id="network" class="tab-content active">
                     <h3>Network Settings</h3>
                     <div class="form-row">
@@ -86,6 +114,7 @@
                     </div>
                 </div>
                 
+                <!-- MQTT Settings Tab -->
                 <div id="mqtt" class="tab-content">
                     <h3>MQTT Settings</h3>
                     <div class="form-row">
@@ -98,6 +127,7 @@
                     </div>
                 </div>
                 
+                <!-- KNX Settings Tab - Ensure consistent styling -->
                 <div id="knx" class="tab-content">
                     <h3>KNX Settings</h3>
                     <div class="form-row">
@@ -118,6 +148,7 @@
                     </div>
                 </div>
                 
+                <!-- PID Controller Settings Tab -->
                 <div id="pid" class="tab-content">
                     <h3>PID Controller Settings</h3>
                     <div class="form-row">
@@ -200,11 +231,17 @@
                 .catch(error => {
                     console.error('Error loading configuration:', error);
                     document.getElementById('config-status').textContent = 'Error loading configuration';
+                    document.getElementById('config-status').className = 'status status-error';
                 });
             
             // Save configuration
             document.getElementById('config-form').addEventListener('submit', function(e) {
                 e.preventDefault();
+                
+                // Show loading status
+                const statusElement = document.getElementById('config-status');
+                statusElement.textContent = 'Saving configuration...';
+                statusElement.className = 'status status-loading';
                 
                 const formData = new FormData(this);
                 const config = {
@@ -230,6 +267,11 @@
                     }
                 };
                 
+                // Reset any previous validation errors
+                document.querySelectorAll('.error-highlight').forEach(el => {
+                    el.classList.remove('error-highlight');
+                });
+                
                 fetch('/api/config', {
                     method: 'POST',
                     headers: {
@@ -240,14 +282,76 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        document.getElementById('config-status').textContent = 'Configuration saved successfully';
+                        statusElement.textContent = 'Configuration saved successfully';
+                        statusElement.className = 'status status-success';
+                        
+                        // Reload the form data to show current values
+                        setTimeout(() => {
+                            fetch('/api/config')
+                                .then(response => response.json())
+                                .then(data => {
+                                    // Refresh the form with the saved data
+                                    if (data.network) {
+                                        document.getElementById('wifi_ssid').value = data.network.wifi_ssid || '';
+                                    }
+                                    
+                                    if (data.mqtt) {
+                                        document.getElementById('mqtt_server').value = data.mqtt.server || '';
+                                        document.getElementById('mqtt_port').value = data.mqtt.port || 1883;
+                                    }
+                                    
+                                    if (data.knx) {
+                                        document.getElementById('knx_area').value = data.knx.area || 1;
+                                        document.getElementById('knx_line').value = data.knx.line || 1;
+                                        document.getElementById('knx_member').value = data.knx.member || 1;
+                                        document.getElementById('knx_test').checked = data.knx.use_test || false;
+                                    }
+                                    
+                                    if (data.pid) {
+                                        document.getElementById('pid_kp').value = data.pid.kp || 2.0;
+                                        document.getElementById('pid_ki').value = data.pid.ki || 0.1;
+                                        document.getElementById('pid_kd').value = data.pid.kd || 0.5;
+                                        document.getElementById('setpoint').value = data.pid.setpoint || 22.0;
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error reloading configuration:', error);
+                                });
+                        }, 1000); // Reload after 1 second
                     } else {
-                        document.getElementById('config-status').textContent = 'Error saving configuration: ' + data.message;
+                        // Show error message
+                        statusElement.textContent = 'Error saving configuration: ' + data.message;
+                        statusElement.className = 'status status-error';
+                        
+                        // Highlight the field with the error if we can identify it
+                        const errorMessage = data.message.toLowerCase();
+                        if (errorMessage.includes('wifi')) {
+                            document.querySelector('[name="wifi_ssid"]').classList.add('error-highlight');
+                            document.querySelector('[name="wifi_pass"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('mqtt')) {
+                            document.querySelector('[name="mqtt_server"]').classList.add('error-highlight');
+                            document.querySelector('[name="mqtt_port"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('knx area')) {
+                            document.querySelector('[name="knx_area"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('knx line')) {
+                            document.querySelector('[name="knx_line"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('knx member')) {
+                            document.querySelector('[name="knx_member"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('kp')) {
+                            document.querySelector('[name="pid_kp"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('ki')) {
+                            document.querySelector('[name="pid_ki"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('kd')) {
+                            document.querySelector('[name="pid_kd"]').classList.add('error-highlight');
+                        } else if (errorMessage.includes('setpoint')) {
+                            document.querySelector('[name="setpoint"]').classList.add('error-highlight');
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error saving configuration:', error);
-                    document.getElementById('config-status').textContent = 'Error saving configuration';
+                    statusElement.textContent = 'Error connecting to server. Check your network connection.';
+                    statusElement.className = 'status status-error';
                 });
             });
             
@@ -257,10 +361,12 @@
                     fetch('/api/reboot', { method: 'POST' })
                         .then(() => {
                             document.getElementById('config-status').textContent = 'Rebooting...';
+                            document.getElementById('config-status').className = 'status status-loading';
                         })
                         .catch(error => {
                             console.error('Error rebooting device:', error);
                             document.getElementById('config-status').textContent = 'Error rebooting device';
+                            document.getElementById('config-status').className = 'status status-error';
                         });
                 }
             });

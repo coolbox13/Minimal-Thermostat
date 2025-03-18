@@ -54,8 +54,11 @@ public:
     // Export all settings as JSON
     void getJson(JsonDocument& doc);
     
-    // Import settings from JSON
+    // Import settings from JSON (original version for backward compatibility)
     bool setFromJson(const JsonDocument& doc);
+    
+    // Enhanced version with error reporting
+    bool setFromJson(const JsonDocument& doc, String& errorMessage);
     
 private:
     ConfigManager();
