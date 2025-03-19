@@ -67,8 +67,8 @@ extern int g_history_index;
 /**
  * @brief Initialize the PID controller with default parameters
  * 
- * Sets up the controller with default values for gains, limits, and
- * operating parameters. Should be called once at startup.
+ * Sets up the controller with parameters loaded from ConfigManager.
+ * Should be called once at startup.
  */
 void initializePIDController(void);
 
@@ -145,5 +145,26 @@ AdaptivePID_Performance AdaptivePID_AnalyzePerformance(float *temperature_histor
  * @param setpoint New temperature setpoint in °C
  */
 void setTemperatureSetpoint(float setpoint);
+
+/**
+ * @brief Set a new proportional gain value
+ * 
+ * @param kp New proportional gain value
+ */
+void setPidKp(float kp);
+
+/**
+ * @brief Set a new integral gain value
+ * 
+ * @param ki New integral gain value
+ */
+void setPidKi(float ki);
+
+/**
+ * @brief Set a new derivative gain value
+ * 
+ * @param kd New derivative gain value
+ */
+void setPidKd(float kd);
 
 #endif // ADAPTIVE_PID_CONTROLLER_H

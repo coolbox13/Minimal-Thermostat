@@ -1,6 +1,12 @@
-// adaptive_pid_controller.c
+// adaptive_pid_controller.c - modified initialization function
+
 #include "adaptive_pid_controller.h"
+#include "config_manager.h"
+#include "logger.h"
 #include <math.h>
+
+// Define TAG for logging
+static const char* TAG_PID = "PID";
 
 // Internal state variables
 static float prev_error = 0.0f;      // Previous error for derivative term
@@ -32,20 +38,24 @@ static void adaptParameters(AdaptivePID_Input *input, AdaptivePID_Output *output
                            int oscillations, float overshoot, float avg_error);
 
 /**
- * @brief Initialize the adaptive PID controller with default values.
+ * @brief Initialize the adaptive PID controller with parameters from storage.
  * 
- * Sets up the PID controller with sensible defaults and enables auto-tuning.
+ * Sets up the PID controller with values loaded from ConfigManager.
  */
 void initializePIDController(void) {
+    // Get config manager instance
+    ConfigManager* configManager = ConfigManager::getInstance();
+    
     // Start with default temperature (will be updated on first control cycle)
     g_pid_input.current_temp = 22.0f;
-    g_pid_input.setpoint_temp = 22.0f;  // Default setpoint
-    g_pid_input.valve_feedback = 0.0f;  // Start with valve closed
     
-    // Initial conservative PID values (will be auto-tuned)
-    g_pid_input.Kp = 2.0f;
-    g_pid_input.Ki = 0.1f;
-    g_pid_input.Kd = 0.5f;
+    // Load PID parameters from ConfigManager
+    g_pid_input.setpoint_temp = configManager->getSetpoint();
+    g_pid_input.Kp = configManager->getPidKp();
+    g_pid_input.Ki = configManager->getPidKi();
+    g_pid_input.Kd = configManager->getPidKd();
+    
+    g_pid_input.valve_feedback = 0.0f;  // Start with valve closed
     
     // Output constraints
     g_pid_input.output_min = 0.0f;   // Minimum valve position
@@ -70,6 +80,56 @@ void initializePIDController(void) {
     
     // Run auto-tuning after collecting some data (this will happen automatically)
     g_history_index = 0;
+    
+    // Log the loaded parameters
+    LOG_I(TAG_PID, "PID controller initialized with parameters from storage");
+    LOG_I(TAG_PID, "Kp: %.3f, Ki: %.3f, Kd: %.3f, Setpoint: %.2f°C", 
+          g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd, g_pid_input.setpoint_temp);
+}
+
+/**
+ * @brief Set a new proportional gain value.
+ * 
+ * @param kp New proportional gain value.
+ */
+void setPidKp(float kp) {
+    // Validate to ensure positive value
+    if (kp >= 0.0f) {
+        g_pid_input.Kp = kp;
+        LOG_D(TAG_PID, "Kp updated to: %.3f", kp);
+    } else {
+        LOG_W(TAG_PID, "Invalid Kp value (%.3f) - must be non-negative", kp);
+    }
+}
+
+/**
+ * @brief Set a new integral gain value.
+ * 
+ * @param ki New integral gain value.
+ */
+void setPidKi(float ki) {
+    // Validate to ensure positive value
+    if (ki >= 0.0f) {
+        g_pid_input.Ki = ki;
+        LOG_D(TAG_PID, "Ki updated to: %.3f", ki);
+    } else {
+        LOG_W(TAG_PID, "Invalid Ki value (%.3f) - must be non-negative", ki);
+    }
+}
+
+/**
+ * @brief Set a new derivative gain value.
+ * 
+ * @param kd New derivative gain value.
+ */
+void setPidKd(float kd) {
+    // Validate to ensure positive value
+    if (kd >= 0.0f) {
+        g_pid_input.Kd = kd;
+        LOG_D(TAG_PID, "Kd updated to: %.3f", kd);
+    } else {
+        LOG_W(TAG_PID, "Invalid Kd value (%.3f) - must be non-negative", kd);
+    }
 }
 
 /**

@@ -3,6 +3,7 @@
 
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
+#include <functional>
 #include "config.h"
 #include "config_manager.h"
 
@@ -11,6 +12,9 @@ extern const char* THERMOSTAT_HTML;
 
 class WebServerManager {
 public:
+    // Define callback type for KNX address changes
+    typedef std::function<void()> KnxAddressChangedCallback;
+
     static WebServerManager* getInstance();
     void begin(AsyncWebServer* server);
     void addEndpoint(const char* uri, WebRequestMethodComposite method,
@@ -20,11 +24,17 @@ public:
                      ArUploadHandlerFunction onUpload);
     void setupDefaultRoutes();
     AsyncWebServer* getServer() { return _server; }
+    
+    // Method to register callback for KNX address changes
+    void setKnxAddressChangedCallback(KnxAddressChangedCallback callback);
 
 private:
     WebServerManager();
     static WebServerManager* _instance;
     AsyncWebServer* _server;
+    
+    // Callback for KNX address changes
+    KnxAddressChangedCallback _knxAddressChangedCallback = nullptr;
     
     // Default route handlers
     static void handleRoot(AsyncWebServerRequest *request);

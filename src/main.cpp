@@ -15,6 +15,7 @@
 #include "ota_manager.h"
 #include "valve_control.h"
 #include "config_manager.h"
+#include "web_server.h"
 
 // Define tags for logging
 static const char* TAG_MAIN = "MAIN";
@@ -110,6 +111,12 @@ void setup() {
     knxManager.setMQTTManager(&mqttManager);
     mqttManager.setKNXManager(&knxManager);
     
+    // Register callback for KNX address configuration changes
+    webServerManager->setKnxAddressChangedCallback([&]() {
+        LOG_I(TAG_MAIN, "KNX address configuration changed, reloading addresses");
+        knxManager.reloadAddresses();
+    });
+
     // Initialize adaptive PID controller
     initializePIDController();
     
@@ -307,6 +314,7 @@ void updateSensorReadings() {
     mqttManager.publishSensorData(temperature, humidity, pressure);
 }
 
+// Modified updatePIDControl function for main.cpp
 void updatePIDControl() {
     // Get current temperature from BME280
     float currentTemp = bme280.readTemperature();
@@ -331,8 +339,42 @@ void updatePIDControl() {
     LOG_D(TAG_PID, "PID params - Kp: %.3f, Ki: %.3f, Kd: %.3f", 
           g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
     
-    // Save current setpoint to config
-    configManager->setSetpoint(g_pid_input.setpoint_temp);
+    // Save all PID parameters to config
+    // Only do this if they've changed significantly (to reduce flash wear)
+    static float last_saved_kp = g_pid_input.Kp;
+    static float last_saved_ki = g_pid_input.Ki;
+    static float last_saved_kd = g_pid_input.Kd;
+    static float last_saved_setpoint = g_pid_input.setpoint_temp;
+    
+    bool params_changed = false;
+    
+    if (fabs(last_saved_kp - g_pid_input.Kp) > 0.001f) {
+        configManager->setPidKp(g_pid_input.Kp);
+        last_saved_kp = g_pid_input.Kp;
+        params_changed = true;
+    }
+    
+    if (fabs(last_saved_ki - g_pid_input.Ki) > 0.001f) {
+        configManager->setPidKi(g_pid_input.Ki);
+        last_saved_ki = g_pid_input.Ki;
+        params_changed = true;
+    }
+    
+    if (fabs(last_saved_kd - g_pid_input.Kd) > 0.001f) {
+        configManager->setPidKd(g_pid_input.Kd);
+        last_saved_kd = g_pid_input.Kd;
+        params_changed = true;
+    }
+    
+    if (fabs(last_saved_setpoint - g_pid_input.setpoint_temp) > 0.01f) {
+        configManager->setSetpoint(g_pid_input.setpoint_temp);
+        last_saved_setpoint = g_pid_input.setpoint_temp;
+        params_changed = true;
+    }
+    
+    if (params_changed) {
+        LOG_I(TAG_PID, "PID parameters updated in storage");
+    }
 }
 
 // Callback for storing logs to persistent storage

@@ -18,6 +18,16 @@ WebServerManager* WebServerManager::getInstance() {
 
 WebServerManager::WebServerManager() : _server(nullptr) {}
 
+// Add the callback type definition and variable here
+typedef std::function<void()> KnxAddressChangedCallback;
+KnxAddressChangedCallback _knxAddressChangedCallback = nullptr;
+
+// Add the method to register the callback
+void WebServerManager::setKnxAddressChangedCallback(KnxAddressChangedCallback callback) {
+    _knxAddressChangedCallback = callback;
+    Serial.println("KNX address changed callback registered");
+}
+
 void WebServerManager::begin(AsyncWebServer* server) {
     _server = server;
     
@@ -172,7 +182,7 @@ void WebServerManager::setupDefaultRoutes() {
             // Response will be sent after processing is complete via the onBody handler
         },
         NULL, // Upload handler is NULL
-        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             static DynamicJsonDocument jsonDoc(1024);
             static String jsonBuffer;
             
@@ -194,6 +204,14 @@ void WebServerManager::setupDefaultRoutes() {
             
             if (index + len == total) {
                 // All data received, process it
+                
+                // Store the old KNX test address setting
+                bool oldUseTestSetting = false;
+                ConfigManager* configManager = ConfigManager::getInstance();
+                if (configManager) {
+                    oldUseTestSetting = configManager->getUseTestAddresses();
+                }
+                
                 DeserializationError error = deserializeJson(jsonDoc, jsonBuffer);
                 if (error) {
                     request->send(400, "application/json", 
@@ -202,11 +220,47 @@ void WebServerManager::setupDefaultRoutes() {
                 }
                 
                 // Update configuration
-                ConfigManager* configManager = ConfigManager::getInstance();
                 String errorMessage;
                 bool success = configManager->setFromJson(jsonDoc, errorMessage);
                 
                 if (success) {
+                    // Check if KNX test address setting changed
+                    if (jsonDoc.containsKey("knx") && jsonDoc["knx"].containsKey("use_test")) {
+                        bool newUseTestSetting = jsonDoc["knx"]["use_test"].as<bool>();
+                        
+                        // Now using 'this' correctly since it's captured
+                        if (oldUseTestSetting != newUseTestSetting && this->_knxAddressChangedCallback) {
+                            Serial.println("KNX address setting changed, triggering callback");
+                            this->_knxAddressChangedCallback();
+                        }
+                    }
+                    
+                    // Add code to handle PID parameter changes
+                    if (jsonDoc.containsKey("pid")) {
+                        // Update PID controller with new values if they exist in the JSON
+                        if (jsonDoc["pid"].containsKey("kp")) {
+                            float kp = jsonDoc["pid"]["kp"].as<float>();
+                            setPidKp(kp);
+                        }
+                        
+                        if (jsonDoc["pid"].containsKey("ki")) {
+                            float ki = jsonDoc["pid"]["ki"].as<float>();
+                            setPidKi(ki);
+                        }
+                        
+                        if (jsonDoc["pid"].containsKey("kd")) {
+                            float kd = jsonDoc["pid"]["kd"].as<float>();
+                            setPidKd(kd);
+                        }
+                        
+                        if (jsonDoc["pid"].containsKey("setpoint")) {
+                            float setpoint = jsonDoc["pid"]["setpoint"].as<float>();
+                            setTemperatureSetpoint(setpoint);
+                        }
+                        
+                        Serial.println("PID parameters updated from web interface");
+                    }
+                    
                     request->send(200, "application/json", "{\"success\":true}");
                 } else {
                     request->send(500, "application/json", 

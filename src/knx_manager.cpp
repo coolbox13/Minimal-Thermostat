@@ -7,12 +7,15 @@
 static const char* TAG = "KNX";
 
 KNXManager::KNXManager(ESPKNXIP& knx)
-    : _knx(knx), _mqttManager(nullptr), _valvePosition(0) {
+    : _knx(knx), _mqttManager(nullptr), _valvePosition(0), _configManager(nullptr) {
 }
 
 void KNXManager::begin() {
     LOG_I(TAG, "Setting up KNX...");
 
+    // Get config manager instance
+    _configManager = ConfigManager::getInstance();
+    
     // Set log level based on KNX_DEBUG_ENABLED
     #if KNX_DEBUG_ENABLED
     esp_log_level_set("KNXIP", ESP_LOG_DEBUG);
@@ -33,7 +36,7 @@ void KNXManager::begin() {
     // Set physical address
     _knx.physical_address_set(_knx.PA_to_address(KNX_AREA, KNX_LINE, KNX_MEMBER));
 
-    // Setup addresses
+    // Setup addresses based on runtime configuration
     setupAddresses();
 
     // Register callback for KNX events
@@ -135,8 +138,16 @@ void KNXManager::_setValvePosition(int position) {
         
         LOG_I(TAG, "Setting valve position to: %d%%", _valvePosition);
         
-        // Send to test KNX address only
-        _knx.write_1byte_int(_testValveAddress, _valvePosition);
+        // Send to appropriate KNX address based on configuration
+        if (isUsingTestAddresses()) {
+            _knx.write_1byte_int(_testValveAddress, _valvePosition);
+            LOG_D(TAG, "Using test address: %d/%d/%d", 
+                  _testValveAddress.ga.area, _testValveAddress.ga.line, _testValveAddress.ga.member);
+        } else {
+            _knx.write_1byte_int(_valveAddress, _valvePosition);
+            LOG_D(TAG, "Using production address: %d/%d/%d", 
+                 _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
+        }
         
         // Update MQTT if available
         if (_mqttManager) {
@@ -150,28 +161,43 @@ int KNXManager::getValvePosition() const {
     return _valvePosition;
 }
 
+bool KNXManager::isUsingTestAddresses() const {
+    if (_configManager) {
+        return _configManager->getUseTestAddresses();
+    }
+    
+    // Default to test addresses if config manager not available
+    LOG_W(TAG, "ConfigManager not available, defaulting to test addresses");
+    return true;
+}
+
+void KNXManager::reloadAddresses() {
+    LOG_I(TAG, "Reloading KNX addresses from configuration");
+    setupAddresses();
+}
+
 void KNXManager::setupAddresses() {
-    #if USE_KNX_TEST_ADDRESSES
-        // Use test addresses
-        LOG_I(TAG, "Using KNX TEST addresses");
-        _valveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
-        _temperatureAddress = _knx.GA_to_address(KNX_GA_TEMPERATURE_MAIN, KNX_GA_TEMPERATURE_MID, KNX_GA_TEMPERATURE_SUB);
-        _humidityAddress = _knx.GA_to_address(KNX_GA_HUMIDITY_MAIN, KNX_GA_HUMIDITY_MID, KNX_GA_HUMIDITY_SUB);
-        _pressureAddress = _knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
-        
-        // Test valve address
-        _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
-    #else
-        // Use production addresses
-        LOG_I(TAG, "Using KNX PRODUCTION addresses");
-        _valveAddress = _knx.GA_to_address(KNX_GA_VALVE_MAIN, KNX_GA_VALVE_MID, KNX_GA_VALVE_SUB);
-        _temperatureAddress = _knx.GA_to_address(KNX_GA_TEMPERATURE_MAIN, KNX_GA_TEMPERATURE_MID, KNX_GA_TEMPERATURE_SUB);
-        _humidityAddress = _knx.GA_to_address(KNX_GA_HUMIDITY_MAIN, KNX_GA_HUMIDITY_MID, KNX_GA_HUMIDITY_SUB);
-        _pressureAddress = _knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
-        
-        // In production environment, valve and test valve addresses can be different
-        _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
-    #endif
+    bool useTestAddresses = isUsingTestAddresses();
+    
+    LOG_I(TAG, "Using KNX %s addresses", useTestAddresses ? "TEST" : "PRODUCTION");
+    
+    // Always set up both address sets for quick switching
+    _valveAddress = _knx.GA_to_address(KNX_GA_VALVE_MAIN, KNX_GA_VALVE_MID, KNX_GA_VALVE_SUB);
+    _temperatureAddress = _knx.GA_to_address(KNX_GA_TEMPERATURE_MAIN, KNX_GA_TEMPERATURE_MID, KNX_GA_TEMPERATURE_SUB);
+    _humidityAddress = _knx.GA_to_address(KNX_GA_HUMIDITY_MAIN, KNX_GA_HUMIDITY_MID, KNX_GA_HUMIDITY_SUB);
+    _pressureAddress = _knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
+    
+    // Test valve address is always set
+    _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+    
+    // Debug print the current addresses
+    LOG_D(TAG, "KNX addresses configured:");
+    LOG_D(TAG, "Production valve address: %d/%d/%d", 
+         _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
+    LOG_D(TAG, "Test valve address: %d/%d/%d", 
+         _testValveAddress.ga.area, _testValveAddress.ga.line, _testValveAddress.ga.member);
+    LOG_D(TAG, "Temperature sensor address: %d/%d/%d", 
+         _temperatureAddress.ga.area, _temperatureAddress.ga.line, _temperatureAddress.ga.member);
 }
 
 void KNXManager::knxCallback(message_t const &msg, void *arg) {
@@ -183,7 +209,15 @@ void KNXManager::knxCallback(message_t const &msg, void *arg) {
     address_t dest = msg.received_on;
     
     // Check if this is a message for our valve control GA
+    // We need to check both possible addresses
+    bool isValveMsg = false;
     if (dest.value == instance->_valveAddress.value) {
+        isValveMsg = true;
+    } else if (dest.value == instance->_testValveAddress.value) {
+        isValveMsg = true;
+    }
+    
+    if (isValveMsg) {
         // Check if we have data and it's a write command
         if (msg.data_len > 0 && msg.ct == KNX_CT_WRITE) {
             // Extract valve position value (assuming it's a scaling value 0-100%)

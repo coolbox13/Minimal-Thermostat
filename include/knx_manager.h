@@ -8,6 +8,7 @@
 #include "esp-knx-ip/esp-knx-ip.h"
 #include "config.h"
 #include "logger.h"
+#include "config_manager.h"
 
 // Message structure for thread-safe queue
 struct KnxMessage {
@@ -52,11 +53,18 @@ public:
     
     // Get the ESPKNXIP instance
     ESPKNXIP& getKnx() { return _knx; }
+    
+    // Reload KNX addresses from config
+    void reloadAddresses();
+    
+    // Get current address mode
+    bool isUsingTestAddresses() const;
 
 private:
     ESPKNXIP& _knx;
     MQTTManager* _mqttManager;
     int _valvePosition;
+    ConfigManager* _configManager;
     
     // Thread safety
     mutable std::mutex _mutex;

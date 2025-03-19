@@ -1,9 +1,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Toggle between test and production KNX addresses
-#define USE_KNX_TEST_ADDRESSES 1  // Set to 0 for production addresses
-
 // KNX Configuration
 #define KNX_AREA 1
 #define KNX_LINE 1
