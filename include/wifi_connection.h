@@ -56,9 +56,10 @@ public:
     /**
      * @brief Initialize WiFi connection
      * @param configPortalTimeout Timeout for config portal in seconds (0 = no timeout)
+     * @param startPortalOnFail Start config portal if initial connection fails
      * @return True if successfully initialized
      */
-    bool begin(unsigned int configPortalTimeout = 180);
+    bool begin(unsigned int configPortalTimeout = 180, bool startPortalOnFail = false);
 
     /**
      * @brief Process WiFi events (should be called in loop)
@@ -91,6 +92,12 @@ public:
      * @return RSSI value or 0 if not connected
      */
     int getSignalStrength() const;
+    
+    /**
+     * @brief Get WiFi signal quality as a percentage
+     * @return Signal quality (0-100%) or 0 if not connected
+     */
+    int getSignalQuality() const;
 
     /**
      * @brief Get time since last successful connection
@@ -115,6 +122,13 @@ public:
      * @return Reference to WiFiManager instance
      */
     WiFiManager& getWiFiManager();
+    
+    /**
+     * @brief Get details about the current connection as JSON
+     * @param includeHistory Include history data in the JSON
+     * @return JSON string with connection details
+     */
+    String getConnectionDetailsJson(bool includeHistory = false);
 
     /**
      * @brief Get number of reconnection attempts since last success
@@ -159,6 +173,12 @@ private:
     
     // Callbacks
     std::vector<WiFiStateCallback> _stateCallbacks;
+    
+    /**
+     * @brief Test actual internet connectivity (not just WiFi connection)
+     * @return True if internet appears to be working
+     */
+    bool testInternetConnectivity();
     
     // Constants
     static const char* TAG;  // For logging

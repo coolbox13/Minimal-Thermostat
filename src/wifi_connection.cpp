@@ -1,5 +1,6 @@
 #include "wifi_connection.h"
 #include "config_manager.h"
+#include <ArduinoJson.h>
 
 // Static members initialization
 WiFiConnectionManager* WiFiConnectionManager::_instance = nullptr;
@@ -34,7 +35,7 @@ WiFiConnectionManager::WiFiConnectionManager()
     setupWiFiManagerCallbacks();
 }
 
-bool WiFiConnectionManager::begin(unsigned int configPortalTimeout) {
+bool WiFiConnectionManager::begin(unsigned int configPortalTimeout, bool startPortalOnFail) {
     LOG_I(TAG, "Initializing WiFi connection manager");
     
     // Configure WiFiManager settings
@@ -78,9 +79,13 @@ bool WiFiConnectionManager::begin(unsigned int configPortalTimeout) {
     }
     
     // If we get here, we couldn't connect with stored credentials
-    // The next step would be to start the config portal, but we'll let
-    // the caller decide whether to do that
-    return false;
+    if (startPortalOnFail) {
+        LOG_I(TAG, "Starting config portal after failed connection attempt");
+        return startConfigPortal("ESP32-Thermostat-AP", configPortalTimeout);
+    } else {
+        LOG_I(TAG, "Not starting config portal (startPortalOnFail=false)");
+        return false;
+    }
 }
 
 void WiFiConnectionManager::loop() {
@@ -99,12 +104,31 @@ void WiFiConnectionManager::loop() {
             _lastConnectedTime = millis();
             resetReconnectAttempts();
             
+            // Log full connection details
+            logWiFiStatus("WiFi connection established");
+        }
+        
+        // Periodically update signal strength history 
+        static unsigned long lastSignalUpdate = 0;
+        unsigned long now = millis();
+        if (now - lastSignalUpdate > 60000) { // Every minute
+            lastSignalUpdate = now;
+            
             // Update signal strength in history
             _signalHistory[_signalHistoryIndex] = {
-                millis(),
+                now,
                 WiFi.RSSI()
             };
             _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
+            
+            // Log signal strength periodically
+            LOG_D(TAG, "Signal strength: %d dBm (%d%%)", 
+                  WiFi.RSSI(), getSignalQuality());
+                  
+            // Check for poor signal quality
+            if (getSignalQuality() < 30) {
+                LOG_W(TAG, "Poor WiFi signal quality detected (%d%%)", getSignalQuality());
+            }
         }
     } else {
         // We're not connected
@@ -121,6 +145,7 @@ void WiFiConnectionManager::loop() {
                 // Wait longer between attempts as the number of attempts increases
                 if (_reconnectAttempts > 0) {
                     // Calculate delay based on attempt number (exponential backoff)
+                    // 1st: 1s, 2nd: 2s, 3rd: 4s, 4th: 8s, 5th: 16s, 6th: 32s, 7th: 64s, 8th: 128s, 9th+: 256s
                     unsigned long delayMs = 1000 * (1 << min(_reconnectAttempts, 8));  // Max 256 seconds
                     LOG_D(TAG, "Waiting %lu ms before reconnect attempt", delayMs);
                     delay(delayMs);  // This blocks, but that's intentional for this simple implementation
@@ -129,7 +154,39 @@ void WiFiConnectionManager::loop() {
                 _reconnectAttempts++;
                 
                 // Attempt reconnection
-                connect();
+                if (connect()) {
+                    LOG_I(TAG, "Reconnection successful!");
+                } else {
+                    LOG_W(TAG, "Reconnection attempt %d failed", _reconnectAttempts);
+                    
+                    // If we've reached the maximum number of attempts, reset WiFi and try again
+                    if (_reconnectAttempts >= 5) {
+                        LOG_W(TAG, "Maximum reconnection attempts reached, resetting WiFi...");
+                        WiFi.disconnect(true);  // Disconnect from the network and delete saved credentials
+                        delay(1000);
+                        
+                        // Try to connect with stored credentials
+                        String storedSSID = _configManager->getWifiSSID();
+                        String storedPass = _configManager->getWifiPassword();
+                        
+                        if (storedSSID.length() > 0 && storedPass.length() > 0) {
+                            LOG_I(TAG, "Trying stored credentials after WiFi reset");
+                            WiFi.begin(storedSSID.c_str(), storedPass.c_str());
+                            
+                            // Wait a bit to see if it works
+                            delay(5000);
+                            
+                            if (WiFi.status() == WL_CONNECTED) {
+                                LOG_I(TAG, "Connection established after WiFi reset!");
+                                setState(WiFiConnectionState::CONNECTED);
+                                _lastConnectedTime = millis();
+                                resetReconnectAttempts();
+                            } else {
+                                LOG_E(TAG, "Failed to connect even after WiFi reset");
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -159,9 +216,18 @@ bool WiFiConnectionManager::connect(unsigned long timeout) {
     
     // Wait for connection with timeout
     unsigned long startTime = millis();
+    unsigned long progress = 0;
+    LOG_I(TAG, "Waiting for WiFi connection...");
     while (WiFi.status() != WL_CONNECTED && millis() - startTime < timeout) {
         delay(100);
+        progress += 100;
+        
+        // Print progress dot every second
+        if (progress % 1000 == 0) {
+            Serial.print(".");
+        }
     }
+    Serial.println();
     
     if (WiFi.status() == WL_CONNECTED) {
         LOG_I(TAG, "Connected to WiFi");
@@ -218,6 +284,25 @@ int WiFiConnectionManager::getSignalStrength() const {
     return WiFi.RSSI();
 }
 
+int WiFiConnectionManager::getSignalQuality() const {
+    if (_state != WiFiConnectionState::CONNECTED) {
+        return 0;
+    }
+    
+    // Convert RSSI to quality percentage
+    // RSSI range is typically -100 dBm (worst) to -30 dBm (best)
+    int rssi = WiFi.RSSI();
+    
+    if (rssi <= -100) {
+        return 0;
+    } else if (rssi >= -30) {
+        return 100;
+    } else {
+        // Linear conversion from RSSI to quality percentage
+        return 2 * (rssi + 100);
+    }
+}
+
 unsigned long WiFiConnectionManager::getTimeSinceLastConnection() const {
     if (_lastConnectedTime == 0) {
         return 0;  // Never connected
@@ -243,6 +328,57 @@ int WiFiConnectionManager::getReconnectAttempts() const {
 
 void WiFiConnectionManager::resetReconnectAttempts() {
     _reconnectAttempts = 0;
+}
+
+String WiFiConnectionManager::getConnectionDetailsJson(bool includeHistory) {
+    StaticJsonDocument<512> doc;
+    
+    // Connection state
+    const char* stateNames[] = {
+        "DISCONNECTED",
+        "CONNECTING",
+        "CONNECTED",
+        "CONFIG_PORTAL_ACTIVE",
+        "CONNECTION_LOST"
+    };
+    doc["state"] = stateNames[static_cast<int>(_state)];
+    
+    // Only include WiFi details if connected
+    if (_state == WiFiConnectionState::CONNECTED) {
+        doc["ssid"] = WiFi.SSID();
+        doc["ip"] = WiFi.localIP().toString();
+        doc["gateway"] = WiFi.gatewayIP().toString();
+        doc["subnet"] = WiFi.subnetMask().toString();
+        doc["mac"] = WiFi.macAddress();
+        doc["rssi"] = WiFi.RSSI();
+        doc["signal_quality"] = getSignalQuality();
+        doc["channel"] = WiFi.channel();
+    }
+    
+    // Include state timing
+    doc["last_connected"] = _lastConnectedTime;
+    doc["time_since_last_connected"] = getTimeSinceLastConnection();
+    doc["last_state_change"] = _lastStateChangeTime;
+    doc["reconnect_attempts"] = _reconnectAttempts;
+    
+    // Include signal history if requested
+    if (includeHistory && _state == WiFiConnectionState::CONNECTED) {
+        JsonArray history = doc.createNestedArray("signal_history");
+        for (uint8_t i = 0; i < SIGNAL_HISTORY_SIZE; i++) {
+            if (_signalHistory[i].timestamp > 0) {
+                JsonObject entry = history.createNestedObject();
+                entry["timestamp"] = _signalHistory[i].timestamp;
+                entry["rssi"] = _signalHistory[i].rssi;
+            }
+        }
+    }
+    
+    // Internet connectivity
+    doc["internet_connectivity"] = testInternetConnectivity();
+    
+    String result;
+    serializeJson(doc, result);
+    return result;
 }
 
 void WiFiConnectionManager::setState(WiFiConnectionState newState) {
@@ -308,6 +444,54 @@ void WiFiConnectionManager::logWiFiStatus(const char* message) {
     if (WiFi.status() == WL_CONNECTED) {
         LOG_I(TAG, "SSID: %s", WiFi.SSID().c_str());
         LOG_I(TAG, "IP address: %s", WiFi.localIP().toString().c_str());
-        LOG_I(TAG, "Signal strength: %d dBm", WiFi.RSSI());
+        LOG_I(TAG, "Signal strength: %d dBm (%d%%)", WiFi.RSSI(), getSignalQuality());
+        LOG_I(TAG, "Channel: %d", WiFi.channel());
+        LOG_I(TAG, "MAC address: %s", WiFi.macAddress().c_str());
+        
+        // Test internet connectivity
+        if (testInternetConnectivity()) {
+            LOG_I(TAG, "Internet connectivity: OK");
+        } else {
+            LOG_W(TAG, "Internet connectivity: FAILED");
+        }
+    } else {
+        // Log WiFi status code for debugging
+        const char* statusText;
+        switch (WiFi.status()) {
+            case WL_IDLE_STATUS: statusText = "Idle"; break;
+            case WL_NO_SSID_AVAIL: statusText = "No SSID available"; break;
+            case WL_SCAN_COMPLETED: statusText = "Scan completed"; break;
+            case WL_CONNECT_FAILED: statusText = "Connection failed"; break;
+            case WL_CONNECTION_LOST: statusText = "Connection lost"; break;
+            case WL_DISCONNECTED: statusText = "Disconnected"; break;
+            default: statusText = "Unknown status"; break;
+        }
+        LOG_I(TAG, "WiFi status: %s (%d)", statusText, WiFi.status());
     }
+}
+
+bool WiFiConnectionManager::testInternetConnectivity() {
+    // Implement a simple DNS lookup to test internet connectivity
+    IPAddress result;
+    
+    LOG_D(TAG, "Testing internet connectivity with DNS lookup...");
+    
+    // Try 3 common domains with a short timeout
+    if (WiFi.hostByName("google.com", result, 2000)) {
+        LOG_D(TAG, "DNS lookup successful: google.com -> %s", result.toString().c_str());
+        return true;
+    }
+    
+    if (WiFi.hostByName("cloudflare.com", result, 2000)) {
+        LOG_D(TAG, "DNS lookup successful: cloudflare.com -> %s", result.toString().c_str());
+        return true;
+    }
+    
+    if (WiFi.hostByName("amazon.com", result, 2000)) {
+        LOG_D(TAG, "DNS lookup successful: amazon.com -> %s", result.toString().c_str());
+        return true;
+    }
+    
+    LOG_W(TAG, "DNS lookup failed for all test domains");
+    return false;
 }
