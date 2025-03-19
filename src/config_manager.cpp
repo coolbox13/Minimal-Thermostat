@@ -116,13 +116,14 @@ void ConfigManager::setUseTestAddresses(bool useTest) {
     _preferences.putBool("knx_test", useTest);
 }
 
-// PID Controller settings
+// PID Controller settings - MODIFIED: Updated getter to apply consistent rounding
 float ConfigManager::getPidKp() {
-    return _preferences.getFloat("pid_kp", DEFAULT_KP);
+    float kp = _preferences.getFloat("pid_kp", DEFAULT_KP);
+    // Apply consistent rounding to ensure proper precision when retrieved
+    return roundf(kp * 100) / 100.0f; // Round to 2 decimal places
 }
 
 // 1. Update the setter methods to limit precision directly
-
 void ConfigManager::setPidKp(float kp) {
     // Round to 2 decimal places
     kp = roundf(kp * 100) / 100.0f;
@@ -147,15 +148,27 @@ void ConfigManager::setSetpoint(float setpoint) {
     _preferences.putFloat("setpoint", setpoint);
 }
 
+// MODIFIED: Updated getter methods to apply consistent rounding
 float ConfigManager::getPidKi() {
-    return _preferences.getFloat("pid_ki", DEFAULT_KI);
+    float ki = _preferences.getFloat("pid_ki", DEFAULT_KI);
+    // Apply consistent rounding to ensure proper precision when retrieved
+    return roundf(ki * 1000) / 1000.0f; // Round to 3 decimal places
 }
 
 float ConfigManager::getPidKd() {
-    return _preferences.getFloat("pid_kd", DEFAULT_KD);
+    float kd = _preferences.getFloat("pid_kd", DEFAULT_KD);
+    // Apply consistent rounding to ensure proper precision when retrieved
+    return roundf(kd * 1000) / 1000.0f; // Round to 3 decimal places
 }
 
-// Export all settings as JSON
+// MODIFIED: Updated getSetpoint method to apply consistent rounding
+float ConfigManager::getSetpoint() {
+    float setpoint = _preferences.getFloat("setpoint", DEFAULT_SETPOINT);
+    // Apply consistent rounding to ensure proper precision when retrieved
+    return roundf(setpoint * 10) / 10.0f; // Round to 1 decimal place
+}
+
+// MODIFIED: Updated getJson to use getters directly (which now apply rounding)
 void ConfigManager::getJson(JsonDocument& doc) {
     // Create JSON structure directly
     doc["network"]["wifi_ssid"] = getWifiSSID();
@@ -175,11 +188,11 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["bme280"]["scl_pin"] = 22;      // Default SCL pin 
     doc["bme280"]["interval"] = 30;     // Default 30 second interval
     
-    // Update PID values with limited precision
-    doc["pid"]["kp"] = roundf(getPidKp() * 100) / 100.0f;
-    doc["pid"]["ki"] = roundf(getPidKi() * 1000) / 1000.0f;
-    doc["pid"]["kd"] = roundf(getPidKd() * 1000) / 1000.0f;
-    doc["pid"]["setpoint"] = roundf(getSetpoint() * 10) / 10.0f;
+    // Update PID values - no need for additional rounding since getters now apply it
+    doc["pid"]["kp"] = getPidKp();
+    doc["pid"]["ki"] = getPidKi();
+    doc["pid"]["kd"] = getPidKd();
+    doc["pid"]["setpoint"] = getSetpoint();
     
     LOG_D(TAG, "Created JSON configuration");
 }
@@ -322,6 +335,8 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
             float kp = doc["pid"]["kp"].as<float>();
             // Round to 2 decimal places to avoid excessive precision
             kp = roundf(kp * 100) / 100.0f;
+            LOG_D(TAG, "Parsed Kp: %.2f (rounded)", kp);
+            
             if (kp < 0) {
                 errorMessage = "PID Kp must be >= 0";
                 LOG_W(TAG, "%s", errorMessage.c_str());
@@ -334,6 +349,8 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
             float ki = doc["pid"]["ki"].as<float>();
             // Round to 3 decimal places for integral gain
             ki = roundf(ki * 1000) / 1000.0f;
+            LOG_D(TAG, "Parsed Ki: %.3f (rounded)", ki);
+            
             if (ki < 0) {
                 errorMessage = "PID Ki must be >= 0";
                 LOG_W(TAG, "%s", errorMessage.c_str());
@@ -346,6 +363,8 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
             float kd = doc["pid"]["kd"].as<float>();
             // Round to 3 decimal places for derivative gain
             kd = roundf(kd * 1000) / 1000.0f;
+            LOG_D(TAG, "Parsed Kd: %.3f (rounded)", kd);
+            
             if (kd < 0) {
                 errorMessage = "PID Kd must be >= 0";
                 LOG_W(TAG, "%s", errorMessage.c_str());
@@ -358,6 +377,8 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
             float setpoint = doc["pid"]["setpoint"].as<float>();
             // Round to 1 decimal place for setpoint
             setpoint = roundf(setpoint * 10) / 10.0f;
+            LOG_D(TAG, "Parsed setpoint: %.1f (rounded)", setpoint);
+            
             if (setpoint < 5 || setpoint > 30) {
                 errorMessage = "Temperature setpoint must be between 5°C and 30°C";
                 LOG_W(TAG, "%s", errorMessage.c_str());
@@ -369,10 +390,4 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     
     LOG_I(TAG, "Configuration imported successfully");
     return true;
-}
-
-// Add this method to your ConfigManager class implementation
-
-float ConfigManager::getSetpoint() {
-    return _preferences.getFloat("setpoint", DEFAULT_SETPOINT);
 }

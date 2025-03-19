@@ -23,7 +23,39 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Reboot device button handler
     document.getElementById('reboot-device').addEventListener('click', rebootDevice);
+    
+    // Add input blur handlers to format values properly when user finishes editing
+    document.getElementById('pid_kp').addEventListener('blur', function() {
+        this.value = formatNumberWithPrecision(parseFloat(this.value), 2);
+    });
+    
+    document.getElementById('pid_ki').addEventListener('blur', function() {
+        this.value = formatNumberWithPrecision(parseFloat(this.value), 3);
+    });
+    
+    document.getElementById('pid_kd').addEventListener('blur', function() {
+        this.value = formatNumberWithPrecision(parseFloat(this.value), 3);
+    });
+    
+    document.getElementById('setpoint').addEventListener('blur', function() {
+        this.value = formatNumberWithPrecision(parseFloat(this.value), 1);
+    });
 });
+
+/**
+ * Format a number with a specific number of decimal places,
+ * ensuring consistent display of trailing zeros.
+ * 
+ * @param {number} value - The number to format
+ * @param {number} decimals - Number of decimal places to display
+ * @returns {string} Formatted number with specified decimal places
+ */
+function formatNumberWithPrecision(value, decimals) {
+    if (isNaN(value)) return '';
+    
+    // Use toFixed to get the right number of decimal places with trailing zeros
+    return value.toFixed(decimals);
+}
 
 // Function to load the current configuration from the API
 function loadConfiguration() {
@@ -60,12 +92,13 @@ function loadConfiguration() {
                 document.getElementById('bme280_interval').value = data.bme280.interval || 30;
             }
             
-            // PID settings
+            // PID settings - Apply proper formatting for floating point values
             if (data.pid) {
-                document.getElementById('pid_kp').value = data.pid.kp || 2.0;
-                document.getElementById('pid_ki').value = data.pid.ki || 0.1;
-                document.getElementById('pid_kd').value = data.pid.kd || 0.5;
-                document.getElementById('setpoint').value = data.pid.setpoint || 22.0;
+                // Format each value with the appropriate precision
+                document.getElementById('pid_kp').value = formatNumberWithPrecision(data.pid.kp || 2.0, 2);
+                document.getElementById('pid_ki').value = formatNumberWithPrecision(data.pid.ki || 0.1, 3);
+                document.getElementById('pid_kd').value = formatNumberWithPrecision(data.pid.kd || 0.5, 3);
+                document.getElementById('setpoint').value = formatNumberWithPrecision(data.pid.setpoint || 22.0, 1);
             }
         })
         .catch(error => {
@@ -112,10 +145,11 @@ function saveConfiguration(e) {
             interval: parseInt(formData.get('bme280_interval'))
         },
         pid: {
-            kp: parseFloat(formData.get('pid_kp')),
-            ki: parseFloat(formData.get('pid_ki')),
-            kd: parseFloat(formData.get('pid_kd')),
-            setpoint: parseFloat(formData.get('setpoint'))
+            // Format PID values with proper precision before sending
+            kp: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_kp')), 2)),
+            ki: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_ki')), 3)),
+            kd: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_kd')), 3)),
+            setpoint: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('setpoint')), 1))
         }
     };
     

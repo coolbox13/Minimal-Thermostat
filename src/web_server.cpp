@@ -223,6 +223,9 @@ void WebServerManager::setupDefaultRoutes() {
                 String errorMessage;
                 bool success = configManager->setFromJson(jsonDoc, errorMessage);
                 
+                // Inside the config update handler's onBody function, where JSON is processed
+                // After deserializing the JSON and before sending the response
+                
                 if (success) {
                     // Check if KNX test address setting changed
                     if (jsonDoc.containsKey("knx") && jsonDoc["knx"].containsKey("use_test")) {
@@ -235,30 +238,43 @@ void WebServerManager::setupDefaultRoutes() {
                         }
                     }
                     
-                    // Add code to handle PID parameter changes
+                    // Add code to handle PID parameter changes with improved rounding 
                     if (jsonDoc.containsKey("pid")) {
                         // Update PID controller with new values if they exist in the JSON
                         if (jsonDoc["pid"].containsKey("kp")) {
+                            // Get the value and apply explicit rounding to ensure proper precision
                             float kp = jsonDoc["pid"]["kp"].as<float>();
+                            kp = roundf(kp * 100) / 100.0f; // Round to 2 decimal places
                             setPidKp(kp);
+                            Serial.print("Rounded Kp value: ");
+                            Serial.println(kp, 2); // Print with 2 decimal places for debugging
                         }
                         
                         if (jsonDoc["pid"].containsKey("ki")) {
                             float ki = jsonDoc["pid"]["ki"].as<float>();
+                            ki = roundf(ki * 1000) / 1000.0f; // Round to 3 decimal places
                             setPidKi(ki);
+                            Serial.print("Rounded Ki value: ");
+                            Serial.println(ki, 3); // Print with 3 decimal places for debugging
                         }
                         
                         if (jsonDoc["pid"].containsKey("kd")) {
                             float kd = jsonDoc["pid"]["kd"].as<float>();
+                            kd = roundf(kd * 1000) / 1000.0f; // Round to 3 decimal places
                             setPidKd(kd);
+                            Serial.print("Rounded Kd value: ");
+                            Serial.println(kd, 3); // Print with 3 decimal places for debugging
                         }
                         
                         if (jsonDoc["pid"].containsKey("setpoint")) {
                             float setpoint = jsonDoc["pid"]["setpoint"].as<float>();
+                            setpoint = roundf(setpoint * 10) / 10.0f; // Round to 1 decimal place
                             setTemperatureSetpoint(setpoint);
+                            Serial.print("Rounded setpoint value: ");
+                            Serial.println(setpoint, 1); // Print with 1 decimal place for debugging
                         }
                         
-                        Serial.println("PID parameters updated from web interface");
+                        Serial.println("PID parameters updated from web interface with precision-controlled values");
                     }
                     
                     request->send(200, "application/json", "{\"success\":true}");
