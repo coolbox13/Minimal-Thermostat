@@ -50,7 +50,7 @@ void initializePIDController(void) {
     g_pid_input.current_temp = 22.0f;
     
     // Load PID parameters from ConfigManager
-    g_pid_input.setpoint_temp = configManager->getSetpoint();
+    g_pid_input.setpoint_temp = configManager->getSetpoint(); // Using the pointer->method() syntax
     g_pid_input.Kp = configManager->getPidKp();
     g_pid_input.Ki = configManager->getPidKi();
     g_pid_input.Kd = configManager->getPidKd();
