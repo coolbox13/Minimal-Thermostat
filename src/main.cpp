@@ -46,9 +46,11 @@ WiFiManager wifiManager;
 unsigned long lastWifiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 60000; // Check WiFi every minute
 unsigned long lastConnectedTime = 0;
-const unsigned long WIFI_WATCHDOG_TIMEOUT = 1800000; // 30 minutes in milliseconds
+
+//const unsigned long WIFI_WATCHDOG_TIMEOUT = 1800000; // 30 minutes in milliseconds
+//const int MAX_RECONNECT_ATTEMPTS = 10; // Increased to 10 attempts
+
 int reconnectAttempts = 0;
-const int MAX_RECONNECT_ATTEMPTS = 10; // Increased to 10 attempts
 bool configPortalActive = false;
 
 // Function declarations
@@ -81,7 +83,7 @@ void setup() {
     }
     
     // Initialize watchdog timer (45 minutes)
-    esp_task_wdt_init(WATCHDOG_TIMEOUT / 1000, true);
+    esp_task_wdt_init(SYSTEM_WATCHDOG_TIMEOUT / 1000, true);
     esp_task_wdt_add(NULL);
     LOG_I(TAG_MAIN, "Watchdog timer initialized (45 minutes)");
 
