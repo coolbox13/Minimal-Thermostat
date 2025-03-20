@@ -471,38 +471,27 @@ void WiFiConnectionManager::logWiFiStatus(const char* message) {
 }
 
 bool WiFiConnectionManager::testInternetConnectivity() {
-    if (_state != WiFiConnectionState::CONNECTED) {
-        return false;
-    }
-    
+    // Implement a simple DNS lookup to test internet connectivity
     IPAddress result;
-    unsigned long startTime;
     
-    // Try to resolve google.com
-    startTime = millis();
+    LOG_D(TAG, "Testing internet connectivity with DNS lookup...");
+    
+    // Try 3 common domains
     if (WiFi.hostByName("google.com", result)) {
-        LOG_D(TAG, "DNS lookup for google.com succeeded in %lu ms: %s", 
-              millis() - startTime, result.toString().c_str());
+        LOG_D(TAG, "DNS lookup successful: google.com -> %s", result.toString().c_str());
         return true;
     }
     
-    // If google.com fails, try cloudflare.com
-    startTime = millis();
     if (WiFi.hostByName("cloudflare.com", result)) {
-        LOG_D(TAG, "DNS lookup for cloudflare.com succeeded in %lu ms: %s", 
-              millis() - startTime, result.toString().c_str());
+        LOG_D(TAG, "DNS lookup successful: cloudflare.com -> %s", result.toString().c_str());
         return true;
     }
     
-    // If cloudflare.com fails, try amazon.com
-    startTime = millis();
     if (WiFi.hostByName("amazon.com", result)) {
-        LOG_D(TAG, "DNS lookup for amazon.com succeeded in %lu ms: %s", 
-              millis() - startTime, result.toString().c_str());
+        LOG_D(TAG, "DNS lookup successful: amazon.com -> %s", result.toString().c_str());
         return true;
     }
     
-    // All DNS lookups failed
-    LOG_W(TAG, "All DNS lookups failed, internet connectivity appears to be down");
+    LOG_W(TAG, "DNS lookup failed for all test domains");
     return false;
 }
