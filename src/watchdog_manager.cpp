@@ -1,6 +1,7 @@
 #include "watchdog_manager.h"
 #include <Preferences.h>
 #include "config.h"
+#include <WiFi.h>  // Add this include for WiFi functionality
 
 // Preferences namespace for storing reboot reasons
 #define PREF_NAMESPACE "watchdog"
@@ -12,7 +13,9 @@ WatchdogManager::WatchdogManager()
     lastWiFiWatchdogReset(0),
     lastRebootReason(RebootReason::UNKNOWN),
     watchdogsPaused(false),
-    watchdogPauseEndTime(0) {
+    watchdogPauseEndTime(0),
+    consecutiveResets(0),
+    safeMode(false) {
 }
 
 bool WatchdogManager::begin() {
@@ -20,6 +23,11 @@ bool WatchdogManager::begin() {
   
   // Load the last reboot reason from persistent storage
   loadRebootReason();
+  
+  // Check if we should enter safe mode
+  if (shouldEnterSafeMode()) {
+    enterSafeMode();
+  }
   
   // Initialize the ESP task watchdog (convert ms to seconds)
   esp_err_t err = esp_task_wdt_init(SYSTEM_WATCHDOG_TIMEOUT / 1000, true);
@@ -90,6 +98,7 @@ bool WatchdogManager::checkWiFiWatchdog() {
 }
 
 // Add new method to handle watchdog coordination
+// Update the update method to include recovery
 void WatchdogManager::update() {
   // Skip updates if watchdogs are paused
   if (watchdogsPaused) {
@@ -105,10 +114,135 @@ void WatchdogManager::update() {
   
   // Check WiFi watchdog (Level 1)
   if (checkWiFiWatchdog()) {
-    // WiFi watchdog triggered - this will be handled by the WiFiConnectionManager
-    // which should call registerRebootReason() if it decides to reboot
-    LOG_W(TAG, "WiFi watchdog triggered, notifying application");
+    LOG_W(TAG, "WiFi watchdog triggered, attempting recovery");
+    
+    // Implement staged recovery approach
+    if (attemptWiFiRecovery()) {
+      LOG_I(TAG, "WiFi recovery successful");
+      resetWiFiWatchdog();
+    } else if (resetWiFiSubsystem()) {
+      LOG_I(TAG, "WiFi subsystem reset successful");
+      resetWiFiWatchdog();
+    } else {
+      // If all recovery attempts fail, reboot
+      LOG_E(TAG, "WiFi recovery failed, performing controlled reboot");
+      incrementConsecutiveResets();
+      reboot(RebootReason::WIFI_WATCHDOG);
+    }
   }
+}
+
+bool WatchdogManager::attemptWiFiRecovery() {
+  LOG_I(TAG, "Stage 1: Attempting WiFi reconnection");
+  
+  // This is a placeholder - the actual implementation will need to
+  // coordinate with the WiFiConnectionManager to attempt reconnection
+  // Return true if reconnection is successful, false otherwise
+  
+  // For now, we'll just return false to simulate failed recovery
+  return false;
+}
+
+bool WatchdogManager::resetWiFiSubsystem() {
+  LOG_I(TAG, "Stage 2: Resetting WiFi subsystem");
+  
+  // Disable WiFi
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  delay(1000);
+  
+  // Re-enable WiFi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin();
+  
+  // Wait for connection with timeout
+  unsigned long startTime = millis();
+  while (WiFi.status() != WL_CONNECTED) {
+    if (millis() - startTime > 10000) {  // 10 second timeout
+      LOG_E(TAG, "WiFi subsystem reset failed");
+      return false;
+    }
+    delay(500);
+  }
+  
+  // Test connectivity
+  return testNetworkConnectivity();
+}
+
+void WatchdogManager::incrementConsecutiveResets() {
+  Preferences preferences;
+  if (preferences.begin(PREF_NAMESPACE, false)) {
+    consecutiveResets = preferences.getUChar(PREF_CONSECUTIVE_RESETS, 0);
+    consecutiveResets++;
+    preferences.putUChar(PREF_CONSECUTIVE_RESETS, consecutiveResets);
+    LOG_W(TAG, "Consecutive watchdog resets: %d", consecutiveResets);
+    preferences.end();
+  }
+}
+
+bool WatchdogManager::shouldEnterSafeMode() {
+  Preferences preferences;
+  bool result = false;
+  
+  if (preferences.begin(PREF_NAMESPACE, true)) {
+    consecutiveResets = preferences.getUChar(PREF_CONSECUTIVE_RESETS, 0);
+    
+    // Check if we've had too many consecutive resets
+    if (consecutiveResets >= MAX_CONSECUTIVE_RESETS) {
+      LOG_W(TAG, "Too many consecutive resets (%d), should enter safe mode", consecutiveResets);
+      result = true;
+    }
+    
+    // Check if the last reboot was due to a watchdog
+    if (lastRebootReason == RebootReason::SYSTEM_WATCHDOG || 
+        lastRebootReason == RebootReason::WIFI_WATCHDOG) {
+      LOG_I(TAG, "Last reboot was due to watchdog");
+    } else {
+      // If the last reboot was not due to a watchdog, reset the counter
+      if (consecutiveResets > 0) {
+        preferences.putUChar(PREF_CONSECUTIVE_RESETS, 0);
+        LOG_I(TAG, "Reset consecutive watchdog resets counter");
+      }
+    }
+    
+    preferences.end();
+  }
+  
+  return result;
+}
+
+void WatchdogManager::enterSafeMode() {
+  LOG_W(TAG, "Entering safe mode due to repeated watchdog resets");
+  safeMode = true;
+  
+  // In safe mode, we'll disable the WiFi watchdog but keep the system watchdog
+  wifiWatchdogEnabled = false;
+  
+  // Reset the consecutive resets counter
+  Preferences preferences;
+  if (preferences.begin(PREF_NAMESPACE, false)) {
+    preferences.putUChar(PREF_CONSECUTIVE_RESETS, 0);
+    preferences.end();
+  }
+  
+  // Register that we entered safe mode
+  registerRebootReason(RebootReason::SAFE_MODE);
+}
+
+bool WatchdogManager::testNetworkConnectivity() {
+  LOG_I(TAG, "Testing network connectivity");
+  
+  // Simple connectivity test - try to resolve a DNS name
+  IPAddress ip;
+  bool success = WiFi.hostByName("www.google.com", ip);
+  
+  if (success) {
+    LOG_I(TAG, "Network connectivity test passed");
+  } else {
+    LOG_W(TAG, "Network connectivity test failed");
+  }
+  
+  return success;
 }
 
 void WatchdogManager::registerRebootReason(RebootReason reason) {

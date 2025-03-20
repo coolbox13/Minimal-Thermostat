@@ -7,14 +7,21 @@
 #include "logger.h"
 
 // Define reboot reasons for logging
+// Add these new enum values to RebootReason if not already present
 enum class RebootReason {
-  UNKNOWN,
-  MANUAL_RESTART,
-  SYSTEM_WATCHDOG,
-  WIFI_WATCHDOG,
-  SOFTWARE_RESET,
-  OTA_UPDATE
+  UNKNOWN = 0,
+  MANUAL = 1,
+  SYSTEM_WATCHDOG = 2,
+  WIFI_WATCHDOG = 3,
+  WIFI_RECONNECT_FAILED = 4,
+  OTA_UPDATE = 5,
+  WIFI_RESET = 6,  // New: for WiFi subsystem reset
+  SAFE_MODE = 7    // New: for safe mode boot
 };
+
+// Add these new constants for safe mode
+#define PREF_CONSECUTIVE_RESETS "consecutive_resets"
+#define MAX_CONSECUTIVE_RESETS 3  // Enter safe mode after 3 consecutive watchdog resets
 
 class WatchdogManager {
 public:
@@ -77,6 +84,20 @@ private:
   
   // Tag for logging
   static constexpr const char* TAG = "WATCHDOG";
+  
+  // New methods for recovery mechanisms
+  bool attemptWiFiRecovery();
+  bool resetWiFiSubsystem();
+  void incrementConsecutiveResets();
+  bool shouldEnterSafeMode();
+  void enterSafeMode();
+  bool testNetworkConnectivity();
+  bool isInSafeMode() const { return safeMode; }
+  
+private:
+  // New members for recovery tracking
+  uint8_t consecutiveResets;
+  bool safeMode;
 };
 
 #endif // WATCHDOG_MANAGER_H

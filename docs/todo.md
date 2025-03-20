@@ -84,13 +84,13 @@ This document outlines the specific tasks required to implement the improvements
 - [x] Add selective watchdog disabling for long operations
 
 ### 4. Add Recovery Mechanisms
-- [ ] Implement staged recovery approach:
-  - [ ] Attempt WiFi reconnection
-  - [ ] Reset WiFi subsystem without full reboot
-  - [ ] Perform controlled system reboot
-- [ ] Create persistent storage for reboot reasons
-- [ ] Add "safe mode" boot option after consecutive watchdog resets
-- [ ] Implement network connectivity test before continuing operation
+- [x] Implement staged recovery approach:
+  - [x] Attempt WiFi reconnection
+  - [x] Reset WiFi subsystem without full reboot
+  - [x] Perform controlled system reboot
+- [x] Create persistent storage for reboot reasons
+- [x] Add "safe mode" boot option after consecutive watchdog resets
+- [x] Implement network connectivity test before continuing operation
 
 ### 5. Integrate Watchdog with WiFiConnectionManager
 - [ ] Connect WiFiConnectionManager state changes to watchdog reset

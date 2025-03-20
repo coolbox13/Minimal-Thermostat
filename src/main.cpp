@@ -69,6 +69,7 @@ unsigned long lastPIDUpdate = 0;
 // Add global instance of WatchdogManager
 WatchdogManager watchdogManager;
 
+// In setup function
 void setup() {
     Serial.begin(115200);
     
@@ -169,6 +170,7 @@ void setup() {
     }
 }
 
+// In loop function
 void loop() {
     // Reset watchdog timer to prevent reboot
     // Update the watchdog manager at the beginning of each loop
