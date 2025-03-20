@@ -16,7 +16,7 @@
 #include "valve_control.h"
 #include "config_manager.h"
 #include "web_server.h"
-// Replace old WiFi setup function with WiFiConnectionManager
+#include "watchdog_manager.h"
 #include "wifi_connection.h"
 
 // Define tags for logging
@@ -66,6 +66,9 @@ AsyncWebServer webServer(80);
 // Timing for PID updates
 unsigned long lastPIDUpdate = 0;
 
+// Add global instance of WatchdogManager
+WatchdogManager watchdogManager;
+
 void setup() {
     Serial.begin(115200);
     
@@ -83,8 +86,14 @@ void setup() {
     }
     
     // Initialize watchdog timer (45 minutes)
-    esp_task_wdt_init(SYSTEM_WATCHDOG_TIMEOUT / 1000, true);
-    esp_task_wdt_add(NULL);
+    // Initialize the watchdog manager
+    if (!watchdogManager.begin()) {
+      LOG_E(TAG_MAIN, "Failed to initialize watchdog manager");
+    }
+    
+    // Remove the old watchdog initialization code:
+    // esp_task_wdt_init(SYSTEM_WATCHDOG_TIMEOUT / 1000, true);
+    // esp_task_wdt_add(NULL);
     LOG_I(TAG_MAIN, "Watchdog timer initialized (45 minutes)");
 
     // Setup custom log handler before initializing KNX
@@ -162,8 +171,9 @@ void setup() {
 
 void loop() {
     // Reset watchdog timer to prevent reboot
-    esp_task_wdt_reset();
-
+    // Update the watchdog manager at the beginning of each loop
+    watchdogManager.update();
+  
     // Replace old WiFi check with WiFiConnectionManager loop
     WiFiConnectionManager::getInstance().loop();
     

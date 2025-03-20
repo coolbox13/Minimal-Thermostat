@@ -89,6 +89,28 @@ bool WatchdogManager::checkWiFiWatchdog() {
   return false;
 }
 
+// Add new method to handle watchdog coordination
+void WatchdogManager::update() {
+  // Skip updates if watchdogs are paused
+  if (watchdogsPaused) {
+    // Check if pause duration has expired
+    if (millis() > watchdogPauseEndTime) {
+      resumeWatchdogs();
+    }
+    return;
+  }
+  
+  // Reset system watchdog (Level 2)
+  resetSystemWatchdog();
+  
+  // Check WiFi watchdog (Level 1)
+  if (checkWiFiWatchdog()) {
+    // WiFi watchdog triggered - this will be handled by the WiFiConnectionManager
+    // which should call registerRebootReason() if it decides to reboot
+    LOG_W(TAG, "WiFi watchdog triggered, notifying application");
+  }
+}
+
 void WatchdogManager::registerRebootReason(RebootReason reason) {
   saveRebootReason(reason);
 }

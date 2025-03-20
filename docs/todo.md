@@ -57,7 +57,7 @@ This document outlines the specific tasks required to implement the improvements
 ## Phase 2: Watchdog Timer Integration
 
 ### 1. Define Watchdog Configuration
-- [ ] Add clear watchdog timeout definitions to `config.h`:
+- [x] Add clear watchdog timeout definitions to `config.h`:
   ```cpp
   // Existing 45-minute system watchdog
   #define SYSTEM_WATCHDOG_TIMEOUT 2700000 
@@ -69,19 +69,19 @@ This document outlines the specific tasks required to implement the improvements
 - [ ] Update existing watchdog code to use these definitions consistently
 
 ### 2. Create WatchdogManager Class
-- [ ] Define new WatchdogManager class in `watchdog_manager.h`
-- [ ] Implement constructor and initialization
-- [ ] Create methods to:
-  - [ ] Initialize system watchdog
-  - [ ] Reset system watchdog
-  - [ ] Enable/disable WiFi watchdog
-  - [ ] Register reboot reasons
+- [x] Define new WatchdogManager class in `watchdog_manager.h`
+- [x] Implement constructor and initialization
+- [x] Create methods to:
+  - [x] Initialize system watchdog
+  - [x] Reset system watchdog
+  - [x] Enable/disable WiFi watchdog
+  - [x] Register reboot reasons
 
 ### 3. Implement Hierarchical Watchdog Strategy
-- [ ] Configure ESP task watchdog for system-level monitoring
-- [ ] Implement WiFi-specific watchdog in the WatchdogManager
-- [ ] Create coordination mechanism between the two watchdog levels
-- [ ] Add selective watchdog disabling for long operations
+- [x] Configure ESP task watchdog for system-level monitoring
+- [x] Implement WiFi-specific watchdog in the WatchdogManager
+- [x] Create coordination mechanism between the two watchdog levels
+- [x] Add selective watchdog disabling for long operations
 
 ### 4. Add Recovery Mechanisms
 - [ ] Implement staged recovery approach:

@@ -23,6 +23,9 @@ public:
   // Initialize the watchdog system
   bool begin();
   
+  // Update method to be called in the main loop
+  void update();
+  
   // Reset the system watchdog timer
   void resetSystemWatchdog();
   
