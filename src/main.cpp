@@ -168,6 +168,11 @@ void setup() {
     if (WiFi.status() == WL_CONNECTED) {
         lastConnectedTime = millis();
     }
+  
+  // Initialize WiFi connection manager
+  // Use the singleton instance instead of a direct variable
+  WiFiConnectionManager::getInstance().setWatchdogManager(&watchdogManager);
+  WiFiConnectionManager::getInstance().begin();
 }
 
 // In loop function

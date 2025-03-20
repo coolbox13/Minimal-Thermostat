@@ -1,4 +1,5 @@
 #include "wifi_connection.h"
+#include "watchdog_manager.h"
 #include "config_manager.h"
 #include <ArduinoJson.h>
 
@@ -15,6 +16,7 @@ WiFiConnectionManager& WiFiConnectionManager::getInstance() {
 }
 
 // Constructor
+
 WiFiConnectionManager::WiFiConnectionManager() 
     : _state(WiFiConnectionState::DISCONNECTED),
       _lastConnectedTime(0),
@@ -92,11 +94,22 @@ bool WiFiConnectionManager::begin(unsigned int configPortalTimeout, bool startPo
     }
 }
 
+void WiFiConnectionManager::setWatchdogManager(WatchdogManager* watchdogManager) {
+    this->watchdogManager = watchdogManager;
+    LOG_I(TAG, "Watchdog manager set");
+}
+
 bool WiFiConnectionManager::connect(unsigned long timeout) {
     LOG_I(TAG, "Connecting to WiFi...");
     
     // Mark that reconnection is in progress
     _reconnectionInProgress = true;
+    
+    // Pause watchdog during connection if available and enabled
+    if (watchdogManager && _disableWatchdogDuringOperations) {
+        LOG_D(TAG, "Pausing watchdog during WiFi connection");
+        watchdogManager->pauseWatchdogs(timeout + 5000); // Add 5 seconds buffer
+    }
     
     // Get stored credentials
     String storedSSID = _configManager->getWifiSSID();
@@ -139,6 +152,12 @@ bool WiFiConnectionManager::connect(unsigned long timeout) {
         setState(WiFiConnectionState::CONNECTED);
         _lastConnectedTime = millis();
         _reconnectionInProgress = false;
+        
+        // Reset WiFi watchdog on successful connection
+        if (watchdogManager) {
+            watchdogManager->resetWiFiWatchdog();
+        }
+        
         return true;
     } else {
         LOG_W(TAG, "Failed to connect to WiFi");
@@ -148,8 +167,15 @@ bool WiFiConnectionManager::connect(unsigned long timeout) {
     }
 }
 
+// Also modify the startConfigPortal method to disable watchdog
 bool WiFiConnectionManager::startConfigPortal(const char* apName, unsigned int timeout) {
     LOG_I(TAG, "Starting WiFi configuration portal");
+    
+    // Disable WiFi watchdog during config portal if available
+    if (watchdogManager && _disableWatchdogDuringOperations) {
+        LOG_D(TAG, "Disabling WiFi watchdog during config portal");
+        watchdogManager->enableWiFiWatchdog(false);
+    }
     
     // Update state
     setState(WiFiConnectionState::CONFIG_PORTAL_ACTIVE);
@@ -467,13 +493,14 @@ void WiFiConnectionManager::setupWiFiManagerCallbacks() {
     _wifiManager.setAPCallback([this](WiFiManager* wifiManager) {
         setState(WiFiConnectionState::CONFIG_PORTAL_ACTIVE);
         _configPortalStarted = true;
-        LOG_I(TAG, "WiFi configuration portal started");
-        LOG_I(TAG, "Connect to AP: %s to configure WiFi", WiFi.softAPSSID().c_str());
-        LOG_I(TAG, "AP IP address: %s", WiFi.softAPIP().toString().c_str());
         
-        // Trigger event directly instead of through setState to avoid duplicates
-        triggerEvent(WiFiEventType::CONFIG_PORTAL_STARTED, 
-                   "Connect to AP: " + WiFi.softAPSSID() + " at " + WiFi.softAPIP().toString());
+        // Disable WiFi watchdog during config portal
+        if (watchdogManager && _disableWatchdogDuringOperations) {
+            LOG_D(TAG, "Disabling WiFi watchdog during config portal (callback)");
+            watchdogManager->enableWiFiWatchdog(false);
+        }
+        
+        // ... rest of the callback ...
     });
     
     // Called when WiFiManager has saved a new configuration

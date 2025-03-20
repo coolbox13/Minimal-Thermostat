@@ -9,6 +9,7 @@
 #include "config.h"
 #include "logger.h"
 #include "wifi_connection_events.h"
+#include "config_manager.h"
 
 /**
  * @file wifi_connection.h
@@ -21,6 +22,7 @@
 
 // Forward declarations
 class ConfigManager;
+class WatchdogManager; 
 
 /**
  * @brief WiFi connection states
@@ -194,6 +196,12 @@ public:
     bool testInternetConnectivity();
 
     const char* getEventTypeName(WiFiEventType type); 
+    
+    /**
+     * @brief Set the watchdog manager for integration
+     * @param watchdogManager Pointer to the watchdog manager instance
+     */
+    void setWatchdogManager(WatchdogManager* watchdogManager);
 
 private:
     // Private constructor for singleton
@@ -238,6 +246,9 @@ private:
     
     // Constants
     static const char* TAG;  // For logging
+    
+    //watchdog manager reference
+    WatchdogManager* watchdogManager;
 };
 
 #endif // WIFI_CONNECTION_H
