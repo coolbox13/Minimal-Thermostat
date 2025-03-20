@@ -5,9 +5,9 @@ This document outlines the specific tasks required to implement the improvements
 ## Phase 1: WiFi Connection Management Refactoring
 
 ### 1. Create WiFiConnectionManager Class
-- [ ] Define new WiFiConnectionManager class in `wifi_connection.h`
-- [ ] Implement constructor and basic initialization
-- [ ] Create enum for connection states:
+- [x] Define new WiFiConnectionManager class in `wifi_connection.h`
+- [x] Implement constructor and basic initialization
+- [x] Create enum for connection states:
   ```cpp
   enum class WiFiConnectionState {
     DISCONNECTED,
@@ -17,34 +17,36 @@ This document outlines the specific tasks required to implement the improvements
     CONNECTION_LOST
   };
   ```
-- [ ] Add private member variables:
-  - [ ] Connection state tracking
-  - [ ] Last connected time
-  - [ ] Reconnection attempt counter
-  - [ ] Signal strength history
+- [x] Add private member variables:
+  - [x] Connection state tracking
+  - [x] Last connected time
+  - [x] Reconnection attempt counter
+  - [x] Signal strength history
 
 ### 2. Implement Core WiFi Functions
-- [ ] Move WiFi initialization from `setupWiFi()` to the manager
-- [ ] Implement `begin()` method that initializes WiFi with stored credentials
-- [ ] Create `connect()` method with timeout parameter
-- [ ] Implement `startConfigPortal()` method
-- [ ] Add `getStatus()` method to retrieve current connection status
-- [ ] Create `getSignalStrength()` method to get current RSSI
+- [x] Move WiFi initialization from `setupWiFi()` to the manager
+- [x] Implement `begin()` method that initializes WiFi with stored credentials
+- [x] Create `connect()` method with timeout parameter
+- [x] Implement `startConfigPortal()` method
+- [x] Add `getStatus()` method to retrieve current connection status
+- [x] Create `getSignalStrength()` method to get current RSSI
+- [x] Add internet connectivity testing functionality
+- [x] Implement detailed connection reporting
 
 ### 3. Add Callback System
-- [ ] Define callback function types for connection events
-- [ ] Add callback registration methods
-- [ ] Implement state change notifications
-- [ ] Set up WiFiManager callbacks:
-  - [ ] AP mode start callback
-  - [ ] Save configuration callback
-  - [ ] Connection success callback
+- [x] Define callback function types for connection events
+- [x] Add callback registration methods
+- [x] Implement state change notifications
+- [x] Set up WiFiManager callbacks:
+  - [x] AP mode start callback
+  - [x] Save configuration callback
+  - [x] Connection success callback
 
 ### 4. Improve Reconnection Strategy
-- [ ] Implement exponential backoff algorithm for reconnection attempts
-- [ ] Add maximum reconnection limit with config portal fallback
-- [ ] Create mechanism to disable WiFi watchdog during intentional operations
-- [ ] Add connectivity testing beyond WiFi connection state
+- [x] Implement exponential backoff algorithm for reconnection attempts
+- [x] Add maximum reconnection limit with config portal fallback
+- [x] Create mechanism to disable WiFi watchdog during intentional operations
+- [x] Add connectivity testing beyond WiFi connection state
 
 ### 5. Integrate with Main Application
 - [ ] Update `main.cpp` to use new WiFiConnectionManager

@@ -8,6 +8,7 @@
 #include <vector>
 #include "config.h"
 #include "logger.h"
+#include "wifi_connection_events.h"
 
 /**
  * @file wifi_connection.h
@@ -41,10 +42,8 @@ struct SignalStrengthRecord {
 };
 
 /**
- * @brief Callback function type for WiFi events
+ * @brief Class to manage WiFi connection and monitor status
  */
-typedef std::function<void(WiFiConnectionState newState, WiFiConnectionState oldState)> WiFiStateCallback;
-
 class WiFiConnectionManager {
 public:
     /**
@@ -106,8 +105,31 @@ public:
     unsigned long getTimeSinceLastConnection() const;
 
     /**
-     * @brief Register a callback for state changes
+     * @brief Register a callback for connection events
+     * @param callback Function to call when an event occurs
+     * @param filter Optional filter function to select specific events
+     * @return Subscription ID that can be used for unregistering
+     */
+    int registerEventCallback(WiFiEventCallback callback, WiFiEventFilter filter = acceptAllEvents);
+    
+    /**
+     * @brief Unregister an event callback
+     * @param subscriptionId ID returned by registerEventCallback
+     * @return True if the callback was found and removed
+     */
+    bool unregisterEventCallback(int subscriptionId);
+    
+    /**
+     * @brief Trigger a WiFi event notification
+     * @param eventType Type of event
+     * @param message Optional message to include with event
+     */
+    void triggerEvent(WiFiEventType eventType, const String& message = "");
+    
+    /**
+     * @brief Register a callback for state changes (legacy method)
      * @param callback Function to call on state change
+     * @deprecated Use registerEventCallback instead
      */
     void registerStateCallback(WiFiStateCallback callback);
 
@@ -135,11 +157,41 @@ public:
      * @return Reconnection attempts count
      */
     int getReconnectAttempts() const;
-
+    
     /**
      * @brief Reset reconnection attempt counter
      */
     void resetReconnectAttempts();
+    
+    /**
+     * @brief Set maximum number of reconnection attempts
+     * @param maxAttempts Maximum number of attempts (0 = unlimited)
+     */
+    void setMaxReconnectAttempts(int maxAttempts);
+    
+    /**
+     * @brief Get maximum number of reconnection attempts
+     * @return Maximum number of attempts (0 = unlimited)
+     */
+    int getMaxReconnectAttempts() const;
+    
+    /**
+     * @brief Set whether to disable the WiFi watchdog during intentional operations
+     * @param disable True to disable watchdog during operations
+     */
+    void setDisableWatchdogDuringOperations(bool disable);
+    
+    /**
+     * @brief Check if watchdog is disabled during operations
+     * @return True if watchdog is disabled during operations
+     */
+    bool isWatchdogDisabledDuringOperations() const;
+    
+    /**
+     * @brief Test actual internet connectivity (not just WiFi connection)
+     * @return True if internet appears to be working
+     */
+    bool testInternetConnectivity();
 
 private:
     // Private constructor for singleton
@@ -166,19 +218,20 @@ private:
     int _reconnectAttempts;
     bool _configPortalStarted;
     
+    // Reconnection settings
+    int _maxReconnectAttempts;
+    bool _disableWatchdogDuringOperations;
+    bool _reconnectionInProgress;
+    
     // Signal strength tracking
     static const uint8_t SIGNAL_HISTORY_SIZE = 10;
     SignalStrengthRecord _signalHistory[SIGNAL_HISTORY_SIZE];
     uint8_t _signalHistoryIndex;
     
     // Callbacks
-    std::vector<WiFiStateCallback> _stateCallbacks;
-    
-    /**
-     * @brief Test actual internet connectivity (not just WiFi connection)
-     * @return True if internet appears to be working
-     */
-    bool testInternetConnectivity();
+    std::vector<WiFiStateCallback> _stateCallbacks; // Legacy callbacks
+    std::vector<EventSubscription> _eventSubscriptions; // New event system
+    int _nextSubscriptionId;
     
     // Constants
     static const char* TAG;  // For logging
