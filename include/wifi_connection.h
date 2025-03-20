@@ -193,6 +193,8 @@ public:
      */
     bool testInternetConnectivity();
 
+    const char* getEventTypeName(WiFiEventType type); 
+
 private:
     // Private constructor for singleton
     WiFiConnectionManager();
@@ -205,7 +207,7 @@ private:
     void setState(WiFiConnectionState newState);
     void setupWiFiManagerCallbacks();
     void logWiFiStatus(const char* message);
-    const char* getEventTypeName(WiFiEventType type);
+    //const char* getEventTypeName(WiFiEventType type); // Add this line
     
     // Member variables
     static WiFiConnectionManager* _instance;

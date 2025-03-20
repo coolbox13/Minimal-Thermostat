@@ -736,3 +736,18 @@ void WiFiConnectionManager::loop() {
         }
     }
 }
+
+// Add this function implementation somewhere in the file, perhaps near other utility functions
+
+const char* WiFiConnectionManager::getEventTypeName(WiFiEventType type) {
+    switch (type) {
+        case WiFiEventType::CONNECTED: return "CONNECTED";
+        case WiFiEventType::DISCONNECTED: return "DISCONNECTED";
+        case WiFiEventType::CONNECTING: return "CONNECTING";
+        case WiFiEventType::CONNECTION_LOST: return "CONNECTION_LOST";
+        case WiFiEventType::CONNECTION_FAILED: return "CONNECTION_FAILED";
+        case WiFiEventType::CONFIG_PORTAL_STARTED: return "CONFIG_PORTAL_STARTED";
+        case WiFiEventType::CONFIG_PORTAL_STOPPED: return "CONFIG_PORTAL_STOPPED";
+        default: return "UNKNOWN";
+    }
+}

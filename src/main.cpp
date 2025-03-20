@@ -16,6 +16,8 @@
 #include "valve_control.h"
 #include "config_manager.h"
 #include "web_server.h"
+// Replace old WiFi setup function with WiFiConnectionManager
+#include "wifi_connection.h"
 
 // Define tags for logging
 static const char* TAG_MAIN = "MAIN";
@@ -91,8 +93,29 @@ void setup() {
         LOG_E(TAG_SENSOR, "Failed to initialize BME280 sensor!");
     }
     
-    // Setup WiFi
-    setupWiFi();
+    // Replace old WiFi setup with WiFiConnectionManager
+    LOG_I(TAG_WIFI, "Initializing WiFi connection manager...");
+    WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+    
+    // Register for WiFi events - Fix the capture issue by adding wifiManager to the capture list
+    wifiManager.registerEventCallback([&wifiManager](const WiFiConnectionEvent& event) {
+        LOG_I(TAG_WIFI, "WiFi event: %s - %s", 
+              wifiManager.getEventTypeName(event.type), 
+              event.message.c_str());
+              
+        // If we're connected, log the network details
+        if (event.type == WiFiEventType::CONNECTED) {
+            LOG_I(TAG_WIFI, "Connected to: %s", event.ssid.c_str());
+            LOG_I(TAG_WIFI, "IP address: %s", event.networkInfo.ip.toString().c_str());
+        }
+    });
+    
+    // Initialize WiFi with appropriate settings
+    bool wifiConnected = wifiManager.begin(180, true); // 3 minute timeout, start portal on fail
+    
+    if (!wifiConnected) {
+        LOG_W(TAG_WIFI, "WiFi connection failed or timed out during setup");
+    }
     
     // Initialize WebServerManager singleton
     WebServerManager* webServerManager = WebServerManager::getInstance();
@@ -139,11 +162,8 @@ void loop() {
     // Reset watchdog timer to prevent reboot
     esp_task_wdt_reset();
 
-    // Check WiFi connection status periodically
-    if (millis() - lastWifiCheck > WIFI_CHECK_INTERVAL) {
-        checkWiFiConnection();
-        lastWifiCheck = millis();
-    }
+    // Replace old WiFi check with WiFiConnectionManager loop
+    WiFiConnectionManager::getInstance().loop();
     
     // Handle KNX communications
     knxManager.loop();
@@ -168,130 +188,30 @@ void loop() {
         lastPIDUpdate = currentTime;
     }
     
-    // Process WiFiManager in non-blocking mode
-    wifiManager.process();
+    // Remove old WiFiManager process call as it's now handled by WiFiConnectionManager
+    // wifiManager.process();
     
-    // WiFi watchdog - reboot if disconnected for too long
-    if (WiFi.status() != WL_CONNECTED && !configPortalActive) {
-        if (millis() - lastConnectedTime > WIFI_WATCHDOG_TIMEOUT) {
-            LOG_E(TAG_WIFI, "WiFi disconnected for 30 minutes. Rebooting device...");
-            delay(1000);
-            ESP.restart();
-        }
-    }
-}
-
-void setupWiFi() {
-    LOG_I(TAG_WIFI, "Setting up WiFi...");
+    // Remove old WiFi watchdog code as it's now handled by WiFiConnectionManager
+    // if (WiFi.status() != WL_CONNECTED && !configPortalActive) {
+    //     if (millis() - lastConnectedTime > WIFI_WATCHDOG_TIMEOUT) {
+    //         LOG_E(TAG_WIFI, "WiFi disconnected for 30 minutes. Rebooting device...");
+    //         delay(1000);
+    //         ESP.restart();
+    //     }
+    // }
     
-    // Get credentials from config if available
-    String storedSSID = configManager->getWifiSSID();
-    String storedPass = configManager->getWifiPassword();
-    
-    // Only use stored credentials if both exist
-    if (storedSSID.length() > 0 && storedPass.length() > 0) {
-        LOG_I(TAG_WIFI, "Using stored WiFi credentials for SSID: %s", storedSSID.c_str());
-        WiFi.begin(storedSSID.c_str(), storedPass.c_str());
+    // Add periodic internet connectivity test
+    static unsigned long lastConnectivityCheck = 0;
+    if (millis() - lastConnectivityCheck > 300000) { // Every 5 minutes
+        lastConnectivityCheck = millis();
         
-        // Wait up to 10 seconds for connection
-        int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-            delay(500);
-            Serial.print(".");
-            attempts++;
-        }
-        Serial.println();
-        
-        if (WiFi.status() == WL_CONNECTED) {
-            LOG_I(TAG_WIFI, "Connected to WiFi using stored credentials");
-            LOG_I(TAG_WIFI, "IP address: %s", WiFi.localIP().toString().c_str());
-            return;
-        }
-        
-        LOG_W(TAG_WIFI, "Failed to connect with stored credentials, using WiFiManager");
-    }
-    
-    // Configure WiFiManager
-    wifiManager.setConfigPortalTimeout(180);
-    wifiManager.setConnectRetries(10); // Set to 10 reconnection attempts
-    
-    // Set callback to store credentials
-    wifiManager.setSaveConfigCallback([]() {
-        // Store WiFi credentials
-        configManager->setWifiSSID(WiFi.SSID());
-        configManager->setWifiPassword(WiFi.psk());
-        LOG_I(TAG_WIFI, "WiFi credentials saved");
-    });
-    
-    if (!wifiManager.autoConnect("ESP32-Thermostat-AP")) {
-        LOG_E(TAG_WIFI, "Failed to connect and hit timeout");
-        ESP.restart();
-        delay(1000);
-    }
-    
-    LOG_I(TAG_WIFI, "WiFi connected");
-    LOG_I(TAG_WIFI, "IP address: %s", WiFi.localIP().toString().c_str());
-    lastConnectedTime = millis(); // Update last connected time
-}
-
-void checkWiFiConnection() {
-    if (WiFi.status() == WL_CONNECTED) {
-        // Update last connected time when WiFi is connected
-        lastConnectedTime = millis();
-        reconnectAttempts = 0;
-    } else {
-        LOG_W(TAG_WIFI, "WiFi connection lost. Attempting to reconnect...");
-        
-        // Increment reconnect attempts
-        reconnectAttempts++;
-        
-        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            // Try to reconnect using WiFi.begin() with saved credentials
-            WiFi.disconnect();
-            delay(1000);
-            
-            // Get credentials from config
-            String storedSSID = configManager->getWifiSSID();
-            String storedPass = configManager->getWifiPassword();
-            
-            if (storedSSID.length() > 0 && storedPass.length() > 0) {
-                WiFi.begin(storedSSID.c_str(), storedPass.c_str());
+        WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+        if (wifiManager.getState() == WiFiConnectionState::CONNECTED) {
+            if (wifiManager.testInternetConnectivity()) {
+                LOG_D(TAG_WIFI, "Internet connectivity test passed");
             } else {
-                WiFi.begin();
+                LOG_W(TAG_WIFI, "Internet connectivity test failed despite WiFi connection");
             }
-            
-            // Wait up to 10 seconds for connection
-            unsigned long startAttemptTime = millis();
-            while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
-                delay(500);
-                Serial.print(".");
-            }
-            Serial.println();
-            
-            if (WiFi.status() == WL_CONNECTED) {
-                LOG_I(TAG_WIFI, "Reconnected to WiFi");
-                LOG_I(TAG_WIFI, "IP address: %s", WiFi.localIP().toString().c_str());
-                lastConnectedTime = millis(); // Update last connected time
-            } else {
-                LOG_W(TAG_WIFI, "Reconnection attempt %d of %d failed", 
-                      reconnectAttempts, MAX_RECONNECT_ATTEMPTS);
-            }
-        } else {
-            // After several failed attempts, start config portal
-            LOG_W(TAG_WIFI, "Multiple reconnection attempts failed. Starting config portal...");
-            configPortalActive = true;
-            wifiManager.startConfigPortal("ESP32-Thermostat-Recovery");
-        }
-        
-        // Print time since last connection
-        unsigned long disconnectedTime = (millis() - lastConnectedTime) / 1000;
-        LOG_D(TAG_WIFI, "Time since last connection: %lu seconds", disconnectedTime);
-        
-        // Print time remaining before watchdog reboot
-        if (disconnectedTime > 0) {
-            unsigned long timeToReboot = (WIFI_WATCHDOG_TIMEOUT / 1000) - disconnectedTime;
-            LOG_D(TAG_WIFI, "Device will reboot in %lu seconds if WiFi remains disconnected", 
-                  timeToReboot);
         }
     }
 }
