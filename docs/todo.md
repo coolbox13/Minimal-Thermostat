@@ -49,10 +49,10 @@ This document outlines the specific tasks required to implement the improvements
 - [x] Add connectivity testing beyond WiFi connection state
 
 ### 5. Integrate with Main Application
-- [ ] Update `main.cpp` to use new WiFiConnectionManager
-- [ ] Replace `setupWiFi()` and `checkWiFiConnection()` with manager calls
-- [ ] Ensure proper initialization sequence with other components
-- [ ] Validate state transitions behave as expected
+- [x] Update `main.cpp` to use new WiFiConnectionManager
+- [x] Replace `setupWiFi()` and `checkWiFiConnection()` with manager calls
+- [x] Ensure proper initialization sequence with other components
+- [x] Validate state transitions behave as expected 
 
 ## Phase 2: Watchdog Timer Integration
 
