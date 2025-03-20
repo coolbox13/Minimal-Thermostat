@@ -205,6 +205,7 @@ private:
     void setState(WiFiConnectionState newState);
     void setupWiFiManagerCallbacks();
     void logWiFiStatus(const char* message);
+    const char* getEventTypeName(WiFiEventType type);
     
     // Member variables
     static WiFiConnectionManager* _instance;

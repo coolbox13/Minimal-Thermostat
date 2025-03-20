@@ -241,22 +241,19 @@ bool WiFiConnectionManager::unregisterEventCallback(int subscriptionId) {
     return false;
 }
 
-void WiFiConnectionManager::triggerEvent(WiFiEventType eventType, const String& message) {
-    if (_eventSubscriptions.empty()) {
-        return; // No subscribers, skip event creation
-    }
-    
-    // Create the event
+void WiFiConnectionManager::triggerEvent(WiFiEventType type, const String& message) {
+    // Create event with proper initialization
     WiFiConnectionEvent event;
-    event.type = eventType;
-    event.oldState = _state; // Current state becomes "old" for the event
+    event.type = type;
+    event.oldState = _state;
+    event.newState = _state;
     event.message = message;
     event.timestamp = millis();
     
-    // Set common fields
+    // Set WiFi-specific fields conditionally based on connection status
     if (WiFi.status() == WL_CONNECTED) {
         event.ssid = WiFi.SSID();
-        event.signalStrength = WiFi.RSSI();
+        event.signalStrength = getSignalStrength();
         event.signalQuality = getSignalQuality();
         
         // Network info
@@ -269,56 +266,29 @@ void WiFiConnectionManager::triggerEvent(WiFiEventType eventType, const String& 
         event.ssid = "";
         event.signalStrength = 0;
         event.signalQuality = 0;
+        
+        // Initialize network info with empty values
+        event.networkInfo.ip = IPAddress(0, 0, 0, 0);
+        event.networkInfo.gateway = IPAddress(0, 0, 0, 0);
+        event.networkInfo.subnet = IPAddress(0, 0, 0, 0);
+        event.networkInfo.dns1 = IPAddress(0, 0, 0, 0);
+        event.networkInfo.dns2 = IPAddress(0, 0, 0, 0);
     }
     
-    // Event-specific information
-    if (eventType == WiFiEventType::CONNECTING) {
+    // Special case for connecting event
+    if (type == WiFiEventType::CONNECTING) {
         event.connecting.reconnectAttempt = _reconnectAttempts;
     }
     
-    // Set new state based on event type
-    switch (eventType) {
-        case WiFiEventType::CONNECTING:
-            event.newState = WiFiConnectionState::CONNECTING;
-            break;
-        case WiFiEventType::CONNECTED:
-            event.newState = WiFiConnectionState::CONNECTED;
-            break;
-        case WiFiEventType::CONNECTION_FAILED:
-        case WiFiEventType::DISCONNECTED:
-            event.newState = WiFiConnectionState::DISCONNECTED;
-            break;
-        case WiFiEventType::CONNECTION_LOST:
-            event.newState = WiFiConnectionState::CONNECTION_LOST;
-            break;
-        case WiFiEventType::CONFIG_PORTAL_STARTED:
-            event.newState = WiFiConnectionState::CONFIG_PORTAL_ACTIVE;
-            break;
-        case WiFiEventType::CONFIG_PORTAL_STOPPED:
-            // State depends on whether connection was successful
-            event.newState = WiFi.status() == WL_CONNECTED ? 
-                WiFiConnectionState::CONNECTED : WiFiConnectionState::DISCONNECTED;
-            break;
-        default:
-            event.newState = _state; // No state change for other events
-            break;
-    }
-    
-    // Log the event
-    LOG_D(TAG, "WiFi event: %d, Message: %s", static_cast<int>(eventType), message.c_str());
-    
-    // Notify subscribers
+    // Notify all subscribers whose filter accepts this event
     for (const auto& subscription : _eventSubscriptions) {
-        // Apply filter
         if (subscription.filter(event)) {
             subscription.callback(event);
         }
     }
     
-    // Update actual state if needed
-    if (event.newState != _state) {
-        setState(event.newState);
-    }
+    // Log the event
+    LOG_D(TAG, "WiFi event: %s - %s", getEventTypeName(type), message.c_str());
 }
 
 void WiFiConnectionManager::registerStateCallback(WiFiStateCallback callback) {
