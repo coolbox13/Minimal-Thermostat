@@ -42,23 +42,47 @@ void HomeAssistant::registerEntities() {
     // Create device info JSON string that will be reused for all entities
     String deviceInfo = "{\"identifiers\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"model\":\"ESP32-KNX-Thermostat\",\"manufacturer\":\"DIY\",\"sw_version\":\"1.0\"}";
     
-    // Temperature sensor (still needed for raw temperature data)
+    // Temperature sensor with enhanced attributes
     String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
-    String tempPayload = "{\"name\":\"Temperature\",\"unique_id\":\"" + String(_nodeId) + "_temperature\",\"device_class\":\"temperature\",\"state_topic\":\"esp32_thermostat/temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{ value }}\",\"availability_topic\":\"esp32_thermostat/status\",\"device\":" + deviceInfo + ",\"timestamp\":\"" + timestamp + "\"}";
+    String tempPayload = "{";
+    tempPayload += "\"name\":\"Temperature\",";
+    tempPayload += "\"unique_id\":\"" + String(_nodeId) + "_temperature\",";
+    tempPayload += "\"device_class\":\"temperature\",";
+    tempPayload += "\"state_topic\":\"esp32_thermostat/temperature\",";
+    tempPayload += "\"unit_of_measurement\":\"°C\",";
+    tempPayload += "\"value_template\":\"{{ value }}\",";
+    tempPayload += "\"availability_topic\":\"esp32_thermostat/status\",";
+    tempPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
+    tempPayload += "\"suggested_display_precision\":1,"; // Precision for display
+    tempPayload += "\"device\":" + deviceInfo + ",";
+    tempPayload += "\"timestamp\":\"" + timestamp + "\"";
+    tempPayload += "}";
     
     bool tempSuccess = _mqttClient.publish(tempTopic.c_str(), tempPayload.c_str(), true);
     Serial.print("Published temperature config: ");
     Serial.println(tempSuccess ? "Success" : "FAILED");
     
-    // Humidity sensor
+    // Humidity sensor with enhanced attributes
     String humTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/humidity/config";
-    String humPayload = "{\"name\":\"Humidity\",\"unique_id\":\"" + String(_nodeId) + "_humidity\",\"device_class\":\"humidity\",\"state_topic\":\"esp32_thermostat/humidity\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{ value }}\",\"availability_topic\":\"esp32_thermostat/status\",\"device\":" + deviceInfo + ",\"timestamp\":\"" + timestamp + "\"}";
+    String humPayload = "{";
+    humPayload += "\"name\":\"Humidity\",";
+    humPayload += "\"unique_id\":\"" + String(_nodeId) + "_humidity\",";
+    humPayload += "\"device_class\":\"humidity\",";
+    humPayload += "\"state_topic\":\"esp32_thermostat/humidity\",";
+    humPayload += "\"unit_of_measurement\":\"%\",";
+    humPayload += "\"value_template\":\"{{ value }}\",";
+    humPayload += "\"availability_topic\":\"esp32_thermostat/status\",";
+    humPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
+    humPayload += "\"suggested_display_precision\":1,"; // Precision for display
+    humPayload += "\"device\":" + deviceInfo + ",";
+    humPayload += "\"timestamp\":\"" + timestamp + "\"";
+    humPayload += "}";
     
     bool humSuccess = _mqttClient.publish(humTopic.c_str(), humPayload.c_str(), true);
     Serial.print("Published humidity config: ");
     Serial.println(humSuccess ? "Success" : "FAILED");
     
-    // Pressure sensor
+    // Pressure sensor with enhanced attributes
     String presTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pressure/config";
     String presPayload = "{";
     presPayload += "\"name\":\"Pressure\",";
@@ -68,6 +92,8 @@ void HomeAssistant::registerEntities() {
     presPayload += "\"unit_of_measurement\":\"hPa\",";
     presPayload += "\"value_template\":\"{{ value }}\",";
     presPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    presPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
+    presPayload += "\"suggested_display_precision\":1,"; // Precision for display
     presPayload += "\"device\":" + deviceInfo + ",";
     presPayload += "\"timestamp\":\"" + timestamp + "\"";
     presPayload += "}";
@@ -76,7 +102,7 @@ void HomeAssistant::registerEntities() {
     Serial.print("Published pressure config: ");
     Serial.println(presSuccess ? "Success" : "FAILED");
     
-    // Valve position sensor - for raw data
+    // Valve position sensor with enhanced attributes
     String valvePosTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/valve_position/config";
     String valuePosPayload = "{";
     valuePosPayload += "\"name\":\"Valve Position\",";
@@ -85,6 +111,8 @@ void HomeAssistant::registerEntities() {
     valuePosPayload += "\"unit_of_measurement\":\"%\",";
     valuePosPayload += "\"value_template\":\"{{ value }}\",";
     valuePosPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    valuePosPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
+    valuePosPayload += "\"icon\":\"mdi:valve\",";           // Add an appropriate icon
     valuePosPayload += "\"device\":" + deviceInfo + ",";
     valuePosPayload += "\"timestamp\":\"" + timestamp + "\"";
     valuePosPayload += "}";
