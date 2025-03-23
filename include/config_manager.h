@@ -74,6 +74,50 @@ private:
     static constexpr uint8_t DEFAULT_KNX_AREA = 1;
     static constexpr uint8_t DEFAULT_KNX_LINE = 1;
     static constexpr uint8_t DEFAULT_KNX_MEMBER = 159;
+
+    
+    public:
+        /**
+         * @brief Set the last reboot reason
+         * @param reason Reason for the last reboot
+         */
+        void setLastRebootReason(const String& reason);
+        
+        /**
+         * @brief Get the last reboot reason
+         * @return Last reboot reason
+         */
+        String getLastRebootReason();
+        
+        /**
+         * @brief Set the reboot count
+         * @param count Number of reboots
+         */
+        void setRebootCount(int count);
+        
+        /**
+         * @brief Get the reboot count
+         * @return Number of reboots
+         */
+        int getRebootCount();
+        
+        /**
+         * @brief Set the consecutive watchdog reboot count
+         * @param count Number of consecutive watchdog reboots
+         */
+        void setConsecutiveWatchdogReboots(int count);
+        
+        /**
+         * @brief Get the consecutive watchdog reboot count
+         * @return Number of consecutive watchdog reboots
+         */
+        int getConsecutiveWatchdogReboots();
+        
+        /**
+         * @brief Set the timestamp of the last successful WiFi connection
+         * @param timestamp Timestamp in milliseconds
+         */
+        void setLastConnectedTime(unsigned long timestamp);
 };
 
 #endif // CONFIG_MANAGER_H

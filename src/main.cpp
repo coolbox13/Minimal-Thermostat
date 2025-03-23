@@ -19,9 +19,8 @@
 #include "watchdog_manager.h"
 #include "wifi_connection.h"
 
-// Define tags for logging
+
 static const char* TAG_MAIN = "MAIN";
-static const char* TAG_WIFI = "WIFI";
 static const char* TAG_SENSOR = "SENSOR";
 static const char* TAG_PID = "PID";
 

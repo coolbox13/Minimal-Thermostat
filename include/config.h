@@ -59,7 +59,15 @@
 
 // Watchdog timer configurations
 #define SYSTEM_WATCHDOG_TIMEOUT 2700000  // 45-minute system watchdog (in ms)
+// Change this line:
 #define WIFI_WATCHDOG_TIMEOUT 1800000    // 30-minute WiFi watchdog (in ms)
+
+// To something like:
+#define WIFI_WATCHDOG_TIMEOUT_MS 1800000    // 30-minute WiFi watchdog (in ms)
 #define MAX_RECONNECT_ATTEMPTS 10        // Maximum reconnection attempts before reboot
+
+// Add these definitions
+#define PREF_CONSECUTIVE_RESETS "cons_resets"
+#define MAX_CONSECUTIVE_RESETS 3  // Maximum consecutive resets before entering safe mode
 
 #endif // CONFIG_H

@@ -423,68 +423,86 @@ String WiFiConnectionManager::getConnectionDetailsJson(bool includeHistory) {
 }
 
 void WiFiConnectionManager::setState(WiFiConnectionState newState) {
-    if (newState == _state) {
-        return;  // No change
+    if (_state != newState) {
+        // Store old state for callback
+        WiFiConnectionState oldState = _state;
+        
+        // Get state names for better logging
+        const char* oldStateName = getStateName(oldState);
+        const char* newStateName = getStateName(newState);
+        
+        LOG_I(TAG, "WiFi state changing: %s -> %s", oldStateName, newStateName);
+        
+        // Additional detailed logging based on specific transitions
+        if (newState == WiFiConnectionState::CONNECTED) {
+            // Log connection details
+            String ssid = WiFi.SSID();
+            String ip = WiFi.localIP().toString();
+            int rssi = WiFi.RSSI();
+            
+            LOG_I(TAG, "Connected to: %s (IP: %s, RSSI: %d dBm, Quality: %d%%)", 
+                  ssid.c_str(), ip.c_str(), rssi, getSignalQuality());
+            
+            // Log time since last connection attempt
+            if (_state == WiFiConnectionState::CONNECTING) {
+                unsigned long connectionTime = millis() - _lastStateChangeTime;
+                LOG_I(TAG, "Connection established in %lu ms after %d attempts", 
+                      connectionTime, _reconnectAttempts);
+            }
+            
+            // Reset reconnect attempts on successful connection
+            _reconnectAttempts = 0;
+            _lastConnectedTime = millis();
+            
+            // Store connection timestamp if method exists
+            // Comment out or implement this method in ConfigManager
+            // _configManager->setLastConnectedTime(millis());
+        }
+        else if (newState == WiFiConnectionState::CONNECTING) {
+            LOG_I(TAG, "Attempting to connect to WiFi (Attempt %d of %d)", 
+                  _reconnectAttempts + 1, 
+                  _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
+        }
+        else if (newState == WiFiConnectionState::CONNECTION_LOST) {
+            unsigned long connectedDuration = millis() - _lastConnectedTime;
+            LOG_W(TAG, "WiFi connection lost after %lu ms of connectivity", connectedDuration);
+        }
+        
+        _state = newState;
+        _lastStateChangeTime = millis();
+        
+        // Notify callbacks about state change - fix by passing both old and new state
+        for (auto callback : _stateCallbacks) {
+            callback(oldState, newState);
+        }
+        
+        // Trigger event for new event system
+        WiFiEventType eventType;
+        if (_state == WiFiConnectionState::CONNECTED) {
+            eventType = WiFiEventType::CONNECTED;
+        } else if (_state == WiFiConnectionState::DISCONNECTED) {
+            eventType = WiFiEventType::DISCONNECTED;
+        } else if (_state == WiFiConnectionState::CONNECTION_LOST) {
+            eventType = WiFiEventType::CONNECTION_LOST;
+        } else {
+            // Use CONNECTING as a fallback
+            eventType = WiFiEventType::CONNECTING;
+        }
+        
+        String message = String("State changed to: ") + newStateName;
+        triggerEvent(eventType, message);
     }
-    
-    WiFiConnectionState oldState = _state;
-    _state = newState;
-    _lastStateChangeTime = millis();
-    
-    // Log the state change
-    const char* stateNames[] = {
-        "DISCONNECTED",
-        "CONNECTING",
-        "CONNECTED",
-        "CONFIG_PORTAL_ACTIVE",
-        "CONNECTION_LOST"
-    };
-    
-    LOG_I(TAG, "WiFi state changed: %s -> %s", 
-          stateNames[static_cast<int>(oldState)], 
-          stateNames[static_cast<int>(newState)]);
-    
-    // Determine event type based on state transition
-    WiFiEventType eventType;
-    String eventMessage = "State changed";
-    
-    if (oldState == WiFiConnectionState::CONNECTING && newState == WiFiConnectionState::CONNECTED) {
-        eventType = WiFiEventType::CONNECTED;
-        eventMessage = "Successfully connected to WiFi";
-    } 
-    else if (oldState == WiFiConnectionState::CONNECTING && 
-             (newState == WiFiConnectionState::DISCONNECTED || newState == WiFiConnectionState::CONNECTION_LOST)) {
-        eventType = WiFiEventType::CONNECTION_FAILED;
-        eventMessage = "Failed to connect to WiFi";
-    }
-    else if (oldState == WiFiConnectionState::CONNECTED && newState == WiFiConnectionState::CONNECTION_LOST) {
-        eventType = WiFiEventType::CONNECTION_LOST;
-        eventMessage = "WiFi connection lost";
-    }
-    else if (oldState != WiFiConnectionState::CONFIG_PORTAL_ACTIVE && newState == WiFiConnectionState::CONFIG_PORTAL_ACTIVE) {
-        eventType = WiFiEventType::CONFIG_PORTAL_STARTED;
-        eventMessage = "WiFi configuration portal started";
-    }
-    else if (oldState == WiFiConnectionState::CONFIG_PORTAL_ACTIVE && newState != WiFiConnectionState::CONFIG_PORTAL_ACTIVE) {
-        eventType = WiFiEventType::CONFIG_PORTAL_STOPPED;
-        eventMessage = "WiFi configuration portal closed";
-    }
-    else if (newState == WiFiConnectionState::CONNECTING) {
-        eventType = WiFiEventType::CONNECTING;
-        eventMessage = String("Connecting to WiFi (attempt ") + _reconnectAttempts + ")";
-    }
-    else {
-        // For other transitions, use a generic event type
-        eventType = WiFiEventType::DISCONNECTED;
-        eventMessage = "WiFi disconnected";
-    }
-    
-    // Generate the event with proper message
-    triggerEvent(eventType, eventMessage);
-    
-    // Also notify legacy callbacks directly
-    for (auto callback : _stateCallbacks) {
-        callback(newState, oldState);
+}
+
+// Add this helper method to get state names
+const char* WiFiConnectionManager::getStateName(WiFiConnectionState state) {
+    switch (state) {
+        case WiFiConnectionState::DISCONNECTED: return "DISCONNECTED";
+        case WiFiConnectionState::CONNECTING: return "CONNECTING";
+        case WiFiConnectionState::CONNECTED: return "CONNECTED";
+        case WiFiConnectionState::CONFIG_PORTAL_ACTIVE: return "CONFIG_PORTAL_ACTIVE";
+        case WiFiConnectionState::CONNECTION_LOST: return "CONNECTION_LOST";
+        default: return "UNKNOWN";
     }
 }
 
@@ -507,13 +525,7 @@ void WiFiConnectionManager::setupWiFiManagerCallbacks() {
     _wifiManager.setSaveConfigCallback([this]() {
         LOG_I(TAG, "New WiFi configuration saved");
         
-        // Trigger event
-        triggerEvent(WiFiEventType::CREDENTIALS_SAVED, 
-                   "New WiFi credentials saved for SSID: " + WiFi.SSID());
-        
-        // This will be called before the connection is actually established,
-        // so we don't update the state yet. The state will be updated in
-        // loop() once the connection is established.
+        triggerEvent(WiFiEventType::CONFIG_PORTAL_STOPPED, "WiFi credentials saved");
         
         // We do want to save the credentials to our config manager
         _configManager->setWifiSSID(WiFi.SSID());
@@ -528,29 +540,29 @@ void WiFiConnectionManager::setupWiFiManagerCallbacks() {
 }
 
 bool WiFiConnectionManager::testInternetConnectivity() {
-    // Implement a simple DNS lookup to test internet connectivity
-    IPAddress result;
-    
-    LOG_D(TAG, "Testing internet connectivity with DNS lookup...");
-    
-    // Try 3 common domains
-    if (WiFi.hostByName("google.com", result)) {
-        LOG_D(TAG, "DNS lookup successful: google.com -> %s", result.toString().c_str());
-        return true;
+    if (_state != WiFiConnectionState::CONNECTED) {
+        LOG_D(TAG_CONNECTIVITY, "Internet connectivity test skipped - WiFi not connected");
+        return false;
     }
     
-    if (WiFi.hostByName("cloudflare.com", result)) {
-        LOG_D(TAG, "DNS lookup successful: cloudflare.com -> %s", result.toString().c_str());
-        return true;
+    LOG_D(TAG_CONNECTIVITY, "Testing internet connectivity...");
+    
+    // Try DNS resolution first (faster than HTTP)
+    IPAddress resolvedIP;
+    bool dnsSuccess = WiFi.hostByName("www.google.com", resolvedIP);
+    
+    if (!dnsSuccess) {
+        LOG_W(TAG_CONNECTIVITY, "DNS resolution failed - internet connectivity issues detected");
+        return false;
     }
     
-    if (WiFi.hostByName("amazon.com", result)) {
-        LOG_D(TAG, "DNS lookup successful: amazon.com -> %s", result.toString().c_str());
-        return true;
-    }
+    LOG_D(TAG_CONNECTIVITY, "DNS resolution successful: %s", resolvedIP.toString().c_str());
     
-    LOG_W(TAG, "DNS lookup failed for all test domains");
-    return false;
+    // For more thorough testing, you could add an HTTP request here
+    // But DNS is usually sufficient and much faster
+    
+    LOG_I(TAG_CONNECTIVITY, "Internet connectivity test passed");
+    return true;
 }
 
 void WiFiConnectionManager::logWiFiStatus(const char* message) {
@@ -647,19 +659,41 @@ void WiFiConnectionManager::loop() {
             }
             
             lastSignalQuality = currentQuality;
+        }
+        
+        // Periodically log signal strength (every 5 minutes)
+        static unsigned long lastSignalLog = 0;
+        if (now - lastSignalLog > 300000) { // 5 minutes
+            lastSignalLog = now;
             
-            // Periodically check internet connectivity
-            static unsigned long lastConnectivityCheck = 0;
-            if (now - lastConnectivityCheck > 300000) { // Every 5 minutes
-                lastConnectivityCheck = now;
-                
-                if (testInternetConnectivity()) {
-                    LOG_D(TAG, "Internet connectivity test passed");
-                } else {
-                    LOG_W(TAG, "Internet connectivity test failed despite WiFi connection");
-                    triggerEvent(WiFiEventType::INTERNET_LOST, 
-                               "Internet connectivity lost while WiFi connected");
-                }
+            int rssi = getSignalStrength();
+            int quality = getSignalQuality();
+            
+            // Store in signal history
+            _signalHistory[_signalHistoryIndex].timestamp = now;
+            _signalHistory[_signalHistoryIndex].rssi = rssi;
+            _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
+            
+            // Log current signal strength
+            LOG_D(TAG, "WiFi signal strength: %d dBm (Quality: %d%%)", rssi, quality);
+            
+            // Log warning if signal is weak
+            if (quality < 30) {
+                LOG_W(TAG, "WiFi signal is weak (%d%%). This may cause connectivity issues.", quality);
+            }
+        }
+            
+        // Periodically check internet connectivity
+        static unsigned long lastConnectivityCheck = 0;
+        if (now - lastConnectivityCheck > 300000) { // Every 5 minutes
+            lastConnectivityCheck = now;
+            
+            if (testInternetConnectivity()) {
+                LOG_D(TAG, "Internet connectivity test passed");
+            } else {
+                LOG_W(TAG, "Internet connectivity test failed despite WiFi connection");
+                triggerEvent(WiFiEventType::INTERNET_LOST, 
+                           "Internet connectivity lost while WiFi connected");
             }
         }
     } else {

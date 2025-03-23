@@ -391,3 +391,53 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     LOG_I(TAG, "Configuration imported successfully");
     return true;
 }
+
+
+void ConfigManager::setLastRebootReason(const String& reason) {
+    _preferences.begin("config", false);
+    _preferences.putString("reboot_reason", reason);
+    _preferences.end();
+    // LOG_D(TAG, "Saved last reboot reason: %s", reason.c_str());
+}
+
+String ConfigManager::getLastRebootReason() {
+    _preferences.begin("config", true);
+    String reason = _preferences.getString("reboot_reason", "Unknown");
+    _preferences.end();
+    return reason;
+}
+
+void ConfigManager::setRebootCount(int count) {
+    _preferences.begin("config", false);
+    _preferences.putInt("reboot_count", count);
+    _preferences.end();
+    // LOG_D(TAG, "Saved reboot count: %d", count);
+}
+
+int ConfigManager::getRebootCount() {
+    _preferences.begin("config", true);
+    int count = _preferences.getInt("reboot_count", 0);
+    _preferences.end();
+    return count;
+}
+
+void ConfigManager::setConsecutiveWatchdogReboots(int count) {
+    _preferences.begin("config", false);
+    _preferences.putInt("wdt_reboots", count);
+    _preferences.end();
+    // LOG_D(TAG, "Saved consecutive watchdog reboots: %d", count);
+}
+
+int ConfigManager::getConsecutiveWatchdogReboots() {
+    _preferences.begin("config", true);
+    int count = _preferences.getInt("wdt_reboots", 0);
+    _preferences.end();
+    return count;
+}
+
+void ConfigManager::setLastConnectedTime(unsigned long timestamp) {
+    _preferences.begin("config", false);
+    _preferences.putULong("last_conn_time", timestamp);
+    _preferences.end();
+    // LOG_D(TAG, "Saved last connected time: %lu", timestamp);
+}

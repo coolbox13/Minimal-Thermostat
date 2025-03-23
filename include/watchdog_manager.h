@@ -8,20 +8,24 @@
 
 // Define reboot reasons for logging
 // Add these new enum values to RebootReason if not already present
-enum class RebootReason {
-  UNKNOWN = 0,
-  MANUAL = 1,
-  SYSTEM_WATCHDOG = 2,
-  WIFI_WATCHDOG = 3,
-  WIFI_RECONNECT_FAILED = 4,
-  OTA_UPDATE = 5,
-  WIFI_RESET = 6,  // New: for WiFi subsystem reset
-  SAFE_MODE = 7    // New: for safe mode boot
-};
+// Add this enum before the WatchdogManager class definition
 
-// Add these new constants for safe mode
-#define PREF_CONSECUTIVE_RESETS "consecutive_resets"
-#define MAX_CONSECUTIVE_RESETS 3  // Enter safe mode after 3 consecutive watchdog resets
+/**
+ * @brief Reasons for system reboot
+ */
+enum class RebootReason {
+    NORMAL_RESTART,
+    WATCHDOG_TIMEOUT,
+    WIFI_WATCHDOG,  // Use this consistently instead of WIFI_WATCHDOG_TIMEOUT
+    SYSTEM_WATCHDOG, // Add this missing value
+    OTA_UPDATE,
+    USER_REQUESTED,
+    EXCEPTION,
+    BROWNOUT,
+    WIFI_RECONNECT_FAILED,
+    SAFE_MODE,      // Add this missing value
+    UNKNOWN
+};
 
 class WatchdogManager {
 public:
@@ -49,7 +53,19 @@ public:
   bool checkWiFiWatchdog();
   
   // Register a reboot reason
-  void registerRebootReason(RebootReason reason);
+  /**
+   * @brief Register a reboot reason with additional details
+   * @param reason The reason for the reboot
+   * @param details Additional details about the reboot
+   */
+  void registerRebootReason(RebootReason reason, const char* details = nullptr);
+  
+  /**
+   * @brief Get the string representation of a reboot reason
+   * @param reason The reboot reason
+   * @return String representation of the reboot reason
+   */
+  const char* getRebootReasonName(RebootReason reason);
   
   // Get the last reboot reason
   RebootReason getLastRebootReason() const;
@@ -98,6 +114,9 @@ private:
   // New members for recovery tracking
   uint8_t consecutiveResets;
   bool safeMode;
+  
+  // Add reboot count tracking
+  int _rebootCount = 0;
 };
 
 #endif // WATCHDOG_MANAGER_H

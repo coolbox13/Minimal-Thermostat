@@ -160,4 +160,8 @@ private:
 #define LOG_D(tag, ...) Logger::getInstance().debug(tag, __VA_ARGS__)
 #define LOG_V(tag, ...) Logger::getInstance().verbose(tag, __VA_ARGS__)
 
+#define TAG_WIFI "WIFI"
+#define TAG_WATCHDOG "WDOG"
+#define TAG_CONNECTIVITY "CONN"
+
 #endif // LOGGER_H

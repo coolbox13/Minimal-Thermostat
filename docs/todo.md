@@ -93,10 +93,10 @@ This document outlines the specific tasks required to implement the improvements
 - [x] Implement network connectivity test before continuing operation
 
 ### 5. Integrate Watchdog with WiFiConnectionManager
-- [ ] Connect WiFiConnectionManager state changes to watchdog reset
-- [ ] Ensure watchdog is disabled during config portal
-- [ ] Implement proper watchdog reset on successful connections
-- [ ] Add logging of watchdog state changes
+- [x] Connect WiFiConnectionManager state changes to watchdog reset
+- [x] Ensure watchdog is disabled during config portal
+- [x] Implement proper watchdog reset on successful connections
+- [x] Add logging of watchdog state changes
 
 ## Phase 3: Logging and Diagnostics
 

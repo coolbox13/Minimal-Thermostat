@@ -203,6 +203,8 @@ public:
      */
     void setWatchdogManager(WatchdogManager* watchdogManager);
 
+// Fix the structure issue - move methods back to their proper sections
+
 private:
     // Private constructor for singleton
     WiFiConnectionManager();
@@ -215,7 +217,13 @@ private:
     void setState(WiFiConnectionState newState);
     void setupWiFiManagerCallbacks();
     void logWiFiStatus(const char* message);
-    //const char* getEventTypeName(WiFiEventType type); // Add this line
+    
+    /**
+     * @brief Get the name of a WiFi connection state
+     * @param state The connection state
+     * @return String representation of the state
+     */
+    const char* getStateName(WiFiConnectionState state);
     
     // Member variables
     static WiFiConnectionManager* _instance;
@@ -247,8 +255,11 @@ private:
     // Constants
     static const char* TAG;  // For logging
     
-    //watchdog manager reference
+    // Watchdog manager reference
     WatchdogManager* watchdogManager;
 };
 
 #endif // WIFI_CONNECTION_H
+
+// This should be the definition of WiFiStateCallback
+using WiFiStateCallback = std::function<void(WiFiConnectionState, WiFiConnectionState)>;

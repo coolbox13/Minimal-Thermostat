@@ -18,18 +18,20 @@ enum class WiFiConnectionState;
 /**
  * @brief Types of WiFi connection events
  */
+// Add STATE_CHANGED to the enum if it's missing
 enum class WiFiEventType {
-    CONNECTING,          // Connection attempt started
-    CONNECTED,           // Successfully connected to WiFi
-    CONNECTION_FAILED,   // Failed to connect to WiFi
-    CONNECTION_LOST,     // Lost an established connection
-    DISCONNECTED,        // Intentionally disconnected from WiFi
-    CONFIG_PORTAL_STARTED, // Configuration portal has started
-    CONFIG_PORTAL_STOPPED, // Configuration portal has ended
-    CREDENTIALS_SAVED,   // New WiFi credentials were saved
-    SIGNAL_CHANGED,      // Signal strength has changed significantly
-    INTERNET_CONNECTED,  // Internet connectivity confirmed
-    INTERNET_LOST        // Internet connectivity lost
+    CONNECTED,
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTION_LOST,
+    CONNECTION_FAILED,
+    CONFIG_PORTAL_STARTED,
+    CONFIG_PORTAL_STOPPED,
+    INTERNET_CONNECTED,
+    INTERNET_LOST,
+    SIGNAL_CHANGED,
+    STATE_CHANGED,
+    CREDENTIALS_SAVED  // Add this missing value
 };
 
 // Forward declare the network info struct to avoid union issues

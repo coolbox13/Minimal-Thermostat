@@ -1,4 +1,7 @@
 #include "watchdog_manager.h"
+#include "config_manager.h"
+#include "logger.h"
+#include <ArduinoJson.h>  // Add this include for JSON support
 #include <Preferences.h>
 #include "config.h"
 #include <WiFi.h>  // Add this include for WiFi functionality
@@ -245,8 +248,60 @@ bool WatchdogManager::testNetworkConnectivity() {
   return success;
 }
 
-void WatchdogManager::registerRebootReason(RebootReason reason) {
-  saveRebootReason(reason);
+// Add to the registerRebootReason method
+void WatchdogManager::registerRebootReason(RebootReason reason, const char* details) {
+    // Get current time if available
+    String timestamp = "";
+    // Store reboot reason with timestamp in persistent storage
+    
+    // Create a JSON document to store the reboot information
+    StaticJsonDocument<256> doc;
+    doc["reason"] = getRebootReasonName(reason);
+    doc["details"] = details ? details : "";
+    doc["timestamp"] = millis();
+    doc["count"] = ++_rebootCount;
+    
+    // Convert to string
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    
+    // Log the reboot reason
+    LOG_W(TAG_WATCHDOG, "Registering reboot reason: %s - %s", 
+          getRebootReasonName(reason), details ? details : "");
+    
+    // Store in persistent storage using ConfigManager
+    ConfigManager::getInstance()->setLastRebootReason(jsonStr);
+    ConfigManager::getInstance()->setRebootCount(_rebootCount);
+    
+    // If this is a watchdog-triggered reboot, increment the consecutive watchdog reboot counter
+    if (reason == RebootReason::WATCHDOG_TIMEOUT || 
+        reason == RebootReason::WIFI_WATCHDOG) {
+        
+        int consecutiveWatchdogReboots = ConfigManager::getInstance()->getConsecutiveWatchdogReboots();
+        ConfigManager::getInstance()->setConsecutiveWatchdogReboots(consecutiveWatchdogReboots + 1);
+        
+        LOG_W(TAG_WATCHDOG, "Consecutive watchdog reboots: %d", consecutiveWatchdogReboots + 1);
+    } else {
+        // Reset the counter for non-watchdog reboots
+        ConfigManager::getInstance()->setConsecutiveWatchdogReboots(0);
+    }
+}
+
+// Helper method to get reboot reason name
+const char* WatchdogManager::getRebootReasonName(RebootReason reason) {
+    switch (reason) {
+        case RebootReason::NORMAL_RESTART: return "Normal Restart";
+        case RebootReason::WATCHDOG_TIMEOUT: return "System Watchdog Timeout";
+        case RebootReason::WIFI_WATCHDOG: return "WiFi Watchdog Timeout";
+        case RebootReason::SYSTEM_WATCHDOG: return "System Watchdog Timeout";
+        case RebootReason::OTA_UPDATE: return "OTA Update";
+        case RebootReason::USER_REQUESTED: return "User Requested";
+        case RebootReason::EXCEPTION: return "System Exception";
+        case RebootReason::BROWNOUT: return "Power Brownout";
+        case RebootReason::WIFI_RECONNECT_FAILED: return "WiFi Reconnection Failed";
+        case RebootReason::SAFE_MODE: return "Safe Mode Activated";
+        default: return "Unknown";
+    }
 }
 
 RebootReason WatchdogManager::getLastRebootReason() const {
