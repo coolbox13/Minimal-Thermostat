@@ -108,10 +108,10 @@ This document outlines the specific tasks required to implement the improvements
 - [x] Add log for connectivity test results
 
 ### 2. Implement Connectivity Diagnostics
-- [ ] Add internet connectivity test (DNS or HTTP ping)
-- [ ] Create signal quality tracking
-- [ ] Implement connection quality assessment algorithm
-- [ ] Add periodic connectivity status reporting
+- [x] Add internet connectivity test (DNS or HTTP ping)
+- [x] Create signal quality tracking
+- [x] Implement connection quality assessment algorithm
+- [x] Add periodic connectivity status reporting
 
 ### 3. Update Web Interface
 - [ ] Add WiFi connection status to web dashboard

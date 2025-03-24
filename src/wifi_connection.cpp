@@ -3,6 +3,12 @@
 #include "config_manager.h"
 #include <ArduinoJson.h>
 
+// Try to include ESP32Ping if available
+#if __has_include(<ESP32Ping.h>)
+  #include <ESP32Ping.h>
+  #define HAS_ESP32PING
+#endif
+
 // Static members initialization
 WiFiConnectionManager* WiFiConnectionManager::_instance = nullptr;
 const char* WiFiConnectionManager::TAG = "WIFI";
@@ -16,18 +22,19 @@ WiFiConnectionManager& WiFiConnectionManager::getInstance() {
 }
 
 // Constructor
-
 WiFiConnectionManager::WiFiConnectionManager() 
     : _state(WiFiConnectionState::DISCONNECTED),
       _lastConnectedTime(0),
       _lastStateChangeTime(0),
+      _lastSignalCheck(0),
       _reconnectAttempts(0),
       _configPortalStarted(false),
       _signalHistoryIndex(0),
       _maxReconnectAttempts(10),  // Default to 10 attempts
       _disableWatchdogDuringOperations(false),
       _reconnectionInProgress(false),
-      _nextSubscriptionId(1) {
+      _nextSubscriptionId(1),
+      _watchdogManager(nullptr) {
     
     // Get config manager instance
     _configManager = ConfigManager::getInstance();
@@ -95,7 +102,7 @@ bool WiFiConnectionManager::begin(unsigned int configPortalTimeout, bool startPo
 }
 
 void WiFiConnectionManager::setWatchdogManager(WatchdogManager* watchdogManager) {
-    this->watchdogManager = watchdogManager;
+    this->_watchdogManager = watchdogManager;
     LOG_I(TAG, "Watchdog manager set");
 }
 
@@ -106,9 +113,9 @@ bool WiFiConnectionManager::connect(unsigned long timeout) {
     _reconnectionInProgress = true;
     
     // Pause watchdog during connection if available and enabled
-    if (watchdogManager && _disableWatchdogDuringOperations) {
+    if (_watchdogManager && _disableWatchdogDuringOperations) {
         LOG_D(TAG, "Pausing watchdog during WiFi connection");
-        watchdogManager->pauseWatchdogs(timeout + 5000); // Add 5 seconds buffer
+        _watchdogManager->pauseWatchdogs(timeout + 5000); // Add 5 seconds buffer
     }
     
     // Get stored credentials
@@ -154,8 +161,8 @@ bool WiFiConnectionManager::connect(unsigned long timeout) {
         _reconnectionInProgress = false;
         
         // Reset WiFi watchdog on successful connection
-        if (watchdogManager) {
-            watchdogManager->resetWiFiWatchdog();
+        if (_watchdogManager) {
+            _watchdogManager->resetWiFiWatchdog();
         }
         
         return true;
@@ -167,14 +174,13 @@ bool WiFiConnectionManager::connect(unsigned long timeout) {
     }
 }
 
-// Also modify the startConfigPortal method to disable watchdog
 bool WiFiConnectionManager::startConfigPortal(const char* apName, unsigned int timeout) {
     LOG_I(TAG, "Starting WiFi configuration portal");
     
     // Disable WiFi watchdog during config portal if available
-    if (watchdogManager && _disableWatchdogDuringOperations) {
+    if (_watchdogManager && _disableWatchdogDuringOperations) {
         LOG_D(TAG, "Disabling WiFi watchdog during config portal");
-        watchdogManager->enableWiFiWatchdog(false);
+        _watchdogManager->enableWiFiWatchdog(false);
     }
     
     // Update state
@@ -203,6 +209,20 @@ bool WiFiConnectionManager::startConfigPortal(const char* apName, unsigned int t
         setState(WiFiConnectionState::DISCONNECTED);
         return false;
     }
+}
+
+void WiFiConnectionManager::loop() {
+    // If we're in CONFIG_PORTAL_ACTIVE state, let WiFiManager handle everything
+    if (_state == WiFiConnectionState::CONFIG_PORTAL_ACTIVE) {
+        _wifiManager.process();
+        return;
+    }
+    
+    // Check current connection status and handle reconnection logic
+    handleConnectionStatus();
+    
+    // Handle periodic tasks like signal strength monitoring
+    handlePeriodicTasks();
 }
 
 WiFiConnectionState WiFiConnectionManager::getState() const {
@@ -368,6 +388,37 @@ bool WiFiConnectionManager::isWatchdogDisabledDuringOperations() const {
     return _disableWatchdogDuringOperations;
 }
 
+bool WiFiConnectionManager::testInternetConnectivity() {
+    if (_state != WiFiConnectionState::CONNECTED) {
+        return false;
+    }
+    
+    IPAddress ip;
+    if (!ip.fromString(TEST_HOST)) {
+        LOG_E(TAG, "Failed to parse test host IP");
+        return false;
+    }
+    
+    bool success = false;
+    
+#ifdef HAS_ESP32PING
+    // Use the global Ping object from the ESP32Ping library
+    success = Ping.ping(ip, 3);  // Try 3 times
+#else
+    // Fallback if the library isn't available
+    LOG_W(TAG, "ESP32Ping library not available, using simple connectivity test");
+    
+    // Simple connectivity test using a TCP connection
+    WiFiClient client;
+    client.setTimeout(2000); // 2 second timeout
+    success = client.connect(ip, 53); // Try connecting to DNS port
+    client.stop();
+#endif
+    
+    LOG_I(TAG, "Internet connectivity test %s", success ? "passed" : "failed");
+    return success;
+}
+
 String WiFiConnectionManager::getConnectionDetailsJson(bool includeHistory) {
     StaticJsonDocument<512> doc;
     
@@ -453,10 +504,6 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
             // Reset reconnect attempts on successful connection
             _reconnectAttempts = 0;
             _lastConnectedTime = millis();
-            
-            // Store connection timestamp if method exists
-            // Comment out or implement this method in ConfigManager
-            // _configManager->setLastConnectedTime(millis());
         }
         else if (newState == WiFiConnectionState::CONNECTING) {
             LOG_I(TAG, "Attempting to connect to WiFi (Attempt %d of %d)", 
@@ -471,9 +518,9 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
         _state = newState;
         _lastStateChangeTime = millis();
         
-        // Notify callbacks about state change - fix by passing both old and new state
+        // Notify callbacks about state change
         for (auto callback : _stateCallbacks) {
-            callback(oldState, newState);
+            callback(newState, oldState);
         }
         
         // Trigger event for new event system
@@ -484,9 +531,11 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
             eventType = WiFiEventType::DISCONNECTED;
         } else if (_state == WiFiConnectionState::CONNECTION_LOST) {
             eventType = WiFiEventType::CONNECTION_LOST;
-        } else {
-            // Use CONNECTING as a fallback
+        } else if (_state == WiFiConnectionState::CONNECTING) {
             eventType = WiFiEventType::CONNECTING;
+        } else {
+            // Use STATE_CHANGED as a fallback
+            eventType = WiFiEventType::STATE_CHANGED;
         }
         
         String message = String("State changed to: ") + newStateName;
@@ -494,7 +543,6 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
     }
 }
 
-// Add this helper method to get state names
 const char* WiFiConnectionManager::getStateName(WiFiConnectionState state) {
     switch (state) {
         case WiFiConnectionState::DISCONNECTED: return "DISCONNECTED";
@@ -506,6 +554,24 @@ const char* WiFiConnectionManager::getStateName(WiFiConnectionState state) {
     }
 }
 
+const char* WiFiConnectionManager::getEventTypeName(WiFiEventType type) {
+    switch (type) {
+        case WiFiEventType::CONNECTED: return "CONNECTED";
+        case WiFiEventType::DISCONNECTED: return "DISCONNECTED";
+        case WiFiEventType::CONNECTING: return "CONNECTING";
+        case WiFiEventType::CONNECTION_LOST: return "CONNECTION_LOST";
+        case WiFiEventType::CONNECTION_FAILED: return "CONNECTION_FAILED";
+        case WiFiEventType::CONFIG_PORTAL_STARTED: return "CONFIG_PORTAL_STARTED";
+        case WiFiEventType::CONFIG_PORTAL_STOPPED: return "CONFIG_PORTAL_STOPPED";
+        case WiFiEventType::INTERNET_CONNECTED: return "INTERNET_CONNECTED";
+        case WiFiEventType::INTERNET_LOST: return "INTERNET_LOST";
+        case WiFiEventType::SIGNAL_CHANGED: return "SIGNAL_CHANGED";
+        case WiFiEventType::STATE_CHANGED: return "STATE_CHANGED";
+        case WiFiEventType::CREDENTIALS_SAVED: return "CREDENTIALS_SAVED";
+        default: return "UNKNOWN";
+    }
+}
+
 void WiFiConnectionManager::setupWiFiManagerCallbacks() {
     // Called when WiFiManager enters AP mode
     _wifiManager.setAPCallback([this](WiFiManager* wifiManager) {
@@ -513,21 +579,21 @@ void WiFiConnectionManager::setupWiFiManagerCallbacks() {
         _configPortalStarted = true;
         
         // Disable WiFi watchdog during config portal
-        if (watchdogManager && _disableWatchdogDuringOperations) {
+        if (_watchdogManager && _disableWatchdogDuringOperations) {
             LOG_D(TAG, "Disabling WiFi watchdog during config portal (callback)");
-            watchdogManager->enableWiFiWatchdog(false);
+            _watchdogManager->enableWiFiWatchdog(false);
         }
         
-        // ... rest of the callback ...
+        triggerEvent(WiFiEventType::CONFIG_PORTAL_STARTED, "Configuration portal started");
     });
     
     // Called when WiFiManager has saved a new configuration
     _wifiManager.setSaveConfigCallback([this]() {
         LOG_I(TAG, "New WiFi configuration saved");
         
-        triggerEvent(WiFiEventType::CONFIG_PORTAL_STOPPED, "WiFi credentials saved");
+        triggerEvent(WiFiEventType::CREDENTIALS_SAVED, "WiFi credentials saved");
         
-        // We do want to save the credentials to our config manager
+        // Save the credentials to our config manager
         _configManager->setWifiSSID(WiFi.SSID());
         _configManager->setWifiPassword(WiFi.psk());
         
@@ -537,67 +603,6 @@ void WiFiConnectionManager::setupWiFiManagerCallbacks() {
         // Mark config portal as no longer active
         _configPortalStarted = false;
     });
-}
-
-bool WiFiConnectionManager::testInternetConnectivity() {
-    if (_state != WiFiConnectionState::CONNECTED) {
-        return false;
-    }
-    
-    IPAddress ip;
-    if (!ip.fromString(TEST_HOST)) {
-        LOG_E(TAG, "Failed to parse test host IP");
-        return false;
-    }
-    
-    bool success = Ping.ping(ip, 3);  // Try 3 times
-    LOG_I(TAG, "Internet connectivity test %s", success ? "passed" : "failed");
-    
-    return success;
-}
-
-int WiFiConnectionManager::getConnectionQuality() {
-    if (_signalHistory.empty()) {
-        return 0;
-    }
-    
-    // Calculate average RSSI
-    int sum = 0;
-    for (int rssi : _signalHistory) {
-        sum += rssi;
-    }
-    int avgRSSI = sum / _signalHistory.size();
-    
-    // Calculate stability (standard deviation)
-    float variance = 0;
-    for (int rssi : _signalHistory) {
-        variance += pow(rssi - avgRSSI, 2);
-    }
-    variance /= _signalHistory.size();
-    float stability = sqrt(variance);
-    
-    // Quality score (0-100)
-    int qualityScore;
-    if (avgRSSI >= QUALITY_THRESHOLD_GOOD) {
-        qualityScore = 100;
-    } else if (avgRSSI >= QUALITY_THRESHOLD_FAIR) {
-        qualityScore = 75;
-    } else {
-        qualityScore = 50;
-    }
-    
-    // Reduce score based on stability
-    if (stability > 5) {
-        qualityScore -= static_cast<int>(stability);
-    }
-    
-    // Ensure score stays within bounds
-    qualityScore = std::max(0, std::min(100, qualityScore));
-    
-    LOG_D(TAG, "Connection Quality: %d%% (RSSI: %d, Stability: %.1f)", 
-          qualityScore, avgRSSI, stability);
-    
-    return qualityScore;
 }
 
 void WiFiConnectionManager::logWiFiStatus(const char* message) {
@@ -631,6 +636,56 @@ void WiFiConnectionManager::logWiFiStatus(const char* message) {
     }
 }
 
+int WiFiConnectionManager::getConnectionQuality() {
+    // Calculate average RSSI from signal history
+    int sum = 0;
+    int count = 0;
+    
+    for (size_t i = 0; i < SIGNAL_HISTORY_SIZE; i++) {
+        if (_signalHistory[i].timestamp > 0) {
+            sum += _signalHistory[i].rssi;
+            count++;
+        }
+    }
+    
+    if (count == 0) return 0;
+    
+    int avgRSSI = sum / count;
+    
+    // Calculate stability (standard deviation)
+    float variance = 0;
+    for (size_t i = 0; i < SIGNAL_HISTORY_SIZE; i++) {
+        if (_signalHistory[i].timestamp > 0) {
+            variance += pow(_signalHistory[i].rssi - avgRSSI, 2);
+        }
+    }
+    variance /= count;
+    float stability = sqrt(variance);
+    
+    // Quality score (0-100)
+    int qualityScore;
+    if (avgRSSI >= QUALITY_THRESHOLD_GOOD) {
+        qualityScore = 100;
+    } else if (avgRSSI >= QUALITY_THRESHOLD_FAIR) {
+        qualityScore = 75;
+    } else {
+        qualityScore = 50;
+    }
+    
+    // Reduce score based on stability
+    if (stability > 5) {
+        qualityScore -= static_cast<int>(stability);
+    }
+    
+    // Ensure score stays within bounds
+    qualityScore = std::max(0, std::min(100, qualityScore));
+    
+    LOG_D(TAG, "Connection Quality: %d%% (RSSI: %d, Stability: %.1f)", 
+          qualityScore, avgRSSI, stability);
+    
+    return qualityScore;
+}
+
 void WiFiConnectionManager::checkAndLogSignalStrength() {
     if (millis() - _lastSignalCheck >= SIGNAL_CHECK_INTERVAL) {
         _lastSignalCheck = millis();
@@ -641,467 +696,72 @@ void WiFiConnectionManager::checkAndLogSignalStrength() {
             
             LOG_I(TAG, "WiFi Signal Strength - RSSI: %d dBm, Quality: %d%%", rssi, quality);
             
-            // Store in signal history for quality assessment
-            _signalHistory.push_back(rssi);
-            if (_signalHistory.size() > MAX_SIGNAL_HISTORY) {
-                _signalHistory.pop_front();
-            }
-        }
-    }
-}
-
-// Add to the loop method
-void WiFiConnectionManager::loop() {
-    // If we're in CONFIG_PORTAL_ACTIVE state, let WiFiManager handle everything
-    if (_state == WiFiConnectionState::CONFIG_PORTAL_ACTIVE) {
-        _wifiManager.process();
-        return;
-    }
-    
-    // Check current connection status
-    if (WiFi.status() == WL_CONNECTED) {
-        // We're connected - update state if needed
-        if (_state != WiFiConnectionState::CONNECTED) {
-            LOG_I(TAG, "WiFi connected (detected in loop)");
-            setState(WiFiConnectionState::CONNECTED);
-            _lastConnectedTime = millis();
-            resetReconnectAttempts();
-            
-            // Log full connection details
-            logWiFiStatus("WiFi connection established");
-            
-            // Check internet connectivity after connection
-            if (testInternetConnectivity()) {
-                triggerEvent(WiFiEventType::INTERNET_CONNECTED, "Internet connection verified after WiFi connect");
-            } else {
-                LOG_W(TAG, "WiFi connected but internet access failed");
-                triggerEvent(WiFiEventType::INTERNET_LOST, "WiFi connected but no internet access");
-            }
-        }
-        
-        // Periodically update signal strength history 
-        static unsigned long lastSignalUpdate = 0;
-        static int lastSignalQuality = -1;
-        
-        unsigned long now = millis();
-        if (now - lastSignalUpdate > 60000) { // Every minute
-            lastSignalUpdate = now;
-            
-            // Update signal strength in history
-            int currentSignal = WiFi.RSSI();
-            int currentQuality = getSignalQuality();
-            
-            _signalHistory[_signalHistoryIndex] = {
-                now,
-                currentSignal
-            };
-            _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
-            
-            // Log signal strength periodically
-            LOG_D(TAG, "Signal strength: %d dBm (%d%%)", 
-                  currentSignal, currentQuality);
-                  
-            // Check for poor signal quality
-            if (currentQuality < 30) {
-                LOG_W(TAG, "Poor WiFi signal quality detected (%d%%)", currentQuality);
-            }
-            
-            // Notify of significant signal changes (>15%)
-            if (lastSignalQuality >= 0 && abs(currentQuality - lastSignalQuality) > 15) {
-                triggerEvent(WiFiEventType::SIGNAL_CHANGED, 
-                           String("Signal changed from ") + lastSignalQuality + 
-                           String("% to ") + currentQuality + String("%"));
-            }
-            
-            lastSignalQuality = currentQuality;
-        }
-        
-        // Periodically log signal strength (every 5 minutes)
-        static unsigned long lastSignalLog = 0;
-        if (now - lastSignalLog > 300000) { // 5 minutes
-            lastSignalLog = now;
-            
-            int rssi = getSignalStrength();
-            int quality = getSignalQuality();
-            
             // Store in signal history
-            _signalHistory[_signalHistoryIndex].timestamp = now;
+            _signalHistory[_signalHistoryIndex].timestamp = millis();
             _signalHistory[_signalHistoryIndex].rssi = rssi;
             _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
             
-            // Log current signal strength
-            LOG_D(TAG, "WiFi signal strength: %d dBm (Quality: %d%%)", rssi, quality);
-            
-            // Log warning if signal is weak
-            if (quality < 30) {
-                LOG_W(TAG, "WiFi signal is weak (%d%%). This may cause connectivity issues.", quality);
-            }
-        }
-            
-        // Periodically check internet connectivity
-        static unsigned long lastConnectivityCheck = 0;
-        if (now - lastConnectivityCheck > 300000) { // Every 5 minutes
-            lastConnectivityCheck = now;
-            
-            if (testInternetConnectivity()) {
-                LOG_D(TAG, "Internet connectivity test passed");
-            } else {
-                LOG_W(TAG, "Internet connectivity test failed despite WiFi connection");
-                triggerEvent(WiFiEventType::INTERNET_LOST, 
-                           "Internet connectivity lost while WiFi connected");
-            }
-        }
-    } else {
-        // We're not connected
-        if (_state == WiFiConnectionState::CONNECTED) {
-            LOG_W(TAG, "WiFi connection lost");
-            setState(WiFiConnectionState::CONNECTION_LOST);
-        } else if (_state == WiFiConnectionState::CONNECTION_LOST || _state == WiFiConnectionState::DISCONNECTED) {
-            // Only attempt reconnect if:
-            // 1. We're not already in the middle of reconnecting
-            // 2. It's been at least 5 seconds since last state change
-            // 3. We haven't exceeded max reconnection attempts or max is set to 0 (unlimited)
-            if (!_reconnectionInProgress && 
-                millis() - _lastStateChangeTime > 5000 && 
-                (_maxReconnectAttempts == 0 || _reconnectAttempts < _maxReconnectAttempts)) {
-                
-                LOG_I(TAG, "Attempting to reconnect to WiFi (attempt %d/%d)", 
-                      _reconnectAttempts + 1, 
-                      _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
-                
-                _reconnectionInProgress = true;
-                
-                // Use exponential backoff for reconnection attempts
-                // Wait longer between attempts as the number of attempts increases
-                if (_reconnectAttempts > 0) {
-                    // Calculate delay based on attempt number (exponential backoff)
-                    // 1st: 1s, 2nd: 2s, 3rd: 4s, 4th: 8s, 5th: 16s, 6th: 32s, 7th: 64s, 8th: 128s, 9th+: 256s
-                    unsigned long delayMs = 1000 * (1 << min(_reconnectAttempts, 8));  // Max 256 seconds
-                    LOG_D(TAG, "Waiting %lu ms before reconnect attempt", delayMs);
-                    
-                    // Trigger event for reconnection attempt with backoff
-                    triggerEvent(WiFiEventType::CONNECTING, 
-                               String("Reconnecting with ") + (delayMs / 1000) + String("s backoff"));
-                    
-                    delay(delayMs);  // This blocks, but that's intentional for this simple implementation
-                }
-                
-                _reconnectAttempts++;
-                
-                // Attempt reconnection
-                if (connect()) {
-                    LOG_I(TAG, "Reconnection successful!");
-                    triggerEvent(WiFiEventType::CONNECTED, "Reconnection successful");
-                } else {
-                    LOG_W(TAG, "Reconnection attempt %d failed", _reconnectAttempts);
-                    triggerEvent(WiFiEventType::CONNECTION_FAILED, 
-                               String("Reconnection attempt ") + _reconnectAttempts + String(" failed"));
-                    
-                    _reconnectionInProgress = false;
-                    
-                    // If we've reached the maximum number of attempts and it's not unlimited (0)
-                    if (_maxReconnectAttempts > 0 && _reconnectAttempts >= _maxReconnectAttempts) {
-                        LOG_W(TAG, "Maximum reconnection attempts reached");
-                        
-                        // Try more aggressive recovery: reset WiFi and try again
-                        LOG_W(TAG, "Resetting WiFi subsystem...");
-                        WiFi.disconnect(true);  // Disconnect from the network and delete saved credentials
-                        delay(1000);
-                        WiFi.mode(WIFI_OFF);
-                        delay(1000);
-                        WiFi.mode(WIFI_STA);
-                        delay(1000);
-                        
-                        // Try to connect with stored credentials one last time
-                        String storedSSID = _configManager->getWifiSSID();
-                        String storedPass = _configManager->getWifiPassword();
-                        
-                        if (storedSSID.length() > 0 && storedPass.length() > 0) {
-                            LOG_I(TAG, "Trying stored credentials after WiFi reset");
-                            WiFi.begin(storedSSID.c_str(), storedPass.c_str());
-                            
-                            // Wait a bit to see if it works
-                            unsigned long startTime = millis();
-                            LOG_I(TAG, "Waiting for connection after reset...");
-                            while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
-                                delay(100);
-                                if ((millis() - startTime) % 1000 == 0) {
-                                    Serial.print(".");
-                                }
-                            }
-                            Serial.println();
-                            
-                            if (WiFi.status() == WL_CONNECTED) {
-                                LOG_I(TAG, "Connection established after WiFi reset!");
-                                setState(WiFiConnectionState::CONNECTED);
-                                _lastConnectedTime = millis();
-                                resetReconnectAttempts();
-                                triggerEvent(WiFiEventType::CONNECTED, "Connected after WiFi subsystem reset");
-                            } else {
-                                LOG_E(TAG, "Failed to connect even after WiFi reset");
-                                triggerEvent(WiFiEventType::CONNECTION_FAILED, "Failed after WiFi subsystem reset");
-                                
-                                // Start config portal as a last resort
-                                LOG_I(TAG, "Starting config portal as last resort");
-                                startConfigPortal("ESP32-Thermostat-Recovery", 0);
-                            }
-                        }
-                    }
+            // Compare with previous reading and trigger event if significant change
+            int prevIndex = (_signalHistoryIndex == 0) ? SIGNAL_HISTORY_SIZE - 1 : _signalHistoryIndex - 1;
+            if (_signalHistory[prevIndex].timestamp > 0) {
+                int prevRSSI = _signalHistory[prevIndex].rssi;
+                if (abs(rssi - prevRSSI) > 5) { // 5 dBm threshold for significant change
+                    String message = "Signal strength changed from " + String(prevRSSI) + 
+                                     " to " + String(rssi) + " dBm";
+                    triggerEvent(WiFiEventType::SIGNAL_CHANGED, message);
                 }
             }
         }
     }
 }
 
-// Add this function implementation somewhere in the file, perhaps near other utility functions
-
-const char* WiFiConnectionManager::getEventTypeName(WiFiEventType type) {
-    switch (type) {
-        case WiFiEventType::CONNECTED: return "CONNECTED";
-        case WiFiEventType::DISCONNECTED: return "DISCONNECTED";
-        case WiFiEventType::CONNECTING: return "CONNECTING";
-        case WiFiEventType::CONNECTION_LOST: return "CONNECTION_LOST";
-        case WiFiEventType::CONNECTION_FAILED: return "CONNECTION_FAILED";
-        case WiFiEventType::CONFIG_PORTAL_STARTED: return "CONFIG_PORTAL_STARTED";
-        case WiFiEventType::CONFIG_PORTAL_STOPPED: return "CONFIG_PORTAL_STOPPED";
-        default: return "UNKNOWN";
-    }
-}
-
-// Periodic connectivity status report
-// Add to the loop method
-void WiFiConnectionManager::loop() {
-    // If we're in CONFIG_PORTAL_ACTIVE state, let WiFiManager handle everything
-    if (_state == WiFiConnectionState::CONFIG_PORTAL_ACTIVE) {
-        _wifiManager.process();
-        return;
+void WiFiConnectionManager::handleConnectionStatus() {
+    // Check if WiFi is still connected
+    if (_state == WiFiConnectionState::CONNECTED && WiFi.status() != WL_CONNECTED) {
+        LOG_W(TAG, "WiFi connection lost, updating state");
+        setState(WiFiConnectionState::CONNECTION_LOST);
+        triggerEvent(WiFiEventType::CONNECTION_LOST, "WiFi connection lost unexpectedly");
     }
     
-    // Check current connection status
-    if (WiFi.status() == WL_CONNECTED) {
-        // We're connected - update state if needed
-        if (_state != WiFiConnectionState::CONNECTED) {
-            LOG_I(TAG, "WiFi connected (detected in loop)");
-            setState(WiFiConnectionState::CONNECTED);
-            _lastConnectedTime = millis();
-            resetReconnectAttempts();
-            
-            // Log full connection details
-            logWiFiStatus("WiFi connection established");
-            
-            // Check internet connectivity after connection
-            if (testInternetConnectivity()) {
-                triggerEvent(WiFiEventType::INTERNET_CONNECTED, "Internet connection verified after WiFi connect");
-            } else {
-                LOG_W(TAG, "WiFi connected but internet access failed");
-                triggerEvent(WiFiEventType::INTERNET_LOST, "WiFi connected but no internet access");
-            }
+    // Attempt reconnection if we're in a disconnected state
+    if ((_state == WiFiConnectionState::DISCONNECTED || _state == WiFiConnectionState::CONNECTION_LOST) 
+        && !_reconnectionInProgress) {
+        
+        // Check if we've reached max reconnection attempts
+        if (_maxReconnectAttempts > 0 && _reconnectAttempts >= _maxReconnectAttempts) {
+            LOG_W(TAG, "Maximum reconnection attempts (%d) reached", _maxReconnectAttempts);
+            // Don't attempt further reconnection until reset
+            return;
         }
         
-        // Periodically update signal strength history 
-        static unsigned long lastSignalUpdate = 0;
-        static int lastSignalQuality = -1;
+        // Increment reconnection counter
+        _reconnectAttempts++;
         
-        unsigned long now = millis();
-        if (now - lastSignalUpdate > 60000) { // Every minute
-            lastSignalUpdate = now;
-            
-            // Update signal strength in history
-            int currentSignal = WiFi.RSSI();
-            int currentQuality = getSignalQuality();
-            
-            _signalHistory[_signalHistoryIndex] = {
-                now,
-                currentSignal
-            };
-            _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
-            
-            // Log signal strength periodically
-            LOG_D(TAG, "Signal strength: %d dBm (%d%%)", 
-                  currentSignal, currentQuality);
-                  
-            // Check for poor signal quality
-            if (currentQuality < 30) {
-                LOG_W(TAG, "Poor WiFi signal quality detected (%d%%)", currentQuality);
-            }
-            
-            // Notify of significant signal changes (>15%)
-            if (lastSignalQuality >= 0 && abs(currentQuality - lastSignalQuality) > 15) {
-                triggerEvent(WiFiEventType::SIGNAL_CHANGED, 
-                           String("Signal changed from ") + lastSignalQuality + 
-                           String("% to ") + currentQuality + String("%"));
-            }
-            
-            lastSignalQuality = currentQuality;
-        }
+        // Attempt to reconnect
+        LOG_I(TAG, "Attempting reconnection (attempt %d of %d)", 
+              _reconnectAttempts, _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
         
-        // Periodically log signal strength (every 5 minutes)
-        static unsigned long lastSignalLog = 0;
-        if (now - lastSignalLog > 300000) { // 5 minutes
-            lastSignalLog = now;
-            
-            int rssi = getSignalStrength();
-            int quality = getSignalQuality();
-            
-            // Store in signal history
-            _signalHistory[_signalHistoryIndex].timestamp = now;
-            _signalHistory[_signalHistoryIndex].rssi = rssi;
-            _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
-            
-            // Log current signal strength
-            LOG_D(TAG, "WiFi signal strength: %d dBm (Quality: %d%%)", rssi, quality);
-            
-            // Log warning if signal is weak
-            if (quality < 30) {
-                LOG_W(TAG, "WiFi signal is weak (%d%%). This may cause connectivity issues.", quality);
-            }
-        }
-            
-        // Periodically check internet connectivity
-        static unsigned long lastConnectivityCheck = 0;
-        if (now - lastConnectivityCheck > 300000) { // Every 5 minutes
-            lastConnectivityCheck = now;
-            
-            if (testInternetConnectivity()) {
-                LOG_D(TAG, "Internet connectivity test passed");
-            } else {
-                LOG_W(TAG, "Internet connectivity test failed despite WiFi connection");
-                triggerEvent(WiFiEventType::INTERNET_LOST, 
-                           "Internet connectivity lost while WiFi connected");
-            }
-        }
-    } else {
-        // We're not connected
-        if (_state == WiFiConnectionState::CONNECTED) {
-            LOG_W(TAG, "WiFi connection lost");
-            setState(WiFiConnectionState::CONNECTION_LOST);
-        } else if (_state == WiFiConnectionState::CONNECTION_LOST || _state == WiFiConnectionState::DISCONNECTED) {
-            // Only attempt reconnect if:
-            // 1. We're not already in the middle of reconnecting
-            // 2. It's been at least 5 seconds since last state change
-            // 3. We haven't exceeded max reconnection attempts or max is set to 0 (unlimited)
-            if (!_reconnectionInProgress && 
-                millis() - _lastStateChangeTime > 5000 && 
-                (_maxReconnectAttempts == 0 || _reconnectAttempts < _maxReconnectAttempts)) {
-                
-                LOG_I(TAG, "Attempting to reconnect to WiFi (attempt %d/%d)", 
-                      _reconnectAttempts + 1, 
-                      _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
-                
-                _reconnectionInProgress = true;
-                
-                // Use exponential backoff for reconnection attempts
-                // Wait longer between attempts as the number of attempts increases
-                if (_reconnectAttempts > 0) {
-                    // Calculate delay based on attempt number (exponential backoff)
-                    // 1st: 1s, 2nd: 2s, 3rd: 4s, 4th: 8s, 5th: 16s, 6th: 32s, 7th: 64s, 8th: 128s, 9th+: 256s
-                    unsigned long delayMs = 1000 * (1 << min(_reconnectAttempts, 8));  // Max 256 seconds
-                    LOG_D(TAG, "Waiting %lu ms before reconnect attempt", delayMs);
-                    
-                    // Trigger event for reconnection attempt with backoff
-                    triggerEvent(WiFiEventType::CONNECTING, 
-                               String("Reconnecting with ") + (delayMs / 1000) + String("s backoff"));
-                    
-                    delay(delayMs);  // This blocks, but that's intentional for this simple implementation
-                }
-                
-                _reconnectAttempts++;
-                
-                // Attempt reconnection
-                if (connect()) {
-                    LOG_I(TAG, "Reconnection successful!");
-                    triggerEvent(WiFiEventType::CONNECTED, "Reconnection successful");
-                } else {
-                    LOG_W(TAG, "Reconnection attempt %d failed", _reconnectAttempts);
-                    triggerEvent(WiFiEventType::CONNECTION_FAILED, 
-                               String("Reconnection attempt ") + _reconnectAttempts + String(" failed"));
-                    
-                    _reconnectionInProgress = false;
-                    
-                    // If we've reached the maximum number of attempts and it's not unlimited (0)
-                    if (_maxReconnectAttempts > 0 && _reconnectAttempts >= _maxReconnectAttempts) {
-                        LOG_W(TAG, "Maximum reconnection attempts reached");
-                        
-                        // Try more aggressive recovery: reset WiFi and try again
-                        LOG_W(TAG, "Resetting WiFi subsystem...");
-                        WiFi.disconnect(true);  // Disconnect from the network and delete saved credentials
-                        delay(1000);
-                        WiFi.mode(WIFI_OFF);
-                        delay(1000);
-                        WiFi.mode(WIFI_STA);
-                        delay(1000);
-                        
-                        // Try to connect with stored credentials one last time
-                        String storedSSID = _configManager->getWifiSSID();
-                        String storedPass = _configManager->getWifiPassword();
-                        
-                        if (storedSSID.length() > 0 && storedPass.length() > 0) {
-                            LOG_I(TAG, "Trying stored credentials after WiFi reset");
-                            WiFi.begin(storedSSID.c_str(), storedPass.c_str());
-                            
-                            // Wait a bit to see if it works
-                            unsigned long startTime = millis();
-                            LOG_I(TAG, "Waiting for connection after reset...");
-                            while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
-                                delay(100);
-                                if ((millis() - startTime) % 1000 == 0) {
-                                    Serial.print(".");
-                                }
-                            }
-                            Serial.println();
-                            
-                            if (WiFi.status() == WL_CONNECTED) {
-                                LOG_I(TAG, "Connection established after WiFi reset!");
-                                setState(WiFiConnectionState::CONNECTED);
-                                _lastConnectedTime = millis();
-                                resetReconnectAttempts();
-                                triggerEvent(WiFiEventType::CONNECTED, "Connected after WiFi subsystem reset");
-                            } else {
-                                LOG_E(TAG, "Failed to connect even after WiFi reset");
-                                triggerEvent(WiFiEventType::CONNECTION_FAILED, "Failed after WiFi subsystem reset");
-                                
-                                // Start config portal as a last resort
-                                LOG_I(TAG, "Starting config portal as last resort");
-                                startConfigPortal("ESP32-Thermostat-Recovery", 0);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        connect(10000); // 10 second timeout for reconnection
     }
 }
 
-// Add this function implementation somewhere in the file, perhaps near other utility functions
-
-const char* WiFiConnectionManager::getEventTypeName(WiFiEventType type) {
-    switch (type) {
-        case WiFiEventType::CONNECTED: return "CONNECTED";
-        case WiFiEventType::DISCONNECTED: return "DISCONNECTED";
-        case WiFiEventType::CONNECTING: return "CONNECTING";
-        case WiFiEventType::CONNECTION_LOST: return "CONNECTION_LOST";
-        case WiFiEventType::CONNECTION_FAILED: return "CONNECTION_FAILED";
-        case WiFiEventType::CONFIG_PORTAL_STARTED: return "CONFIG_PORTAL_STARTED";
-        case WiFiEventType::CONFIG_PORTAL_STOPPED: return "CONFIG_PORTAL_STOPPED";
-        default: return "UNKNOWN";
-    }
-}
-
-// Periodic connectivity status report
-static unsigned long lastConnReport = 0;
-if (millis() - lastConnReport >= 300000) {  // Report every 5 minutes
-    lastConnReport = millis();
-    if (_state == WiFiConnectionState::CONNECTED) {
-        int quality = getConnectionQuality();
+void WiFiConnectionManager::handlePeriodicTasks() {
+    // Check and log signal strength periodically
+    checkAndLogSignalStrength();
+    
+    // Test internet connectivity periodically (every 5 minutes)
+    static unsigned long lastConnectivityCheck = 0;
+    if (_state == WiFiConnectionState::CONNECTED && 
+        millis() - lastConnectivityCheck > 300000) { // 5 minutes
+        
+        lastConnectivityCheck = millis();
         bool hasInternet = testInternetConnectivity();
         
-        LOG_I(TAG, "Connectivity Report - Quality: %d%%, Internet: %s", 
-              quality, hasInternet ? "Yes" : "No");
-              
-        // Trigger event for status changes
-        if (quality < 50 || !hasInternet) {
-            triggerEvent(WiFiEventType::SIGNAL_CHANGED, 
-                       String("Poor connection quality: ") + String(quality) + "%");
+        if (hasInternet) {
+            triggerEvent(WiFiEventType::INTERNET_CONNECTED, "Internet connectivity confirmed");
+        } else {
+            triggerEvent(WiFiEventType::INTERNET_LOST, "Internet connectivity lost");
+            LOG_W(TAG, "Device is connected to WiFi but internet connectivity test failed");
         }
     }
 }

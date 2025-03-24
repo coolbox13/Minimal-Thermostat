@@ -36,17 +36,24 @@ enum class WiFiConnectionState {
 };
 
 /**
- * @brief Data structure for storing signal strength history
- */
-struct SignalStrengthRecord {
-    unsigned long timestamp;
-    int rssi;
-};
-
-/**
  * @brief Class to manage WiFi connection and monitor status
  */
 class WiFiConnectionManager {
+private:
+    // Signal history data structure
+    struct SignalStrengthRecord {
+        unsigned long timestamp;
+        int rssi;
+    };
+    
+    // Constants
+    static constexpr const char* TEST_HOST = "8.8.8.8";  // Google DNS for ping test
+    static constexpr uint8_t SIGNAL_HISTORY_SIZE = 10;
+    static constexpr int PING_TIMEOUT = 1000;            // 1 second timeout
+    static constexpr int QUALITY_THRESHOLD_GOOD = -60;
+    static constexpr int QUALITY_THRESHOLD_FAIR = -70;
+    static constexpr unsigned long SIGNAL_CHECK_INTERVAL = 60000; // Check signal every minute
+
 public:
     /**
      * @brief Get singleton instance
@@ -193,28 +200,26 @@ public:
      * @brief Test actual internet connectivity (not just WiFi connection)
      * @return True if internet appears to be working
      */
-    // Add these to the public section
-    public:
-        bool testInternetConnectivity();
-        int getConnectionQuality();
-        
-    private:
-        static const char* TEST_HOST = "8.8.8.8";  // Google DNS for ping test
-        static const int PING_TIMEOUT = 1000;       // 1 second timeout
-        static const int QUALITY_THRESHOLD_GOOD = -60;
-        static const int QUALITY_THRESHOLD_FAIR = -70;
-        std::deque<int> _signalHistory;
-        static const size_t MAX_SIGNAL_HISTORY = 10;
-
-    const char* getEventTypeName(WiFiEventType type); 
+    bool testInternetConnectivity();
+    
+    /**
+     * @brief Get overall connection quality metric
+     * @return Connection quality (0-100%)
+     */
+    int getConnectionQuality();
     
     /**
      * @brief Set the watchdog manager for integration
      * @param watchdogManager Pointer to the watchdog manager instance
      */
     void setWatchdogManager(WatchdogManager* watchdogManager);
-
-// Fix the structure issue - move methods back to their proper sections
+    
+    /**
+     * @brief Get the name of an event type
+     * @param type The event type
+     * @return String representation of the event type
+     */
+    const char* getEventTypeName(WiFiEventType type);
 
 private:
     // Private constructor for singleton
@@ -228,6 +233,9 @@ private:
     void setState(WiFiConnectionState newState);
     void setupWiFiManagerCallbacks();
     void logWiFiStatus(const char* message);
+    void checkAndLogSignalStrength();
+    void handleConnectionStatus();
+    void handlePeriodicTasks();
     
     /**
      * @brief Get the name of a WiFi connection state
@@ -245,6 +253,7 @@ private:
     WiFiConnectionState _state;
     unsigned long _lastConnectedTime;
     unsigned long _lastStateChangeTime;
+    unsigned long _lastSignalCheck;
     int _reconnectAttempts;
     bool _configPortalStarted;
     
@@ -254,7 +263,6 @@ private:
     bool _reconnectionInProgress;
     
     // Signal strength tracking
-    static const uint8_t SIGNAL_HISTORY_SIZE = 10;
     SignalStrengthRecord _signalHistory[SIGNAL_HISTORY_SIZE];
     uint8_t _signalHistoryIndex;
     
@@ -267,16 +275,7 @@ private:
     static const char* TAG;  // For logging
     
     // Watchdog manager reference
-    WatchdogManager* watchdogManager;
-    
-    // Add these members to the private section
-    private:
-        unsigned long _lastSignalCheck = 0;
-        static const unsigned long SIGNAL_CHECK_INTERVAL = 60000; // Check signal every minute
-        void checkAndLogSignalStrength();
+    WatchdogManager* _watchdogManager;
 };
 
 #endif // WIFI_CONNECTION_H
-
-// This should be the definition of WiFiStateCallback
-using WiFiStateCallback = std::function<void(WiFiConnectionState, WiFiConnectionState)>;
