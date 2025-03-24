@@ -101,11 +101,11 @@ This document outlines the specific tasks required to implement the improvements
 ## Phase 3: Logging and Diagnostics
 
 ### 1. Enhance WiFi and Watchdog Logging
-- [ ] Create dedicated log tags for WiFi and watchdog events
-- [ ] Add detailed state transition logging in WiFiConnectionManager
+- [x] Create dedicated log tags for WiFi and watchdog events
+- [x] Add detailed state transition logging in WiFiConnectionManager
 - [ ] Log signal strength periodically
-- [ ] Create persistent log for reboot reasons
-- [ ] Add log for connectivity test results
+- [x] Create persistent log for reboot reasons
+- [x] Add log for connectivity test results
 
 ### 2. Implement Connectivity Diagnostics
 - [ ] Add internet connectivity test (DNS or HTTP ping)

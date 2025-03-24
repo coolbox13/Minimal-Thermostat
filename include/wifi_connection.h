@@ -193,7 +193,18 @@ public:
      * @brief Test actual internet connectivity (not just WiFi connection)
      * @return True if internet appears to be working
      */
-    bool testInternetConnectivity();
+    // Add these to the public section
+    public:
+        bool testInternetConnectivity();
+        int getConnectionQuality();
+        
+    private:
+        static const char* TEST_HOST = "8.8.8.8";  // Google DNS for ping test
+        static const int PING_TIMEOUT = 1000;       // 1 second timeout
+        static const int QUALITY_THRESHOLD_GOOD = -60;
+        static const int QUALITY_THRESHOLD_FAIR = -70;
+        std::deque<int> _signalHistory;
+        static const size_t MAX_SIGNAL_HISTORY = 10;
 
     const char* getEventTypeName(WiFiEventType type); 
     
@@ -257,6 +268,12 @@ private:
     
     // Watchdog manager reference
     WatchdogManager* watchdogManager;
+    
+    // Add these members to the private section
+    private:
+        unsigned long _lastSignalCheck = 0;
+        static const unsigned long SIGNAL_CHECK_INTERVAL = 60000; // Check signal every minute
+        void checkAndLogSignalStrength();
 };
 
 #endif // WIFI_CONNECTION_H
