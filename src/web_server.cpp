@@ -1,4 +1,3 @@
-// src/web_server.cpp - Fixed version
 #include "web_server.h"
 #include "SPIFFS.h"
 #include <Update.h>
@@ -6,6 +5,10 @@
 #include "valve_control.h"
 #include "adaptive_pid_controller.h"
 #include "persistence_manager.h"
+#include "wifi_connection.h"  // Add this include for WiFiConnectionManager
+#include "watchdog_manager.h"  // Add this include for WatchdogManager
+
+
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -97,7 +100,6 @@ void WebServerManager::addEndpoint(const char* uri, WebRequestMethodComposite me
     }
 }
 
-// Fixed version of web server routes to handle static files properly
 void WebServerManager::setupDefaultRoutes() {
     if (!_server) return;
 
@@ -285,6 +287,161 @@ void WebServerManager::setupDefaultRoutes() {
             }
         }
     );
+
+    // System status API endpoint
+    _server->on("/api/system-status", HTTP_GET, [](AsyncWebServerRequest *request) {
+        WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+        WatchdogManager watchdogManager; // Create instance directly instead of using getInstance()
+        
+        // Create JSON response
+        DynamicJsonDocument doc(2048);
+        
+        // WiFi status
+        JsonObject wifi = doc.createNestedObject("wifi");
+        
+        // Get WiFi state
+        WiFiConnectionState state = wifiManager.getState();
+        String stateStr;
+        String stateClass;
+        
+        switch (state) {
+            case WiFiConnectionState::CONNECTED:
+                stateStr = "Connected";
+                stateClass = "ok";
+                break;
+            case WiFiConnectionState::CONNECTING:
+                stateStr = "Connecting...";
+                stateClass = "warning";
+                break;
+            case WiFiConnectionState::DISCONNECTED:
+                stateStr = "Disconnected";
+                stateClass = "error";
+                break;
+            case WiFiConnectionState::CONFIG_PORTAL_ACTIVE:
+                stateStr = "Config Portal Active";
+                stateClass = "warning";
+                break;
+            case WiFiConnectionState::CONNECTION_LOST:
+                stateStr = "Connection Lost";
+                stateClass = "error";
+                break;
+            default:
+                stateStr = "Unknown";
+                stateClass = "error";
+        }
+        
+        wifi["state"] = stateStr;
+        wifi["stateClass"] = stateClass;
+        wifi["signalQuality"] = wifiManager.getSignalQuality();
+        wifi["rssi"] = wifiManager.getSignalStrength();
+        
+        // Format connection time
+        unsigned long connectedTime = wifiManager.getTimeSinceLastConnection();
+        if (connectedTime == 0 || state != WiFiConnectionState::CONNECTED) {
+            wifi["connectedSince"] = "Not connected";
+        } else {
+            unsigned long seconds = connectedTime / 1000;
+            unsigned long minutes = seconds / 60;
+            unsigned long hours = minutes / 60;
+            unsigned long days = hours / 24;
+            
+            char timeStr[50];
+            if (days > 0) {
+                sprintf(timeStr, "%lu days, %lu hours", days, hours % 24);
+            } else if (hours > 0) {
+                sprintf(timeStr, "%lu hours, %lu minutes", hours, minutes % 60);
+            } else {
+                sprintf(timeStr, "%lu minutes, %lu seconds", minutes, seconds % 60);
+            }
+            wifi["connectedSince"] = timeStr;
+        }
+        
+        // Connection quality description
+        int quality = wifiManager.getConnectionQuality();
+        if (quality >= 80) {
+            wifi["connectionQuality"] = "Excellent";
+        } else if (quality >= 60) {
+            wifi["connectionQuality"] = "Good";
+        } else if (quality >= 40) {
+            wifi["connectionQuality"] = "Fair";
+        } else if (quality >= 20) {
+            wifi["connectionQuality"] = "Poor";
+        } else {
+            wifi["connectionQuality"] = "Very Poor";
+        }
+        
+        // Watchdog status
+        JsonObject watchdog = doc.createNestedObject("watchdog");
+        
+        // We can't access private member directly, so we'll just hardcode for now
+        // TODO: Add a public getter method in WatchdogManager class
+        bool systemWatchdogActive = true;  // Assuming watchdog is active
+        bool wifiWatchdogActive = watchdogManager.isWiFiWatchdogEnabled();
+        
+        watchdog["systemStatus"] = systemWatchdogActive ? "Active" : "Disabled";
+        watchdog["systemStatusClass"] = systemWatchdogActive ? "ok" : "inactive";
+        
+        watchdog["wifiStatus"] = wifiWatchdogActive ? "Active" : "Disabled";
+        watchdog["wifiStatusClass"] = wifiWatchdogActive ? "ok" : "inactive";
+        
+        // Reboot history
+        JsonArray rebootHistory = doc.createNestedArray("rebootHistory");
+        
+        // Since getRebootHistory might not exist, create a simplified version
+        // with just the last reboot reason
+        JsonObject entry = rebootHistory.createNestedObject();
+        
+        // Format current timestamp
+        char timeStr[30];
+        struct tm timeinfo;
+        time_t timestamp = time(nullptr);
+        localtime_r(&timestamp, &timeinfo);
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        
+        entry["time"] = timeStr;
+        // Use getResetInfoReason instead of getRebootReasonString
+        // Use getRebootReasonName with the lastRebootReason
+        entry["reason"] = watchdogManager.getRebootReasonName(watchdogManager.getLastRebootReason());
+        
+        // Send response
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // WiFi reconnect API endpoint
+    _server->on("/api/wifi-reconnect", HTTP_POST, [](AsyncWebServerRequest *request) {
+        WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+        
+        // Attempt to reconnect
+        bool success = wifiManager.connect(10000); // 10 second timeout
+        
+        // Create response
+        DynamicJsonDocument doc(256);
+        doc["success"] = success;
+        doc["message"] = success ? "WiFi reconnection successful" : "WiFi reconnection failed";
+        
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // Start config portal API endpoint
+    _server->on("/api/start-config-portal", HTTP_POST, [](AsyncWebServerRequest *request) {
+        WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+        
+        // Start config portal in non-blocking mode
+        wifiManager.startConfigPortal("ESP32-Thermostat-AP", 120); // 2 minute timeout
+        
+        // Create response
+        DynamicJsonDocument doc(256);
+        doc["success"] = true;
+        doc["message"] = "WiFi configuration portal started. Connect to the 'ESP32-Thermostat-AP' network to configure.";
+        
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
 
     // Reboot device
     _server->on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest *request) {

@@ -12,6 +12,11 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             const tabId = this.getAttribute('data-tab');
             document.getElementById(tabId).classList.add('active');
+            
+            // If system tab is selected, update system status
+            if (tabId === 'system') {
+                updateSystemStatus();
+            }
         });
     });
     
@@ -40,6 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('setpoint').addEventListener('blur', function() {
         this.value = formatNumberWithPrecision(parseFloat(this.value), 1);
     });
+    
+    // Add event listeners for WiFi action buttons
+    document.getElementById('btn-reconnect').addEventListener('click', reconnectWiFi);
+    document.getElementById('btn-config-portal').addEventListener('click', startConfigPortal);
 });
 
 /**
@@ -275,6 +284,98 @@ function rebootDevice() {
                 console.error('Error rebooting device:', error);
                 statusElement.textContent = 'Error rebooting device';
                 statusElement.className = 'status status-error';
+            });
+    }
+}
+
+// System status update functions
+function updateSystemStatus() {
+    fetch('/api/system-status')
+        .then(response => response.json())
+        .then(data => {
+            // Update WiFi status
+            document.getElementById('wifi-status').textContent = data.wifi.state;
+            document.getElementById('wifi-status').className = 'status-' + data.wifi.stateClass;
+            
+            // Update signal strength
+            const signalBar = document.getElementById('wifi-signal');
+            signalBar.style.width = data.wifi.signalQuality + '%';
+            signalBar.textContent = data.wifi.signalQuality + '%';
+            signalBar.className = 'progress-bar ' + getSignalBarClass(data.wifi.signalQuality);
+            
+            // Update connection quality
+            document.getElementById('wifi-quality').textContent = data.wifi.connectionQuality;
+            
+            // Update connected time
+            document.getElementById('wifi-connected-time').textContent = data.wifi.connectedSince;
+            
+            // Update watchdog status
+            document.getElementById('system-watchdog-status').textContent = data.watchdog.systemStatus;
+            document.getElementById('system-watchdog-status').className = 'status-' + data.watchdog.systemStatusClass;
+            
+            document.getElementById('wifi-watchdog-status').textContent = data.watchdog.wifiStatus;
+            document.getElementById('wifi-watchdog-status').className = 'status-' + data.watchdog.wifiStatusClass;
+            
+            // Update reboot history
+            const rebootHistoryElement = document.getElementById('reboot-history');
+            if (data.rebootHistory.length === 0) {
+                rebootHistoryElement.innerHTML = '<p>No reboot history available</p>';
+            } else {
+                let historyHtml = '<table class="status-table"><thead><tr><th>Time</th><th>Reason</th></tr></thead><tbody>';
+                data.rebootHistory.forEach(entry => {
+                    historyHtml += `<tr><td>${entry.time}</td><td>${entry.reason}</td></tr>`;
+                });
+                historyHtml += '</tbody></table>';
+                rebootHistoryElement.innerHTML = historyHtml;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching system status:', error);
+            document.getElementById('wifi-status').textContent = 'Error fetching data';
+            document.getElementById('wifi-status').className = 'status-error';
+        });
+}
+
+function getSignalBarClass(quality) {
+    if (quality >= 80) return 'bg-success';
+    if (quality >= 50) return 'bg-info';
+    if (quality >= 30) return 'bg-warning';
+    return 'bg-danger';
+}
+
+function reconnectWiFi() {
+    if (confirm('Are you sure you want to reconnect WiFi?')) {
+        document.getElementById('wifi-status').textContent = 'Reconnecting...';
+        document.getElementById('wifi-status').className = 'status-warning';
+        
+        fetch('/api/wifi-reconnect', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                setTimeout(updateSystemStatus, 5000); // Update status after 5 seconds
+            })
+            .catch(error => {
+                console.error('Error reconnecting WiFi:', error);
+                alert('Error reconnecting WiFi. See console for details.');
+                updateSystemStatus();
+            });
+    }
+}
+
+function startConfigPortal() {
+    if (confirm('Are you sure you want to start the WiFi configuration portal? This will disconnect from the current network.')) {
+        document.getElementById('wifi-status').textContent = 'Starting config portal...';
+        document.getElementById('wifi-status').className = 'status-warning';
+        
+        fetch('/api/start-config-portal', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error('Error starting config portal:', error);
+                alert('Error starting config portal. See console for details.');
+                updateSystemStatus();
             });
     }
 }

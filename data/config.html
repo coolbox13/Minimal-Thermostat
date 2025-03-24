@@ -21,6 +21,7 @@
                 <button class="tab-button" data-tab="knx">KNX</button>
                 <button class="tab-button" data-tab="bme280">BME280</button>
                 <button class="tab-button" data-tab="pid">PID Control</button>
+                <button class="tab-button" data-tab="system">System Status</button>
             </div>
             
             <form id="config-form">
@@ -131,6 +132,68 @@
                         <label for="setpoint">Default Setpoint:</label>
                         <input type="number" id="setpoint" name="setpoint" step="0.5" min="5" max="30" class="form-input">
                         <span class="form-hint">Range: 5.0°C - 30.0°C (1 decimal place)</span>
+                    </div>
+                </div>
+                
+                <!-- System Status Tab -->
+                <div id="system" class="tab-content">
+                    <h3>System Status</h3>
+                    
+                    <!-- WiFi Status Section -->
+                    <div class="status-section">
+                        <h4>WiFi Connection</h4>
+                        <div class="status-container">
+                            <div class="status-row">
+                                <div class="status-label">Status:</div>
+                                <div class="status-value"><span id="wifi-status">Unknown</span></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-label">Signal Strength:</div>
+                                <div class="status-value">
+                                    <div class="progress">
+                                        <div id="wifi-signal" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-label">Connection Quality:</div>
+                                <div class="status-value"><span id="wifi-quality">Unknown</span></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-label">Connected Since:</div>
+                                <div class="status-value"><span id="wifi-connected-time">Unknown</span></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-label">Actions:</div>
+                                <div class="status-value">
+                                    <button type="button" id="btn-reconnect" class="action-button">Reconnect WiFi</button>
+                                    <button type="button" id="btn-config-portal" class="action-button">Start Config Portal</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Watchdog Status Section -->
+                    <div class="status-section">
+                        <h4>Watchdog Status</h4>
+                        <div class="status-container">
+                            <div class="status-row">
+                                <div class="status-label">System Watchdog:</div>
+                                <div class="status-value"><span id="system-watchdog-status">Unknown</span></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-label">WiFi Watchdog:</div>
+                                <div class="status-value"><span id="wifi-watchdog-status">Unknown</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reboot History Section -->
+                    <div class="status-section">
+                        <h4>Reboot History</h4>
+                        <div class="status-container">
+                            <div id="reboot-history">Loading reboot history...</div>
+                        </div>
                     </div>
                 </div>
                 
