@@ -6,6 +6,7 @@
 #include "valve_control.h"
 #include "adaptive_pid_controller.h"
 #include "persistence_manager.h"
+#include "event_log.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -292,6 +293,27 @@ void WebServerManager::setupDefaultRoutes() {
         // Schedule reboot after response is sent
         delay(500);
         ESP.restart();
+    });
+
+    // Get event logs
+    _server->on("/api/logs", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String logsJson = EventLog::getInstance().getEntriesJSON();
+        request->send(200, "application/json", logsJson);
+    });
+
+    // Clear event logs
+    _server->on("/api/logs/clear", HTTP_POST, [](AsyncWebServerRequest *request) {
+        EventLog::getInstance().clear();
+        request->send(200, "application/json", "{\"success\":true,\"message\":\"Logs cleared\"}");
+    });
+
+    // Serve logs.html
+    _server->on("/logs.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (SPIFFS.exists("/logs.html")) {
+            request->send(SPIFFS, "/logs.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "Logs page not found. Please upload the data files.");
+        }
     });
 
     // Set up 404 handler last to ensure it catches unmatched routes
