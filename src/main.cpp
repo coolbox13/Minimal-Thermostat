@@ -18,6 +18,7 @@
 #include "web_server.h"
 #include "watchdog_manager.h"
 #include "wifi_connection.h"
+#include "event_log.h"
 
 
 static const char* TAG_MAIN = "MAIN";
@@ -75,7 +76,11 @@ void setup() {
     // Initialize logger with default log level
     Logger::getInstance().setLogLevel(LOG_INFO);
     LOG_I(TAG_MAIN, "ESP32 KNX Thermostat - With Adaptive PID Controller");
-    
+
+    // Initialize EventLog for persistent logging
+    EventLog::getInstance().begin();
+    LOG_I(TAG_MAIN, "Event log initialized");
+
     // Register log callback for persistent logging
     Logger::getInstance().setLogCallback(storeLogToFlash);
     
@@ -140,10 +145,28 @@ void setup() {
     // Setup KNX and MQTT managers
     knxManager.begin();
     mqttManager.begin();
-    
+
     // Connect the managers for cross-communication
     knxManager.setMQTTManager(&mqttManager);
     mqttManager.setKNXManager(&knxManager);
+
+    // Setup MQTT logging callback for EventLog
+    EventLog::getInstance().setMQTTLoggingEnabled(true);
+    EventLog::getInstance().setMQTTCallback([](LogLevel level, const char* tag, const char* message) {
+        if (mqttClient.connected()) {
+            // Create JSON payload for the log
+            StaticJsonDocument<256> doc;
+            doc["timestamp"] = millis();
+            doc["level"] = EventLog::logLevelToString(level);
+            doc["tag"] = tag;
+            doc["message"] = message;
+
+            String payload;
+            serializeJson(doc, payload);
+
+            mqttClient.publish("esp32_thermostat/logs", payload.c_str());
+        }
+    });
     
     // Register callback for KNX address configuration changes
     webServerManager->setKnxAddressChangedCallback([&]() {
@@ -319,21 +342,7 @@ void updatePIDControl() {
 void storeLogToFlash(LogLevel level, const char* tag, const char* message, unsigned long timestamp) {
     // Only store errors and warnings to save flash wear
     if (level <= LOG_WARNING) {
-        // Get current date/time if RTC is available
-        char timeStr[20];
-        sprintf(timeStr, "%lu", timestamp);
-        
-        // Format: timestamp|level|tag|message
-        String logEntry = String(timeStr) + "|" + String(level) + "|" + tag + "|" + message;
-        
-        // In a real implementation, append this to a log file in SPIFFS
-        // This is just a placeholder since file operations can be slow
-        // and would affect main loop timing
-        if (level == LOG_ERROR) {
-            // For errors, we might want to ensure they're saved immediately
-            // File logFile = SPIFFS.open("/error.log", "a");
-            // logFile.println(logEntry);
-            // logFile.close();
-        }
+        // Store to EventLog (using the same LogLevel enum)
+        EventLog::getInstance().addEntry(level, tag, message);
     }
 }
