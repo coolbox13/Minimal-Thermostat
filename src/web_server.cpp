@@ -113,29 +113,25 @@ void WebServerManager::handlePIDParameterUpdates(const JsonDocument& jsonDoc) {
         return;
     }
     if (jsonDoc["pid"].containsKey("kp")) {
-        float kp = jsonDoc["pid"]["kp"].as<float>();
-        kp = roundf(kp * 100) / 100.0f;
+        float kp = ConfigManager::roundToPrecision(jsonDoc["pid"]["kp"].as<float>(), 2);
         setPidKp(kp);
         Serial.print("Rounded Kp value: ");
         Serial.println(kp, 2);
     }
     if (jsonDoc["pid"].containsKey("ki")) {
-        float ki = jsonDoc["pid"]["ki"].as<float>();
-        ki = roundf(ki * 1000) / 1000.0f;
+        float ki = ConfigManager::roundToPrecision(jsonDoc["pid"]["ki"].as<float>(), 3);
         setPidKi(ki);
         Serial.print("Rounded Ki value: ");
         Serial.println(ki, 3);
     }
     if (jsonDoc["pid"].containsKey("kd")) {
-        float kd = jsonDoc["pid"]["kd"].as<float>();
-        kd = roundf(kd * 1000) / 1000.0f;
+        float kd = ConfigManager::roundToPrecision(jsonDoc["pid"]["kd"].as<float>(), 3);
         setPidKd(kd);
         Serial.print("Rounded Kd value: ");
         Serial.println(kd, 3);
     }
     if (jsonDoc["pid"].containsKey("setpoint")) {
-        float setpoint = jsonDoc["pid"]["setpoint"].as<float>();
-        setpoint = roundf(setpoint * 10) / 10.0f;
+        float setpoint = ConfigManager::roundToPrecision(jsonDoc["pid"]["setpoint"].as<float>(), 1);
         setTemperatureSetpoint(setpoint);
         Serial.print("Rounded setpoint value: ");
         Serial.println(setpoint, 1);

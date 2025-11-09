@@ -59,7 +59,10 @@ public:
     
     // Enhanced version with error reporting
     bool setFromJson(const JsonDocument& doc, String& errorMessage);
-    
+
+    // Utility function for consistent rounding
+    static float roundToPrecision(float value, int decimals);
+
 private:
     ConfigManager();
     static ConfigManager* _instance;

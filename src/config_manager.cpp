@@ -18,6 +18,11 @@ ConfigManager::ConfigManager() {
     // Private constructor
 }
 
+float ConfigManager::roundToPrecision(float value, int decimals) {
+    float multiplier = pow(10.0f, decimals);
+    return roundf(value * multiplier) / multiplier;
+}
+
 bool ConfigManager::begin() {
     LOG_I(TAG, "Initializing configuration storage");
     if (!_preferences.begin("thermostat", false)) {
@@ -116,56 +121,30 @@ void ConfigManager::setUseTestAddresses(bool useTest) {
     _preferences.putBool("knx_test", useTest);
 }
 
-// PID Controller settings - MODIFIED: Updated getter to apply consistent rounding
+// PID Controller settings
 float ConfigManager::getPidKp() {
-    float kp = _preferences.getFloat("pid_kp", DEFAULT_KP);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(kp * 100) / 100.0f; // Round to 2 decimal places
+    return roundToPrecision(_preferences.getFloat("pid_kp", DEFAULT_KP), 2);
 }
-
-// 1. Update the setter methods to limit precision directly
 void ConfigManager::setPidKp(float kp) {
-    // Round to 2 decimal places
-    kp = roundf(kp * 100) / 100.0f;
-    _preferences.putFloat("pid_kp", kp);
+    _preferences.putFloat("pid_kp", roundToPrecision(kp, 2));
 }
-
 void ConfigManager::setPidKi(float ki) {
-    // Round to 3 decimal places
-    ki = roundf(ki * 1000) / 1000.0f;
-    _preferences.putFloat("pid_ki", ki);
+    _preferences.putFloat("pid_ki", roundToPrecision(ki, 3));
 }
-
 void ConfigManager::setPidKd(float kd) {
-    // Round to 3 decimal places
-    kd = roundf(kd * 1000) / 1000.0f;
-    _preferences.putFloat("pid_kd", kd);
+    _preferences.putFloat("pid_kd", roundToPrecision(kd, 3));
 }
-
 void ConfigManager::setSetpoint(float setpoint) {
-    // Round to 1 decimal place
-    setpoint = roundf(setpoint * 10) / 10.0f;
-    _preferences.putFloat("setpoint", setpoint);
+    _preferences.putFloat("setpoint", roundToPrecision(setpoint, 1));
 }
-
-// MODIFIED: Updated getter methods to apply consistent rounding
 float ConfigManager::getPidKi() {
-    float ki = _preferences.getFloat("pid_ki", DEFAULT_KI);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(ki * 1000) / 1000.0f; // Round to 3 decimal places
+    return roundToPrecision(_preferences.getFloat("pid_ki", DEFAULT_KI), 3);
 }
-
 float ConfigManager::getPidKd() {
-    float kd = _preferences.getFloat("pid_kd", DEFAULT_KD);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(kd * 1000) / 1000.0f; // Round to 3 decimal places
+    return roundToPrecision(_preferences.getFloat("pid_kd", DEFAULT_KD), 3);
 }
-
-// MODIFIED: Updated getSetpoint method to apply consistent rounding
 float ConfigManager::getSetpoint() {
-    float setpoint = _preferences.getFloat("setpoint", DEFAULT_SETPOINT);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(setpoint * 10) / 10.0f; // Round to 1 decimal place
+    return roundToPrecision(_preferences.getFloat("setpoint", DEFAULT_SETPOINT), 1);
 }
 
 // MODIFIED: Updated getJson to use getters directly (which now apply rounding)
@@ -321,8 +300,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         return true;
     }
     if (doc["pid"].containsKey("kp")) {
-        float kp = doc["pid"]["kp"].as<float>();
-        kp = roundf(kp * 100) / 100.0f;
+        float kp = roundToPrecision(doc["pid"]["kp"].as<float>(), 2);
         LOG_D(TAG, "Parsed Kp: %.2f (rounded)", kp);
         if (kp < 0) {
             errorMessage = "PID Kp must be >= 0";
@@ -332,8 +310,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         setPidKp(kp);
     }
     if (doc["pid"].containsKey("ki")) {
-        float ki = doc["pid"]["ki"].as<float>();
-        ki = roundf(ki * 1000) / 1000.0f;
+        float ki = roundToPrecision(doc["pid"]["ki"].as<float>(), 3);
         LOG_D(TAG, "Parsed Ki: %.3f (rounded)", ki);
         if (ki < 0) {
             errorMessage = "PID Ki must be >= 0";
@@ -343,8 +320,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         setPidKi(ki);
     }
     if (doc["pid"].containsKey("kd")) {
-        float kd = doc["pid"]["kd"].as<float>();
-        kd = roundf(kd * 1000) / 1000.0f;
+        float kd = roundToPrecision(doc["pid"]["kd"].as<float>(), 3);
         LOG_D(TAG, "Parsed Kd: %.3f (rounded)", kd);
         if (kd < 0) {
             errorMessage = "PID Kd must be >= 0";
@@ -354,8 +330,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         setPidKd(kd);
     }
     if (doc["pid"].containsKey("setpoint")) {
-        float setpoint = doc["pid"]["setpoint"].as<float>();
-        setpoint = roundf(setpoint * 10) / 10.0f;
+        float setpoint = roundToPrecision(doc["pid"]["setpoint"].as<float>(), 1);
         LOG_D(TAG, "Parsed setpoint: %.1f (rounded)", setpoint);
         if (setpoint < 5 || setpoint > 30) {
             errorMessage = "Temperature setpoint must be between 5°C and 30°C";
