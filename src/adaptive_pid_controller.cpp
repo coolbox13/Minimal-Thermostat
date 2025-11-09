@@ -1,6 +1,7 @@
 // adaptive_pid_controller.c - modified initialization function
 
 #include "adaptive_pid_controller.h"
+#include "config.h"
 #include "config_manager.h"
 #include "logger.h"
 #include <math.h>
