@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "SlashCommand(/deploy)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(~/.platformio/penv/bin/platformio run:*)"
     ],
     "deny": [],
     "ask": []
