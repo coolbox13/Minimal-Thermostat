@@ -187,6 +187,21 @@ This document consolidates all actionable items identified during the code audit
     3. Add function to enable/disable KNX logging at runtime
   - **Estimated Effort:** 2-3 hours
 
+- [ ] **TODO-019A:** Implement runtime-configurable logging system
+  - **Files:** src/main.cpp, include/config_manager.h, src/config_manager.cpp, data/config.html
+  - **Current:** Log levels hardcoded at compile time
+  - **Action:**
+    1. Add global log level configuration to ConfigManager
+    2. Add per-module log level configuration (MAIN, SENSOR, PID, WIFI, KNX, MQTT, CONFIG, WEB)
+    3. Add API endpoints GET/POST `/api/logging`
+    4. Create web UI section for logging configuration
+    5. Implement runtime log level changes using `esp_log_level_set()`
+  - **Benefits:**
+    - Enable detailed debugging without recompilation
+    - Help diagnose issues in production
+    - Reduce log noise in normal operation
+  - **Estimated Effort:** 4-5 hours
+
 ### Error Handling
 
 - [ ] **TODO-020:** Standardize error handling pattern across all managers

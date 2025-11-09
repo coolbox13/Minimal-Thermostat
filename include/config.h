@@ -49,7 +49,8 @@
 
 // PID Configuration
 #define PID_SETPOINT 22.0       // Default temperature setpoint (°C)
-#define PID_UPDATE_INTERVAL 10000 // Update PID controller every 10 seconds
+#define PID_UPDATE_INTERVAL 10000 // Update PID controller every 10 seconds (ms)
+#define PID_ADAPTATION_INTERVAL_SEC 60.0f  // PID parameter adaptation interval (60 seconds)
 
 // Initial PID Parameters (will be auto-tuned)
 #define PID_KP_INITIAL 2.0      // Proportional gain
@@ -57,13 +58,17 @@
 #define PID_KD_INITIAL 0.5      // Derivative gain
 #define PID_DEADBAND 0.2        // Temperature deadband (±°C)
 
+// WiFi Configuration Timeouts
+#define WIFI_CONNECT_TIMEOUT_SEC 180        // WiFi connection timeout during setup (3 minutes)
+#define WIFI_CONNECT_TIMEOUT_MS 10000       // WiFi connection attempt timeout (10 seconds)
+#define WIFI_RECONNECT_TIMEOUT_MS 10000     // WiFi reconnection timeout (10 seconds)
+#define INTERNET_CHECK_INTERVAL_MS 300000   // Internet connectivity check interval (5 minutes)
+#define SENSOR_UPDATE_INTERVAL_MS 30000     // Sensor reading update interval (30 seconds)
+#define CONNECTIVITY_CHECK_INTERVAL_MS 300000  // Connectivity check interval in main loop (5 minutes)
+
 // Watchdog timer configurations
 #define SYSTEM_WATCHDOG_TIMEOUT 2700000  // 45-minute system watchdog (in ms)
-// Change this line:
 #define WIFI_WATCHDOG_TIMEOUT 1800000    // 30-minute WiFi watchdog (in ms)
-
-// To something like:
-#define WIFI_WATCHDOG_TIMEOUT_MS 1800000    // 30-minute WiFi watchdog (in ms)
 #define MAX_RECONNECT_ATTEMPTS 10        // Maximum reconnection attempts before reboot
 
 // Add these definitions
