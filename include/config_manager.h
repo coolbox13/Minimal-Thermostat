@@ -64,7 +64,7 @@ private:
     ConfigManager();
     static ConfigManager* _instance;
     Preferences _preferences;
-    
+
     // Default values
     static constexpr float DEFAULT_KP = 2.0f;
     static constexpr float DEFAULT_KI = 0.1f;
@@ -75,8 +75,14 @@ private:
     static constexpr uint8_t DEFAULT_KNX_LINE = 1;
     static constexpr uint8_t DEFAULT_KNX_MEMBER = 159;
 
-    
-    public:
+    // Validation helper functions
+    bool validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyMQTTSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyKNXSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateBME280Settings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyPIDSettings(const JsonDocument& doc, String& errorMessage);
+
+public:
         /**
          * @brief Set the last reboot reason
          * @param reason Reason for the last reboot

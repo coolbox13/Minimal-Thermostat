@@ -197,197 +197,190 @@ void ConfigManager::getJson(JsonDocument& doc) {
     LOG_D(TAG, "Created JSON configuration");
 }
 
+// Validation helper functions
+bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("network")) {
+        return true;
+    }
+    if (doc["network"].containsKey("wifi_ssid")) {
+        String ssid = doc["network"]["wifi_ssid"].as<String>();
+        if (ssid.length() > 32) {
+            errorMessage = "WiFi SSID too long (max 32 characters)";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWifiSSID(ssid);
+    }
+    if (doc["network"].containsKey("wifi_pass")) {
+        String pass = doc["network"]["wifi_pass"].as<String>();
+        if (pass.length() > 0 && pass != "**********") {
+            if (pass.length() > 64) {
+                errorMessage = "WiFi password too long (max 64 characters)";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setWifiPassword(pass);
+        }
+    }
+    return true;
+}
+bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("mqtt")) {
+        return true;
+    }
+    if (doc["mqtt"].containsKey("server")) {
+        setMqttServer(doc["mqtt"]["server"].as<String>());
+    }
+    if (doc["mqtt"].containsKey("port")) {
+        uint16_t port = doc["mqtt"]["port"].as<uint16_t>();
+        if (port == 0) {
+            errorMessage = "Invalid MQTT port";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setMqttPort(port);
+    }
+    return true;
+}
+bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("knx")) {
+        return true;
+    }
+    if (doc["knx"].containsKey("area")) {
+        uint8_t area = doc["knx"]["area"].as<uint8_t>();
+        if (area > 15) {
+            errorMessage = "KNX area must be 0-15";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setKnxArea(area);
+    }
+    if (doc["knx"].containsKey("line")) {
+        uint8_t line = doc["knx"]["line"].as<uint8_t>();
+        if (line > 15) {
+            errorMessage = "KNX line must be 0-15";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setKnxLine(line);
+    }
+    if (doc["knx"].containsKey("member")) {
+        uint8_t member = doc["knx"]["member"].as<uint8_t>();
+        if (member > 255) {
+            errorMessage = "KNX member must be 0-255";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setKnxMember(member);
+    }
+    if (doc["knx"].containsKey("use_test")) {
+        setUseTestAddresses(doc["knx"]["use_test"].as<bool>());
+    }
+    return true;
+}
+bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("bme280")) {
+        return true;
+    }
+    if (doc["bme280"].containsKey("address")) {
+        String address = doc["bme280"]["address"].as<String>();
+        if (address != "0x76" && address != "0x77") {
+            errorMessage = "BME280 address must be 0x76 or 0x77";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    if (doc["bme280"].containsKey("sda_pin")) {
+        uint8_t pin = doc["bme280"]["sda_pin"].as<uint8_t>();
+        if (pin > 39) {
+            errorMessage = "BME280 SDA pin must be 0-39";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    if (doc["bme280"].containsKey("scl_pin")) {
+        uint8_t pin = doc["bme280"]["scl_pin"].as<uint8_t>();
+        if (pin > 39) {
+            errorMessage = "BME280 SCL pin must be 0-39";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    if (doc["bme280"].containsKey("interval")) {
+        uint16_t interval = doc["bme280"]["interval"].as<uint16_t>();
+        if (interval < 1 || interval > 3600) {
+            errorMessage = "BME280 interval must be 1-3600 seconds";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("pid")) {
+        return true;
+    }
+    if (doc["pid"].containsKey("kp")) {
+        float kp = doc["pid"]["kp"].as<float>();
+        kp = roundf(kp * 100) / 100.0f;
+        LOG_D(TAG, "Parsed Kp: %.2f (rounded)", kp);
+        if (kp < 0) {
+            errorMessage = "PID Kp must be >= 0";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidKp(kp);
+    }
+    if (doc["pid"].containsKey("ki")) {
+        float ki = doc["pid"]["ki"].as<float>();
+        ki = roundf(ki * 1000) / 1000.0f;
+        LOG_D(TAG, "Parsed Ki: %.3f (rounded)", ki);
+        if (ki < 0) {
+            errorMessage = "PID Ki must be >= 0";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidKi(ki);
+    }
+    if (doc["pid"].containsKey("kd")) {
+        float kd = doc["pid"]["kd"].as<float>();
+        kd = roundf(kd * 1000) / 1000.0f;
+        LOG_D(TAG, "Parsed Kd: %.3f (rounded)", kd);
+        if (kd < 0) {
+            errorMessage = "PID Kd must be >= 0";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidKd(kd);
+    }
+    if (doc["pid"].containsKey("setpoint")) {
+        float setpoint = doc["pid"]["setpoint"].as<float>();
+        setpoint = roundf(setpoint * 10) / 10.0f;
+        LOG_D(TAG, "Parsed setpoint: %.1f (rounded)", setpoint);
+        if (setpoint < 5 || setpoint > 30) {
+            errorMessage = "Temperature setpoint must be between 5°C and 30°C";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setSetpoint(setpoint);
+    }
+    return true;
+}
+
 // Import settings from JSON
 bool ConfigManager::setFromJson(const JsonDocument& doc) {
-    String errorMessage; // Unused in this version
+    String errorMessage;
     return setFromJson(doc, errorMessage);
 }
 
 // Enhanced setFromJson with error reporting
 bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     LOG_I(TAG, "Importing configuration from JSON");
-    
-    // Network settings
-    if (doc.containsKey("network")) {
-        if (doc["network"].containsKey("wifi_ssid")) {
-            String ssid = doc["network"]["wifi_ssid"].as<String>();
-            if (ssid.length() > 32) {
-                errorMessage = "WiFi SSID too long (max 32 characters)";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setWifiSSID(ssid);
-        }
-        
-        if (doc["network"].containsKey("wifi_pass")) {
-            String pass = doc["network"]["wifi_pass"].as<String>();
-            if (pass.length() > 0 && pass != "**********") {  // Only update if changed
-                if (pass.length() > 64) {
-                    errorMessage = "WiFi password too long (max 64 characters)";
-                    LOG_W(TAG, "%s", errorMessage.c_str());
-                    return false;
-                }
-                setWifiPassword(pass);
-            }
-        }
-    }
-    
-    // MQTT settings
-    if (doc.containsKey("mqtt")) {
-        if (doc["mqtt"].containsKey("server")) {
-            setMqttServer(doc["mqtt"]["server"].as<String>());
-        }
-        
-        if (doc["mqtt"].containsKey("port")) {
-            uint16_t port = doc["mqtt"]["port"].as<uint16_t>();
-            if (port == 0) {
-                errorMessage = "Invalid MQTT port";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setMqttPort(port);
-        }
-    }
-    
-    // KNX settings
-    if (doc.containsKey("knx")) {
-        if (doc["knx"].containsKey("area")) {
-            uint8_t area = doc["knx"]["area"].as<uint8_t>();
-            if (area > 15) {
-                errorMessage = "KNX area must be 0-15";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setKnxArea(area);
-        }
-        
-        if (doc["knx"].containsKey("line")) {
-            uint8_t line = doc["knx"]["line"].as<uint8_t>();
-            if (line > 15) {
-                errorMessage = "KNX line must be 0-15";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setKnxLine(line);
-        }
-        
-        if (doc["knx"].containsKey("member")) {
-            uint8_t member = doc["knx"]["member"].as<uint8_t>();
-            if (member > 255) {
-                errorMessage = "KNX member must be 0-255";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setKnxMember(member);
-        }
-        
-        if (doc["knx"].containsKey("use_test")) {
-            setUseTestAddresses(doc["knx"]["use_test"].as<bool>());
-        }
-    }
-    
-    // BME280 settings - just validate but don't store yet
-    if (doc.containsKey("bme280")) {
-        if (doc["bme280"].containsKey("address")) {
-            String address = doc["bme280"]["address"].as<String>();
-            if (address != "0x76" && address != "0x77") {
-                errorMessage = "BME280 address must be 0x76 or 0x77";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            // BME280 address stored in config.h for now
-        }
-        
-        if (doc["bme280"].containsKey("sda_pin")) {
-            uint8_t pin = doc["bme280"]["sda_pin"].as<uint8_t>();
-            if (pin > 39) {
-                errorMessage = "BME280 SDA pin must be 0-39";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            // BME280 SDA pin stored in config.h for now
-        }
-        
-        if (doc["bme280"].containsKey("scl_pin")) {
-            uint8_t pin = doc["bme280"]["scl_pin"].as<uint8_t>();
-            if (pin > 39) {
-                errorMessage = "BME280 SCL pin must be 0-39";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            // BME280 SCL pin stored in config.h for now
-        }
-        
-        if (doc["bme280"].containsKey("interval")) {
-            uint16_t interval = doc["bme280"]["interval"].as<uint16_t>();
-            if (interval < 1 || interval > 3600) {
-                errorMessage = "BME280 interval must be 1-3600 seconds";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            // BME280 interval stored in config.h for now
-        }
-    }
-    
-    // PID settings
-    if (doc.containsKey("pid")) {
-        if (doc["pid"].containsKey("kp")) {
-            float kp = doc["pid"]["kp"].as<float>();
-            // Round to 2 decimal places to avoid excessive precision
-            kp = roundf(kp * 100) / 100.0f;
-            LOG_D(TAG, "Parsed Kp: %.2f (rounded)", kp);
-            
-            if (kp < 0) {
-                errorMessage = "PID Kp must be >= 0";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setPidKp(kp);
-        }
-        
-        if (doc["pid"].containsKey("ki")) {
-            float ki = doc["pid"]["ki"].as<float>();
-            // Round to 3 decimal places for integral gain
-            ki = roundf(ki * 1000) / 1000.0f;
-            LOG_D(TAG, "Parsed Ki: %.3f (rounded)", ki);
-            
-            if (ki < 0) {
-                errorMessage = "PID Ki must be >= 0";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setPidKi(ki);
-        }
-        
-        if (doc["pid"].containsKey("kd")) {
-            float kd = doc["pid"]["kd"].as<float>();
-            // Round to 3 decimal places for derivative gain
-            kd = roundf(kd * 1000) / 1000.0f;
-            LOG_D(TAG, "Parsed Kd: %.3f (rounded)", kd);
-            
-            if (kd < 0) {
-                errorMessage = "PID Kd must be >= 0";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setPidKd(kd);
-        }
-        
-        if (doc["pid"].containsKey("setpoint")) {
-            float setpoint = doc["pid"]["setpoint"].as<float>();
-            // Round to 1 decimal place for setpoint
-            setpoint = roundf(setpoint * 10) / 10.0f;
-            LOG_D(TAG, "Parsed setpoint: %.1f (rounded)", setpoint);
-            
-            if (setpoint < 5 || setpoint > 30) {
-                errorMessage = "Temperature setpoint must be between 5°C and 30°C";
-                LOG_W(TAG, "%s", errorMessage.c_str());
-                return false;
-            }
-            setSetpoint(setpoint);
-        }
-    }
-    
+    if (!validateAndApplyNetworkSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyMQTTSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyKNXSettings(doc, errorMessage)) return false;
+    if (!validateBME280Settings(doc, errorMessage)) return false;
+    if (!validateAndApplyPIDSettings(doc, errorMessage)) return false;
     LOG_I(TAG, "Configuration imported successfully");
     return true;
 }
