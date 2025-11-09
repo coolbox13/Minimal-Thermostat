@@ -35,11 +35,15 @@ private:
     
     // Callback for KNX address changes
     KnxAddressChangedCallback _knxAddressChangedCallback = nullptr;
-    
+
     // Default route handlers
     static void handleRoot(AsyncWebServerRequest *request);
     static void handleTest(AsyncWebServerRequest *request);
     static void handlePing(AsyncWebServerRequest *request);
+
+    // Config update helper methods
+    void handleKNXAddressChange(const JsonDocument& jsonDoc, bool oldUseTestSetting);
+    void handlePIDParameterUpdates(const JsonDocument& jsonDoc);
 };
 
 #endif // WEB_SERVER_H

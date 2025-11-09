@@ -97,6 +97,52 @@ void WebServerManager::addEndpoint(const char* uri, WebRequestMethodComposite me
     }
 }
 
+// Helper method to handle KNX address changes
+void WebServerManager::handleKNXAddressChange(const JsonDocument& jsonDoc, bool oldUseTestSetting) {
+    if (!jsonDoc.containsKey("knx") || !jsonDoc["knx"].containsKey("use_test")) {
+        return;
+    }
+    bool newUseTestSetting = jsonDoc["knx"]["use_test"].as<bool>();
+    if (oldUseTestSetting != newUseTestSetting && _knxAddressChangedCallback) {
+        Serial.println("KNX address setting changed, triggering callback");
+        _knxAddressChangedCallback();
+    }
+}
+void WebServerManager::handlePIDParameterUpdates(const JsonDocument& jsonDoc) {
+    if (!jsonDoc.containsKey("pid")) {
+        return;
+    }
+    if (jsonDoc["pid"].containsKey("kp")) {
+        float kp = jsonDoc["pid"]["kp"].as<float>();
+        kp = roundf(kp * 100) / 100.0f;
+        setPidKp(kp);
+        Serial.print("Rounded Kp value: ");
+        Serial.println(kp, 2);
+    }
+    if (jsonDoc["pid"].containsKey("ki")) {
+        float ki = jsonDoc["pid"]["ki"].as<float>();
+        ki = roundf(ki * 1000) / 1000.0f;
+        setPidKi(ki);
+        Serial.print("Rounded Ki value: ");
+        Serial.println(ki, 3);
+    }
+    if (jsonDoc["pid"].containsKey("kd")) {
+        float kd = jsonDoc["pid"]["kd"].as<float>();
+        kd = roundf(kd * 1000) / 1000.0f;
+        setPidKd(kd);
+        Serial.print("Rounded Kd value: ");
+        Serial.println(kd, 3);
+    }
+    if (jsonDoc["pid"].containsKey("setpoint")) {
+        float setpoint = jsonDoc["pid"]["setpoint"].as<float>();
+        setpoint = roundf(setpoint * 10) / 10.0f;
+        setTemperatureSetpoint(setpoint);
+        Serial.print("Rounded setpoint value: ");
+        Serial.println(setpoint, 1);
+    }
+    Serial.println("PID parameters updated from web interface with precision-controlled values");
+}
+
 // Fixed version of web server routes to handle static files properly
 void WebServerManager::setupDefaultRoutes() {
     if (!_server) return;
@@ -203,83 +249,22 @@ void WebServerManager::setupDefaultRoutes() {
             }
             
             if (index + len == total) {
-                // All data received, process it
-                
-                // Store the old KNX test address setting
-                bool oldUseTestSetting = false;
                 ConfigManager* configManager = ConfigManager::getInstance();
-                if (configManager) {
-                    oldUseTestSetting = configManager->getUseTestAddresses();
-                }
-                
+                bool oldUseTestSetting = configManager ? configManager->getUseTestAddresses() : false;
                 DeserializationError error = deserializeJson(jsonDoc, jsonBuffer);
                 if (error) {
-                    request->send(400, "application/json", 
+                    request->send(400, "application/json",
                         "{\"success\":false,\"message\":\"Invalid JSON: " + String(error.c_str()) + "\"}");
                     return;
                 }
-                
-                // Update configuration
                 String errorMessage;
                 bool success = configManager->setFromJson(jsonDoc, errorMessage);
-                
-                // Inside the config update handler's onBody function, where JSON is processed
-                // After deserializing the JSON and before sending the response
-                
                 if (success) {
-                    // Check if KNX test address setting changed
-                    if (jsonDoc.containsKey("knx") && jsonDoc["knx"].containsKey("use_test")) {
-                        bool newUseTestSetting = jsonDoc["knx"]["use_test"].as<bool>();
-                        
-                        // Now using 'this' correctly since it's captured
-                        if (oldUseTestSetting != newUseTestSetting && this->_knxAddressChangedCallback) {
-                            Serial.println("KNX address setting changed, triggering callback");
-                            this->_knxAddressChangedCallback();
-                        }
-                    }
-                    
-                    // Add code to handle PID parameter changes with improved rounding 
-                    if (jsonDoc.containsKey("pid")) {
-                        // Update PID controller with new values if they exist in the JSON
-                        if (jsonDoc["pid"].containsKey("kp")) {
-                            // Get the value and apply explicit rounding to ensure proper precision
-                            float kp = jsonDoc["pid"]["kp"].as<float>();
-                            kp = roundf(kp * 100) / 100.0f; // Round to 2 decimal places
-                            setPidKp(kp);
-                            Serial.print("Rounded Kp value: ");
-                            Serial.println(kp, 2); // Print with 2 decimal places for debugging
-                        }
-                        
-                        if (jsonDoc["pid"].containsKey("ki")) {
-                            float ki = jsonDoc["pid"]["ki"].as<float>();
-                            ki = roundf(ki * 1000) / 1000.0f; // Round to 3 decimal places
-                            setPidKi(ki);
-                            Serial.print("Rounded Ki value: ");
-                            Serial.println(ki, 3); // Print with 3 decimal places for debugging
-                        }
-                        
-                        if (jsonDoc["pid"].containsKey("kd")) {
-                            float kd = jsonDoc["pid"]["kd"].as<float>();
-                            kd = roundf(kd * 1000) / 1000.0f; // Round to 3 decimal places
-                            setPidKd(kd);
-                            Serial.print("Rounded Kd value: ");
-                            Serial.println(kd, 3); // Print with 3 decimal places for debugging
-                        }
-                        
-                        if (jsonDoc["pid"].containsKey("setpoint")) {
-                            float setpoint = jsonDoc["pid"]["setpoint"].as<float>();
-                            setpoint = roundf(setpoint * 10) / 10.0f; // Round to 1 decimal place
-                            setTemperatureSetpoint(setpoint);
-                            Serial.print("Rounded setpoint value: ");
-                            Serial.println(setpoint, 1); // Print with 1 decimal place for debugging
-                        }
-                        
-                        Serial.println("PID parameters updated from web interface with precision-controlled values");
-                    }
-                    
+                    this->handleKNXAddressChange(jsonDoc, oldUseTestSetting);
+                    this->handlePIDParameterUpdates(jsonDoc);
                     request->send(200, "application/json", "{\"success\":true}");
                 } else {
-                    request->send(500, "application/json", 
+                    request->send(500, "application/json",
                         "{\"success\":false,\"message\":\"" + errorMessage + "\"}");
                 }
             }
