@@ -243,41 +243,32 @@ void updatePIDControl() {
     LOG_D(TAG_PID, "PID params - Kp: %.3f, Ki: %.3f, Kd: %.3f", 
           g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
     
-    // Save all PID parameters to config
-    // Only do this if they've changed significantly (to reduce flash wear)
+    // Save PID parameters to config with write coalescing to reduce flash wear
+    // Write to flash max once every 5 minutes if parameters have changed
     static float last_saved_kp = g_pid_input.Kp;
     static float last_saved_ki = g_pid_input.Ki;
     static float last_saved_kd = g_pid_input.Kd;
     static float last_saved_setpoint = g_pid_input.setpoint_temp;
-    
-    bool params_changed = false;
-    
-    if (fabs(last_saved_kp - g_pid_input.Kp) > 0.001f) {
+    static unsigned long lastConfigWrite = 0;
+    static bool pendingConfigWrite = false;
+    if (fabs(last_saved_kp - g_pid_input.Kp) > 0.001f ||
+        fabs(last_saved_ki - g_pid_input.Ki) > 0.001f ||
+        fabs(last_saved_kd - g_pid_input.Kd) > 0.001f ||
+        fabs(last_saved_setpoint - g_pid_input.setpoint_temp) > 0.01f) {
+        pendingConfigWrite = true;
+    }
+    if (pendingConfigWrite && (millis() - lastConfigWrite > PID_CONFIG_WRITE_INTERVAL_MS)) {
         configManager->setPidKp(g_pid_input.Kp);
-        last_saved_kp = g_pid_input.Kp;
-        params_changed = true;
-    }
-    
-    if (fabs(last_saved_ki - g_pid_input.Ki) > 0.001f) {
         configManager->setPidKi(g_pid_input.Ki);
-        last_saved_ki = g_pid_input.Ki;
-        params_changed = true;
-    }
-    
-    if (fabs(last_saved_kd - g_pid_input.Kd) > 0.001f) {
         configManager->setPidKd(g_pid_input.Kd);
-        last_saved_kd = g_pid_input.Kd;
-        params_changed = true;
-    }
-    
-    if (fabs(last_saved_setpoint - g_pid_input.setpoint_temp) > 0.01f) {
         configManager->setSetpoint(g_pid_input.setpoint_temp);
+        last_saved_kp = g_pid_input.Kp;
+        last_saved_ki = g_pid_input.Ki;
+        last_saved_kd = g_pid_input.Kd;
         last_saved_setpoint = g_pid_input.setpoint_temp;
-        params_changed = true;
-    }
-    
-    if (params_changed) {
-        LOG_I(TAG_PID, "PID parameters updated in storage");
+        lastConfigWrite = millis();
+        pendingConfigWrite = false;
+        LOG_I(TAG_PID, "PID parameters written to flash storage");
     }
 }
 

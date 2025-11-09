@@ -51,6 +51,7 @@
 #define PID_SETPOINT 22.0       // Default temperature setpoint (°C)
 #define PID_UPDATE_INTERVAL 10000 // Update PID controller every 10 seconds (ms)
 #define PID_ADAPTATION_INTERVAL_SEC 60.0f  // PID parameter adaptation interval (60 seconds)
+#define PID_CONFIG_WRITE_INTERVAL_MS 300000  // Write PID config to flash max once per 5 minutes
 
 // Initial PID Parameters (will be auto-tuned)
 #define PID_KP_INITIAL 2.0      // Proportional gain
