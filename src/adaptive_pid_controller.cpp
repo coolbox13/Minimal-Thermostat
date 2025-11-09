@@ -206,24 +206,11 @@ void AdaptivePID_Init(AdaptivePID_Input *input) {
     }
 }
 
-/**
- * @brief Update the PID controller and compute the valve command.
- * 
- * Performs the PID calculation based on the provided inputs and updates the output.
- * If adaptation is enabled, also adjusts PID parameters based on performance.
- * 
- * @param input Pointer to the PID input structure.
- * @param output Pointer to the PID output structure.
- */
-void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
-    // Step 1: Calculate the error
-    float error = input->setpoint_temp - input->current_temp;
-    
-    // Track setpoint changes
+// Helper function to handle setpoint changes
+static bool handleSetpointChange(float setpoint_temp) {
     static float last_setpoint = 0.0f;
-    if (fabs(last_setpoint - input->setpoint_temp) > 0.1f) {
-        // Setpoint has changed - reset some tracking variables
-        last_setpoint = input->setpoint_temp;
+    if (fabs(last_setpoint - setpoint_temp) > 0.1f) {
+        last_setpoint = setpoint_temp;
         setpoint_time = 0.0f;
         max_overshoot = 0.0f;
         oscillation_count = 0;
@@ -232,95 +219,96 @@ void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
         rise_time_marker = -1;
         error_sum = 0.0f;
         samples_count = 0;
-    } else {
-        // Update timers
-        setpoint_time += input->dt;
-        adaptation_timer += input->dt;
+        return true;
     }
-    
-    // Step 2: Check if the error is within the deadband
-    if (error > -input->deadband && error < input->deadband) {
-        // Maintain the previous valve command if within deadband
-        output->valve_command = input->valve_feedback;
-        output->error = error;
-        output->integral_error = integral_error;
-        output->derivative_error = 0.0f;
-        return;
-    }
-    
-    // Step 3: Update the integral error with anti-windup protection
+    return false;
+}
+static void updateTimers(float dt) {
+    setpoint_time += dt;
+    adaptation_timer += dt;
+}
+static bool isWithinDeadband(float error, float deadband) {
+    return (error > -deadband && error < deadband);
+}
+static void updateIntegralErrorWithAntiWindup(AdaptivePID_Input *input, float error) {
     integral_error += error * input->dt;
     if (integral_error > input->output_max) {
         integral_error = input->output_max;
     } else if (integral_error < input->output_min) {
         integral_error = input->output_min;
     }
-    
-    // Step 4: Calculate the derivative error
-    float derivative_error = (error - prev_error) / input->dt;
-    
-    // Step 5: Compute the raw PID output
-    float raw_output = (input->Kp * error) +
-                      (input->Ki * integral_error) +
-                      (input->Kd * derivative_error);
-    
-    // Step 6: Clamp the output to the specified limits
-    if (raw_output > input->output_max) {
-        raw_output = input->output_max;
-    } else if (raw_output < input->output_min) {
-        raw_output = input->output_min;
+}
+static float computePIDOutput(AdaptivePID_Input *input, float error, float derivative_error) {
+    return (input->Kp * error) + (input->Ki * integral_error) + (input->Kd * derivative_error);
+}
+static float clampOutput(float output, float min, float max) {
+    if (output > max) return max;
+    if (output < min) return min;
+    return output;
+}
+static void trackPerformanceMetrics(AdaptivePID_Input *input, float error) {
+    error_sum += fabs(error);
+    samples_count++;
+    if ((previous_error_sign < 0 && error > 0) || (previous_error_sign > 0 && error < 0)) {
+        oscillation_count++;
+        previous_error_sign = (error > 0) ? 1 : -1;
+    } else if (error != 0) {
+        previous_error_sign = (error > 0) ? 1 : -1;
     }
-    
-    // Step 7: Update outputs
+    if (!crossed_setpoint && ((prev_temp < input->setpoint_temp && input->current_temp >= input->setpoint_temp) ||
+        (prev_temp > input->setpoint_temp && input->current_temp <= input->setpoint_temp))) {
+        crossed_setpoint = 1;
+    }
+    if (crossed_setpoint) {
+        float current_overshoot = fabs(error) / fabs(input->setpoint_temp);
+        if (current_overshoot > max_overshoot) {
+            max_overshoot = current_overshoot;
+        }
+    }
+    if (rise_time_marker < 0 &&
+        ((input->current_temp >= input->setpoint_temp && input->setpoint_temp > prev_temp) ||
+         (input->current_temp <= input->setpoint_temp && input->setpoint_temp < prev_temp))) {
+        rise_time_marker = setpoint_time;
+    }
+}
+
+/**
+ * @brief Update the PID controller and compute the valve command.
+ *
+ * Performs the PID calculation based on the provided inputs and updates the output.
+ * If adaptation is enabled, also adjusts PID parameters based on performance.
+ *
+ * @param input Pointer to the PID input structure.
+ * @param output Pointer to the PID output structure.
+ */
+void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
+    float error = input->setpoint_temp - input->current_temp;
+    bool setpointChanged = handleSetpointChange(input->setpoint_temp);
+    if (!setpointChanged) {
+        updateTimers(input->dt);
+    }
+    if (isWithinDeadband(error, input->deadband)) {
+        output->valve_command = input->valve_feedback;
+        output->error = error;
+        output->integral_error = integral_error;
+        output->derivative_error = 0.0f;
+        return;
+    }
+    updateIntegralErrorWithAntiWindup(input, error);
+    float derivative_error = (error - prev_error) / input->dt;
+    float raw_output = computePIDOutput(input, error, derivative_error);
+    raw_output = clampOutput(raw_output, input->output_min, input->output_max);
     output->valve_command = raw_output;
     output->error = error;
     output->integral_error = integral_error;
     output->derivative_error = derivative_error;
-    
-    // Step 8: Collect performance metrics for parameter adaptation
     if (input->adaptation_enabled) {
-        // Track performance metrics
-        error_sum += fabs(error);
-        samples_count++;
-        
-        // Detect oscillations (sign changes in error)
-        if ((previous_error_sign < 0 && error > 0) || 
-            (previous_error_sign > 0 && error < 0)) {
-            oscillation_count++;
-            previous_error_sign = (error > 0) ? 1 : -1;
-        } else if (error != 0) {
-            previous_error_sign = (error > 0) ? 1 : -1;
-        }
-        
-        // Track overshoot
-        if (!crossed_setpoint && ((prev_temp < input->setpoint_temp && input->current_temp >= input->setpoint_temp) ||
-            (prev_temp > input->setpoint_temp && input->current_temp <= input->setpoint_temp))) {
-            crossed_setpoint = 1;
-        }
-        
-        if (crossed_setpoint) {
-            float current_overshoot = fabs(error) / fabs(input->setpoint_temp);
-            if (current_overshoot > max_overshoot) {
-                max_overshoot = current_overshoot;
-            }
-        }
-        
-        // Track rise time
-        if (rise_time_marker < 0 && 
-            ((input->current_temp >= input->setpoint_temp && input->setpoint_temp > prev_temp) ||
-             (input->current_temp <= input->setpoint_temp && input->setpoint_temp < prev_temp))) {
-            rise_time_marker = setpoint_time;
-        }
-        
-        // Apply parameter adaptation if enough time has passed
-        // (we don't want to adapt too frequently)
+        trackPerformanceMetrics(input, error);
         if (adaptation_timer >= PID_ADAPTATION_INTERVAL_SEC) {
             adaptParameters(input, output, oscillation_count, max_overshoot, error_sum / (samples_count > 0 ? samples_count : 1));
             adaptation_timer = 0.0f;
         }
     }
-    
-    // Step 9: Update the previous values for the next iteration
     prev_error = error;
     prev_temp = input->current_temp;
 }
