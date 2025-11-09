@@ -73,7 +73,7 @@ bool WiFiConnectionManager::begin(unsigned int configPortalTimeout, bool startPo
         
         // Wait for connection with timeout
         unsigned long startAttempt = millis();
-        while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 10000) {
+        while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < WIFI_CONNECT_TIMEOUT_MS) {
             delay(100);
         }
         
@@ -741,7 +741,7 @@ void WiFiConnectionManager::handleConnectionStatus() {
         LOG_I(TAG, "Attempting reconnection (attempt %d of %d)", 
               _reconnectAttempts, _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
         
-        connect(10000); // 10 second timeout for reconnection
+        connect(WIFI_RECONNECT_TIMEOUT_MS);
     }
 }
 
@@ -751,8 +751,8 @@ void WiFiConnectionManager::handlePeriodicTasks() {
     
     // Test internet connectivity periodically (every 5 minutes)
     static unsigned long lastConnectivityCheck = 0;
-    if (_state == WiFiConnectionState::CONNECTED && 
-        millis() - lastConnectivityCheck > 300000) { // 5 minutes
+    if (_state == WiFiConnectionState::CONNECTED &&
+        millis() - lastConnectivityCheck > INTERNET_CHECK_INTERVAL_MS) {
         
         lastConnectivityCheck = millis();
         bool hasInternet = testInternetConnectivity();

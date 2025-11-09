@@ -314,7 +314,7 @@ void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
         
         // Apply parameter adaptation if enough time has passed
         // (we don't want to adapt too frequently)
-        if (adaptation_timer >= 60.0f) { // Adapt every 60 seconds
+        if (adaptation_timer >= PID_ADAPTATION_INTERVAL_SEC) {
             adaptParameters(input, output, oscillation_count, max_overshoot, error_sum / (samples_count > 0 ? samples_count : 1));
             adaptation_timer = 0.0f;
         }

@@ -397,7 +397,6 @@ void ConfigManager::setLastRebootReason(const String& reason) {
     _preferences.begin("config", false);
     _preferences.putString("reboot_reason", reason);
     _preferences.end();
-    // LOG_D(TAG, "Saved last reboot reason: %s", reason.c_str());
 }
 
 String ConfigManager::getLastRebootReason() {
@@ -411,7 +410,6 @@ void ConfigManager::setRebootCount(int count) {
     _preferences.begin("config", false);
     _preferences.putInt("reboot_count", count);
     _preferences.end();
-    // LOG_D(TAG, "Saved reboot count: %d", count);
 }
 
 int ConfigManager::getRebootCount() {
@@ -425,7 +423,6 @@ void ConfigManager::setConsecutiveWatchdogReboots(int count) {
     _preferences.begin("config", false);
     _preferences.putInt("wdt_reboots", count);
     _preferences.end();
-    // LOG_D(TAG, "Saved consecutive watchdog reboots: %d", count);
 }
 
 int ConfigManager::getConsecutiveWatchdogReboots() {
@@ -439,5 +436,4 @@ void ConfigManager::setLastConnectedTime(unsigned long timestamp) {
     _preferences.begin("config", false);
     _preferences.putULong("last_conn_time", timestamp);
     _preferences.end();
-    // LOG_D(TAG, "Saved last connected time: %lu", timestamp);
 }

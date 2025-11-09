@@ -46,10 +46,6 @@ WiFiManager wifiManager;
 unsigned long lastWifiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 60000; // Check WiFi every minute
 unsigned long lastConnectedTime = 0;
-
-//const unsigned long WIFI_WATCHDOG_TIMEOUT = 1800000; // 30 minutes in milliseconds
-//const int MAX_RECONNECT_ATTEMPTS = 10; // Increased to 10 attempts
-
 int reconnectAttempts = 0;
 bool configPortalActive = false;
 
@@ -69,11 +65,8 @@ unsigned long lastPIDUpdate = 0;
 // Add global instance of WatchdogManager
 WatchdogManager watchdogManager;
 
-// In setup function
-void setup() {
-    Serial.begin(115200);
-    
-    // Initialize logger with default log level
+// Helper functions for setup
+void initializeLogger() {
     Logger::getInstance().setLogLevel(LOG_INFO);
     LOG_I(TAG_MAIN, "ESP32 KNX Thermostat - With Adaptive PID Controller");
 
@@ -83,66 +76,50 @@ void setup() {
 
     // Register log callback for persistent logging
     Logger::getInstance().setLogCallback(storeLogToFlash);
-    
-    // Initialize config manager
+}
+void initializeConfig() {
     configManager = ConfigManager::getInstance();
     if (!configManager->begin()) {
         LOG_E(TAG_MAIN, "Failed to initialize configuration storage");
     }
-    
-    // Initialize watchdog timer (45 minutes)
-    // Initialize the watchdog manager
+}
+void initializeWatchdog() {
     if (!watchdogManager.begin()) {
-      LOG_E(TAG_MAIN, "Failed to initialize watchdog manager");
+        LOG_E(TAG_MAIN, "Failed to initialize watchdog manager");
     }
-    
-    // Remove the old watchdog initialization code:
-    // esp_task_wdt_init(SYSTEM_WATCHDOG_TIMEOUT / 1000, true);
-    // esp_task_wdt_add(NULL);
     LOG_I(TAG_MAIN, "Watchdog timer initialized (45 minutes)");
-
-    // Setup custom log handler before initializing KNX
+}
+void initializeSensor() {
     setupCustomLogHandler();
-    
-    // Initialize BME280 sensor
     if (!bme280.begin()) {
         LOG_E(TAG_SENSOR, "Failed to initialize BME280 sensor!");
     }
-    
-    // Replace old WiFi setup with WiFiConnectionManager
+}
+void initializeWiFi() {
     LOG_I(TAG_WIFI, "Initializing WiFi connection manager...");
     WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
-    
-    // Register for WiFi events - Fix the capture issue by adding wifiManager to the capture list
     wifiManager.registerEventCallback([&wifiManager](const WiFiConnectionEvent& event) {
-        LOG_I(TAG_WIFI, "WiFi event: %s - %s", 
-              wifiManager.getEventTypeName(event.type), 
+        LOG_I(TAG_WIFI, "WiFi event: %s - %s",
+              wifiManager.getEventTypeName(event.type),
               event.message.c_str());
-              
-        // If we're connected, log the network details
         if (event.type == WiFiEventType::CONNECTED) {
             LOG_I(TAG_WIFI, "Connected to: %s", event.ssid.c_str());
             LOG_I(TAG_WIFI, "IP address: %s", event.networkInfo.ip.toString().c_str());
         }
     });
-    
-    // Initialize WiFi with appropriate settings
-    bool wifiConnected = wifiManager.begin(180, true); // 3 minute timeout, start portal on fail
-    
+    bool wifiConnected = wifiManager.begin(WIFI_CONNECT_TIMEOUT_SEC, true);
     if (!wifiConnected) {
         LOG_W(TAG_WIFI, "WiFi connection failed or timed out during setup");
     }
-    
-    // Initialize WebServerManager singleton
+}
+void initializeWebServer() {
     WebServerManager* webServerManager = WebServerManager::getInstance();
     webServerManager->begin(&webServer);
     LOG_I(TAG_MAIN, "Web server started on port 80");
-
-    // Initialize OTA using WebServerManager
     otaManager.begin(webServerManager);
     LOG_I(TAG_MAIN, "OTA manager initialized with web server");
-    
-    // Setup KNX and MQTT managers
+}
+void initializeKNXAndMQTT() {
     knxManager.begin();
     mqttManager.begin();
 
@@ -167,34 +144,41 @@ void setup() {
             mqttClient.publish("esp32_thermostat/logs", payload.c_str());
         }
     });
-    
+
     // Register callback for KNX address configuration changes
+    WebServerManager* webServerManager = WebServerManager::getInstance();
     webServerManager->setKnxAddressChangedCallback([&]() {
         LOG_I(TAG_MAIN, "KNX address configuration changed, reloading addresses");
         knxManager.reloadAddresses();
     });
-
-    // Initialize adaptive PID controller
+}
+void initializePID() {
     initializePIDController();
-    
-    // Use stored setpoint temperature from config
     float setpoint = configManager->getSetpoint();
     setTemperatureSetpoint(setpoint);
-    
     LOG_I(TAG_PID, "PID controller initialized with setpoint: %.2f°C", setpoint);
-    
-    // Initial sensor readings
+}
+void performInitialSetup() {
     updateSensorReadings();
-    
-    // Initialize last connected time
     if (WiFi.status() == WL_CONNECTED) {
         lastConnectedTime = millis();
     }
-  
-  // Initialize WiFi connection manager
-  // Use the singleton instance instead of a direct variable
-  WiFiConnectionManager::getInstance().setWatchdogManager(&watchdogManager);
-  WiFiConnectionManager::getInstance().begin();
+    WiFiConnectionManager::getInstance().setWatchdogManager(&watchdogManager);
+    WiFiConnectionManager::getInstance().begin();
+}
+
+// In setup function
+void setup() {
+    Serial.begin(115200);
+    initializeLogger();
+    initializeConfig();
+    initializeWatchdog();
+    initializeSensor();
+    initializeWiFi();
+    initializeWebServer();
+    initializeKNXAndMQTT();
+    initializePID();
+    performInitialSetup();
 }
 
 // In loop function
@@ -215,9 +199,9 @@ void loop() {
     // Handle MQTT communications
     mqttManager.loop();
     
-    // Update sensor readings and publish status every 30 seconds
+    // Update sensor readings and publish status
     static unsigned long lastSensorUpdate = 0;
-    if (millis() - lastSensorUpdate > 30000) {
+    if (millis() - lastSensorUpdate > SENSOR_UPDATE_INTERVAL_MS) {
         updateSensorReadings();
         lastSensorUpdate = millis();
     }
@@ -228,22 +212,10 @@ void loop() {
         updatePIDControl();
         lastPIDUpdate = currentTime;
     }
-    
-    // Remove old WiFiManager process call as it's now handled by WiFiConnectionManager
-    // wifiManager.process();
-    
-    // Remove old WiFi watchdog code as it's now handled by WiFiConnectionManager
-    // if (WiFi.status() != WL_CONNECTED && !configPortalActive) {
-    //     if (millis() - lastConnectedTime > WIFI_WATCHDOG_TIMEOUT) {
-    //         LOG_E(TAG_WIFI, "WiFi disconnected for 30 minutes. Rebooting device...");
-    //         delay(1000);
-    //         ESP.restart();
-    //     }
-    // }
-    
+
     // Add periodic internet connectivity test
     static unsigned long lastConnectivityCheck = 0;
-    if (millis() - lastConnectivityCheck > 300000) { // Every 5 minutes
+    if (millis() - lastConnectivityCheck > CONNECTIVITY_CHECK_INTERVAL_MS) {
         lastConnectivityCheck = millis();
         
         WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();

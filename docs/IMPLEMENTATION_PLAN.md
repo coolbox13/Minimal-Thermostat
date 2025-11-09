@@ -310,37 +310,64 @@ Extend `getJson()` and `setFromJson()` in ConfigManager to include KNX addresses
 - Settings persist across reboots
 - KNX communication works with custom addresses
 
-### Week 4: KNX Debug Configuration
+### Week 4: Runtime-Configurable Logging System
 
 **Tasks:**
 - [ ] **TODO-019:** Make KNX debug flag runtime-configurable
+- [ ] **TODO-019A:** Implement comprehensive logging system configuration
 
 **Implementation:**
-1. Add `bool getKnxDebugEnabled()` and `setKnxDebugEnabled(bool)` to ConfigManager
-2. Add API endpoint GET/POST `/api/knx/debug`
-3. Modify `knx_manager.cpp` to use runtime flag
-4. Add toggle in web UI
-5. Add function to change ESP log level at runtime:
+
+1. **Add logging configuration to ConfigManager:**
    ```cpp
-   void KNXManager::setDebugEnabled(bool enabled) {
-       if (enabled) {
-           esp_log_level_set("KNXIP", ESP_LOG_DEBUG);
-       } else {
-           esp_log_level_set("KNXIP", ESP_LOG_NONE);
-       }
-   }
+   // Global log level
+   String getLogLevel(); // "NONE", "ERROR", "WARN", "INFO", "DEBUG", "VERBOSE"
+   void setLogLevel(const String& level);
+
+   // Per-module log levels
+   String getModuleLogLevel(const String& module);
+   void setModuleLogLevel(const String& module, const String& level);
    ```
 
-**Testing:**
-1. Enable debug, verify KNX logs appear
-2. Disable debug, verify KNX logs stop
-3. Test persistence
-4. **Verify no impact on KNX communication** ⚠️
+2. **Create logging helper class:**
+   ```cpp
+   class LoggingManager {
+   public:
+       static void setGlobalLevel(esp_log_level_t level);
+       static void setModuleLevel(const char* tag, esp_log_level_t level);
+       static esp_log_level_t stringToLevel(const String& level);
+       static String levelToString(esp_log_level_t level);
+   };
+   ```
 
-**Deliverable:** Runtime-configurable KNX debug logging
+3. **Add API endpoints:**
+   - GET `/api/logging` - Returns current logging configuration
+   - POST `/api/logging` - Updates logging configuration
+
+4. **Add web UI section:**
+   - Add "Logging" tab to web interface
+   - Global log level dropdown
+   - Per-module log level configuration
+   - Real-time log level updates
+
+5. **KNX-specific debug toggle:**
+   - Add simple toggle for KNX debug (backward compatible)
+   - Maps to KNX module log level
+
+**Testing:**
+1. Change global log level, verify all logs respect it
+2. Change per-module levels, verify isolation
+3. Enable/disable KNX debug via toggle
+4. Test persistence across reboots
+5. **Verify no impact on KNX communication** ⚠️
+6. Test log output at different levels
+
+**Deliverable:** Comprehensive runtime-configurable logging system
 **Success Criteria:**
-- Can enable/disable KNX debug without recompiling
-- Setting persists across reboots
+- Can configure log levels without recompiling
+- Per-module log level control
+- Settings persist across reboots
+- Helps with debugging and troubleshooting
 
 ### Week 5-6: Documentation & Quality
 
