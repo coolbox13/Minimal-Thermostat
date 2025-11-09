@@ -65,6 +65,17 @@ unsigned long lastPIDUpdate = 0;
 WatchdogManager watchdogManager;
 
 // Helper functions for setup
+// IMPORTANT: These functions must be called in a specific order due to dependencies:
+// 1. initializeLogger() - No dependencies, required by all other components
+// 2. initializeConfig() - Depends on logger, required by most other components
+// 3. initializeWatchdog() - Depends on logger
+// 4. initializeSensor() - Depends on logger, sets up custom log handler for KNX
+// 5. initializeWiFi() - Depends on logger and config (reads WiFi credentials)
+// 6. initializeWebServer() - Depends on WiFi (needs network), logger
+// 7. initializeKNXAndMQTT() - Depends on logger, WiFi, web server (for callbacks)
+// 8. initializePID() - Depends on config (reads setpoint), logger
+// 9. performInitialSetup() - Depends on all above (WiFi status, sensors, watchdog)
+
 void initializeLogger() {
     Logger::getInstance().setLogLevel(LOG_INFO);
     LOG_I(TAG_MAIN, "ESP32 KNX Thermostat - With Adaptive PID Controller");
