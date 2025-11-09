@@ -37,3 +37,6 @@ __pycache__/
 # Ignore backup files
 docs_not_included/
 *~
+
+# Ignore Claude Code documentation
+CLAUDE.md
