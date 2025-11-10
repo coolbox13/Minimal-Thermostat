@@ -12,7 +12,7 @@ This document outlines suggestions for enhancements, new features, and improveme
 ### 1.1 Advanced Temperature Control
 
 #### **Suggestion: Multi-Zone Support**
-**Priority:** Medium
+**Priority:** Low
 **Complexity:** High
 
 **Description:**
@@ -45,7 +45,7 @@ class MultiZoneThermostat {
 ---
 
 #### **Suggestion: Scheduling System**
-**Priority:** Medium
+**Priority:** Low
 **Complexity:** Medium
 
 **Description:**
@@ -109,7 +109,7 @@ Learn user's heating patterns and automatically adjust schedule.
 ### 1.2 Sensor Enhancements
 
 #### **Suggestion: Multiple Sensor Support**
-**Priority:** Medium
+**Priority:** Low
 **Complexity:** Medium
 
 **Description:**
@@ -148,7 +148,7 @@ class SensorManager {
 ---
 
 #### **Suggestion: Sensor Health Monitoring**
-**Priority:** Medium
+**Priority:** Low
 **Complexity:** Low
 
 **Description:**
@@ -248,7 +248,7 @@ class PIDProfileManager {
 ### 1.4 User Interface Enhancements
 
 #### **Suggestion: Mobile-Optimized Web UI**
-**Priority:** Medium
+**Priority:** High
 **Complexity:** Medium
 
 **Description:**
@@ -270,7 +270,7 @@ Improve mobile responsiveness and add touch-friendly controls.
 ---
 
 #### **Suggestion: Graphical Temperature History**
-**Priority:** Medium
+**Priority:** High
 **Complexity:** Medium
 
 **Description:**
@@ -329,7 +329,7 @@ socket.onmessage = (event) => {
 ### 1.5 Home Automation Integration
 
 #### **Suggestion: Enhanced Home Assistant Integration**
-**Priority:** Medium
+**Priority:** High
 **Complexity:** Medium
 
 **Description:**
@@ -389,7 +389,7 @@ class WebhookManager {
 ### 2.1 Data Backup and Restore
 
 #### **Suggestion: Configuration Backup/Restore**
-**Priority:** Medium
+**Priority:** High
 **Complexity:** Low-Medium
 
 **Description:**
@@ -411,7 +411,7 @@ Export and import full configuration as JSON file.
 ---
 
 #### **Suggestion: Factory Reset Function**
-**Priority:** Medium
+**Priority:** High
 **Complexity:** Low
 
 **Description:**
@@ -448,47 +448,10 @@ void factoryReset() {
 ---
 
 ### 2.2 Diagnostics and Logging
-
-#### **Suggestion: Persistent Event Log**
-**Priority:** Medium
-**Complexity:** Medium
-
-**Description:**
-Store important events (errors, reboots, config changes) in flash for troubleshooting.
-
-**Benefits:**
-- Diagnose issues after the fact
-- Track system behavior over time
-- Support remote troubleshooting
-
-**Implementation Approach:**
-```cpp
-class EventLog {
-    static const int MAX_ENTRIES = 100;
-    struct LogEntry {
-        unsigned long timestamp;
-        LogLevel level;
-        String tag;
-        String message;
-    };
-
-    void addEntry(LogLevel level, const char* tag, const char* msg);
-    String getEntriesJSON();
-    void clear();
-};
-```
-
-**Web UI:**
-- View log on `/logs.html`
-- Filter by level, tag, date
-- Export log as text file
-
-**Estimated Effort:** 15-20 hours
-
 ---
 
 #### **Suggestion: System Status Dashboard**
-**Priority:** Low
+**Priority:** High
 **Complexity:** Low-Medium
 
 **Description:**
@@ -982,7 +945,7 @@ class EnergyMonitor {
 ---
 
 #### **Suggestion: Eco Mode**
-**Priority:** Medium
+**Priority:** Low
 **Complexity:** Low-Medium
 
 **Description:**
@@ -1020,7 +983,7 @@ class EcoMode {
 ### 9.1 Additional Sensors
 
 #### **Suggestion: Outdoor Temperature Sensor**
-**Priority:** Medium
+**Priority:** Low
 **Complexity:** Low-Medium
 
 **Description:**
