@@ -23,7 +23,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Reboot device button handler
     document.getElementById('reboot-device').addEventListener('click', rebootDevice);
-    
+
+    // Test webhook button handler
+    document.getElementById('test-webhook').addEventListener('click', testWebhook);
+
     // Add input blur handlers to format values properly when user finishes editing
     document.getElementById('pid_kp').addEventListener('blur', function() {
         this.value = formatNumberWithPrecision(parseFloat(this.value), 2);
@@ -122,6 +125,14 @@ function loadConfiguration() {
                 document.getElementById('system_watchdog_timeout').value = data.timing.system_watchdog_timeout || 2700000;
                 document.getElementById('wifi_watchdog_timeout').value = data.timing.wifi_watchdog_timeout || 1800000;
             }
+
+            // Webhook settings
+            if (data.webhook) {
+                document.getElementById('webhook_enabled').checked = data.webhook.enabled || false;
+                document.getElementById('webhook_url').value = data.webhook.url || '';
+                document.getElementById('webhook_temp_low').value = formatNumberWithPrecision(data.webhook.temp_low_threshold || 15.0, 1);
+                document.getElementById('webhook_temp_high').value = formatNumberWithPrecision(data.webhook.temp_high_threshold || 30.0, 1);
+            }
         })
         .catch(error => {
             console.error('Error loading configuration:', error);
@@ -184,6 +195,12 @@ function saveConfiguration(e) {
             max_reconnect_attempts: parseInt(formData.get('max_reconnect_attempts')),
             system_watchdog_timeout: parseInt(formData.get('system_watchdog_timeout')),
             wifi_watchdog_timeout: parseInt(formData.get('wifi_watchdog_timeout'))
+        },
+        webhook: {
+            enabled: formData.get('webhook_enabled') === 'on',
+            url: formData.get('webhook_url'),
+            temp_low_threshold: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('webhook_temp_low')), 1)),
+            temp_high_threshold: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('webhook_temp_high')), 1))
         }
     };
     
@@ -300,7 +317,7 @@ function rebootDevice() {
         const statusElement = document.getElementById('config-status');
         statusElement.textContent = 'Rebooting...';
         statusElement.className = 'status status-loading';
-        
+
         fetch('/api/reboot', { method: 'POST' })
             .then(() => {
                 // Keep the "Rebooting..." message
@@ -311,4 +328,33 @@ function rebootDevice() {
                 statusElement.className = 'status status-error';
             });
     }
+}
+
+function testWebhook() {
+    const statusElement = document.getElementById('webhook-test-status');
+    statusElement.textContent = 'Sending test webhook...';
+    statusElement.style.color = '#3498db';
+
+    fetch('/api/webhook/test', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                statusElement.textContent = 'Test webhook sent successfully!';
+                statusElement.style.color = '#27ae60';
+            } else {
+                statusElement.textContent = 'Error: ' + data.message;
+                statusElement.style.color = '#e74c3c';
+            }
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 5000);
+        })
+        .catch(error => {
+            console.error('Error sending test webhook:', error);
+            statusElement.textContent = 'Error sending test webhook';
+            statusElement.style.color = '#e74c3c';
+            setTimeout(() => {
+                statusElement.textContent = '';
+            }, 5000);
+        });
 }

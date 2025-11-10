@@ -236,6 +236,55 @@ public:
     float getPidAdaptationInterval();
     void setPidAdaptationInterval(float interval);
 
+    // Webhook settings
+    /**
+     * @brief Get the webhook URL for IFTTT/Zapier integration
+     * @return Webhook URL
+     */
+    String getWebhookUrl();
+
+    /**
+     * @brief Set the webhook URL for IFTTT/Zapier integration
+     * @param url Webhook endpoint URL
+     */
+    void setWebhookUrl(const String& url);
+
+    /**
+     * @brief Check if webhooks are enabled
+     * @return true if enabled, false otherwise
+     */
+    bool getWebhookEnabled();
+
+    /**
+     * @brief Enable or disable webhooks
+     * @param enabled true to enable, false to disable
+     */
+    void setWebhookEnabled(bool enabled);
+
+    /**
+     * @brief Get low temperature alert threshold
+     * @return Temperature in °C below which alert is sent
+     */
+    float getWebhookTempLowThreshold();
+
+    /**
+     * @brief Set low temperature alert threshold
+     * @param threshold Temperature in °C below which alert is sent
+     */
+    void setWebhookTempLowThreshold(float threshold);
+
+    /**
+     * @brief Get high temperature alert threshold
+     * @return Temperature in °C above which alert is sent
+     */
+    float getWebhookTempHighThreshold();
+
+    /**
+     * @brief Set high temperature alert threshold
+     * @param threshold Temperature in °C above which alert is sent
+     */
+    void setWebhookTempHighThreshold(float threshold);
+
     /**
      * @brief Export all configuration settings to JSON
      * @param doc JsonDocument to populate with current settings
@@ -296,6 +345,8 @@ private:
     static constexpr uint32_t DEFAULT_WIFI_WATCHDOG_TIMEOUT_MS = 1800000;
     static constexpr float DEFAULT_PID_DEADBAND = 0.2f;
     static constexpr float DEFAULT_PID_ADAPTATION_INTERVAL_SEC = 60.0f;
+    static constexpr float DEFAULT_WEBHOOK_TEMP_LOW_THRESHOLD = 15.0f;
+    static constexpr float DEFAULT_WEBHOOK_TEMP_HIGH_THRESHOLD = 30.0f;
 
     // Validation helper functions
     bool validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage);
@@ -304,6 +355,7 @@ private:
     bool validateBME280Settings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyPIDSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyWebhookSettings(const JsonDocument& doc, String& errorMessage);
 
 public:
         /**

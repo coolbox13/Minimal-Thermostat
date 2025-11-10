@@ -7,6 +7,8 @@
 #include "adaptive_pid_controller.h"
 #include "persistence_manager.h"
 #include "event_log.h"
+#include "webhook_manager.h"
+#include "config_manager.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -269,6 +271,27 @@ void WebServerManager::setupDefaultRoutes() {
         // Schedule reboot after response is sent
         delay(500);
         ESP.restart();
+    });
+
+    // Test webhook endpoint
+    _server->on("/api/webhook/test", HTTP_POST, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+        WebhookManager webhookManager;
+
+        // Configure webhook from current settings
+        webhookManager.configure(configManager->getWebhookUrl(), configManager->getWebhookEnabled());
+
+        // Send a test event
+        bool success = webhookManager.sendEvent("test_event", "Test from ESP32 Thermostat",
+                                                  "This is a test webhook", "Testing webhook integration");
+
+        if (success) {
+            request->send(200, "application/json",
+                "{\"success\":true,\"message\":\"Test webhook sent successfully\"}");
+        } else {
+            request->send(500, "application/json",
+                "{\"success\":false,\"message\":\"Failed to send webhook. Check URL and network connection.\"}");
+        }
     });
 
     // Get event logs

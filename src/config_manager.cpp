@@ -209,6 +209,39 @@ void ConfigManager::setPidAdaptationInterval(float interval) {
     _preferences.putFloat("pid_adapt", roundToPrecision(interval, 1));
 }
 
+// Webhook settings
+String ConfigManager::getWebhookUrl() {
+    return _preferences.getString("webhook_url", "");
+}
+
+void ConfigManager::setWebhookUrl(const String& url) {
+    _preferences.putString("webhook_url", url);
+}
+
+bool ConfigManager::getWebhookEnabled() {
+    return _preferences.getBool("webhook_en", false);
+}
+
+void ConfigManager::setWebhookEnabled(bool enabled) {
+    _preferences.putBool("webhook_en", enabled);
+}
+
+float ConfigManager::getWebhookTempLowThreshold() {
+    return roundToPrecision(_preferences.getFloat("webhook_low", DEFAULT_WEBHOOK_TEMP_LOW_THRESHOLD), 1);
+}
+
+void ConfigManager::setWebhookTempLowThreshold(float threshold) {
+    _preferences.putFloat("webhook_low", roundToPrecision(threshold, 1));
+}
+
+float ConfigManager::getWebhookTempHighThreshold() {
+    return roundToPrecision(_preferences.getFloat("webhook_hi", DEFAULT_WEBHOOK_TEMP_HIGH_THRESHOLD), 1);
+}
+
+void ConfigManager::setWebhookTempHighThreshold(float threshold) {
+    _preferences.putFloat("webhook_hi", roundToPrecision(threshold, 1));
+}
+
 // MODIFIED: Updated getJson to use getters directly (which now apply rounding)
 void ConfigManager::getJson(JsonDocument& doc) {
     // Create JSON structure directly
@@ -246,6 +279,12 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["timing"]["max_reconnect_attempts"] = getMaxReconnectAttempts();
     doc["timing"]["system_watchdog_timeout"] = getSystemWatchdogTimeout();
     doc["timing"]["wifi_watchdog_timeout"] = getWifiWatchdogTimeout();
+
+    // Add webhook parameters
+    doc["webhook"]["enabled"] = getWebhookEnabled();
+    doc["webhook"]["url"] = getWebhookUrl();
+    doc["webhook"]["temp_low_threshold"] = getWebhookTempLowThreshold();
+    doc["webhook"]["temp_high_threshold"] = getWebhookTempHighThreshold();
 
     LOG_D(TAG, "Created JSON configuration");
 }
@@ -512,6 +551,49 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
     return true;
 }
 
+bool ConfigManager::validateAndApplyWebhookSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("webhook")) {
+        return true;
+    }
+
+    if (doc["webhook"].containsKey("enabled")) {
+        bool enabled = doc["webhook"]["enabled"].as<bool>();
+        setWebhookEnabled(enabled);
+    }
+
+    if (doc["webhook"].containsKey("url")) {
+        String url = doc["webhook"]["url"].as<String>();
+        if (url.length() > 512) {
+            errorMessage = "Webhook URL must be less than 512 characters";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWebhookUrl(url);
+    }
+
+    if (doc["webhook"].containsKey("temp_low_threshold")) {
+        float threshold = doc["webhook"]["temp_low_threshold"].as<float>();
+        if (threshold < -20.0f || threshold > 50.0f) {
+            errorMessage = "Webhook low temperature threshold must be between -20°C and 50°C";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWebhookTempLowThreshold(threshold);
+    }
+
+    if (doc["webhook"].containsKey("temp_high_threshold")) {
+        float threshold = doc["webhook"]["temp_high_threshold"].as<float>();
+        if (threshold < -20.0f || threshold > 50.0f) {
+            errorMessage = "Webhook high temperature threshold must be between -20°C and 50°C";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWebhookTempHighThreshold(threshold);
+    }
+
+    return true;
+}
+
 // Import settings from JSON
 bool ConfigManager::setFromJson(const JsonDocument& doc) {
     String errorMessage;
@@ -527,6 +609,7 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     if (!validateBME280Settings(doc, errorMessage)) return false;
     if (!validateAndApplyPIDSettings(doc, errorMessage)) return false;
     if (!validateAndApplyTimingSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyWebhookSettings(doc, errorMessage)) return false;
     LOG_I(TAG, "Configuration imported successfully");
     return true;
 }
