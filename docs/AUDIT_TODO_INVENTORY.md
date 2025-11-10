@@ -111,12 +111,6 @@ This document consolidates all actionable items identified during the code audit
 
 ### Code Quality
 
-- [ ] **TODO-011:** Remove blank lines within all functions
-  - **Files:** All .cpp files
-  - **Violation:** Project standard "No blank lines within functions"
-  - **Action:** Remove blank lines that separate logic within functions
-  - **Estimated Effort:** 2 hours (manual review required)
-
 - [ ] **TODO-012:** Replace magic numbers with named constants in main.cpp
   - **File:** src/main.cpp
   - **Constants needed:**
@@ -402,7 +396,7 @@ This document consolidates all actionable items identified during the code audit
 
 ### By Priority
 - 🔴 **P0 Critical:** 6 items (~12-15 hours)
-- 🟠 **P1 High:** 11 items (~25-30 hours)
+- 🟠 **P1 High:** 10 items (~23-28 hours)
 - 🟡 **P2 Medium:** 8 items (~30-40 hours)
 - 🟢 **P3 Low:** 9 items (~40-50 hours)
 - 🔵 **P4 Optional:** 12 items (~80-100 hours)
@@ -410,7 +404,7 @@ This document consolidates all actionable items identified during the code audit
 ### By Category
 - **Code Standards:** 6 items
 - **Documentation:** 7 items
-- **Code Quality:** 10 items
+- **Code Quality:** 9 items
 - **Architecture:** 7 items
 - **Features:** 13 items
 - **Testing:** 2 items
