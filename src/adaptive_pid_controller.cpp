@@ -24,6 +24,9 @@ static float crossed_setpoint = 0;    // Flag for overshoot detection
 static float previous_error_sign = 0; // Previous error sign for oscillation detection
 static float rise_time_marker = -1;   // For rise time measurement
 
+// Adaptation interval from ConfigManager
+static float adaptation_interval_sec = 60.0f;
+
 // Global controller state
 AdaptivePID_Input g_pid_input;
 AdaptivePID_Output g_pid_output;
@@ -60,14 +63,15 @@ void initializePIDController(void) {
     // Output constraints
     g_pid_input.output_min = 0.0f;   // Minimum valve position
     g_pid_input.output_max = 100.0f; // Maximum valve position
-    
-    // Control parameters
-    g_pid_input.deadband = 0.2f;     // ±0.2°C deadband (no action needed)
+
+    // Control parameters - load from ConfigManager
+    g_pid_input.deadband = configManager->getPidDeadband();
     g_pid_input.dt = 1.0f;           // 1 second control interval
-    
+
     // Adaptation parameters - enable by default
     g_pid_input.adaptation_enabled = 1;   // Enable self-learning
     g_pid_input.adaptation_rate = 0.05f;  // Conservative adaptation rate (0.05 = 5%)
+    adaptation_interval_sec = configManager->getPidAdaptationInterval();
     
     // Initialize the controller
     AdaptivePID_Init(&g_pid_input);
@@ -304,7 +308,7 @@ void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
     output->derivative_error = derivative_error;
     if (input->adaptation_enabled) {
         trackPerformanceMetrics(input, error);
-        if (adaptation_timer >= PID_ADAPTATION_INTERVAL_SEC) {
+        if (adaptation_timer >= adaptation_interval_sec) {
             adaptParameters(input, output, oscillation_count, max_overshoot, error_sum / (samples_count > 0 ? samples_count : 1));
             adaptation_timer = 0.0f;
         }

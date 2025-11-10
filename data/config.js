@@ -40,6 +40,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('setpoint').addEventListener('blur', function() {
         this.value = formatNumberWithPrecision(parseFloat(this.value), 1);
     });
+
+    document.getElementById('pid_deadband').addEventListener('blur', function() {
+        this.value = formatNumberWithPrecision(parseFloat(this.value), 1);
+    });
+
+    document.getElementById('pid_adaptation_interval').addEventListener('blur', function() {
+        this.value = formatNumberWithPrecision(parseFloat(this.value), 1);
+    });
 });
 
 /**
@@ -99,6 +107,20 @@ function loadConfiguration() {
                 document.getElementById('pid_ki').value = formatNumberWithPrecision(data.pid.ki || 0.1, 3);
                 document.getElementById('pid_kd').value = formatNumberWithPrecision(data.pid.kd || 0.5, 3);
                 document.getElementById('setpoint').value = formatNumberWithPrecision(data.pid.setpoint || 22.0, 1);
+                document.getElementById('pid_deadband').value = formatNumberWithPrecision(data.pid.deadband || 0.2, 1);
+                document.getElementById('pid_adaptation_interval').value = formatNumberWithPrecision(data.pid.adaptation_interval || 60.0, 1);
+            }
+
+            // Timing settings
+            if (data.timing) {
+                document.getElementById('sensor_update_interval').value = data.timing.sensor_update_interval || 30000;
+                document.getElementById('pid_update_interval').value = data.timing.pid_update_interval || 10000;
+                document.getElementById('connectivity_check_interval').value = data.timing.connectivity_check_interval || 300000;
+                document.getElementById('pid_config_write_interval').value = data.timing.pid_config_write_interval || 300000;
+                document.getElementById('wifi_connect_timeout').value = data.timing.wifi_connect_timeout || 180;
+                document.getElementById('max_reconnect_attempts').value = data.timing.max_reconnect_attempts || 10;
+                document.getElementById('system_watchdog_timeout').value = data.timing.system_watchdog_timeout || 2700000;
+                document.getElementById('wifi_watchdog_timeout').value = data.timing.wifi_watchdog_timeout || 1800000;
             }
         })
         .catch(error => {
@@ -149,7 +171,19 @@ function saveConfiguration(e) {
             kp: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_kp')), 2)),
             ki: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_ki')), 3)),
             kd: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_kd')), 3)),
-            setpoint: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('setpoint')), 1))
+            setpoint: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('setpoint')), 1)),
+            deadband: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_deadband')), 1)),
+            adaptation_interval: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('pid_adaptation_interval')), 1))
+        },
+        timing: {
+            sensor_update_interval: parseInt(formData.get('sensor_update_interval')),
+            pid_update_interval: parseInt(formData.get('pid_update_interval')),
+            connectivity_check_interval: parseInt(formData.get('connectivity_check_interval')),
+            pid_config_write_interval: parseInt(formData.get('pid_config_write_interval')),
+            wifi_connect_timeout: parseInt(formData.get('wifi_connect_timeout')),
+            max_reconnect_attempts: parseInt(formData.get('max_reconnect_attempts')),
+            system_watchdog_timeout: parseInt(formData.get('system_watchdog_timeout')),
+            wifi_watchdog_timeout: parseInt(formData.get('wifi_watchdog_timeout'))
         }
     };
     

@@ -111,7 +111,7 @@ void initializeWiFi() {
             LOG_I(TAG_WIFI, "IP address: %s", event.networkInfo.ip.toString().c_str());
         }
     });
-    bool wifiConnected = wifiManager.begin(WIFI_CONNECT_TIMEOUT_SEC, true);
+    bool wifiConnected = wifiManager.begin(configManager->getWifiConnectTimeout(), true);
     if (!wifiConnected) {
         LOG_W(TAG_WIFI, "WiFi connection failed or timed out during setup");
     }
@@ -183,21 +183,21 @@ void loop() {
     
     // Update sensor readings and publish status
     static unsigned long lastSensorUpdate = 0;
-    if (millis() - lastSensorUpdate > SENSOR_UPDATE_INTERVAL_MS) {
+    if (millis() - lastSensorUpdate > configManager->getSensorUpdateInterval()) {
         updateSensorReadings();
         lastSensorUpdate = millis();
     }
-    
+
     // Update PID controller at specified interval
     unsigned long currentTime = millis();
-    if (currentTime - lastPIDUpdate > PID_UPDATE_INTERVAL) {
+    if (currentTime - lastPIDUpdate > configManager->getPidUpdateInterval()) {
         updatePIDControl();
         lastPIDUpdate = currentTime;
     }
 
     // Add periodic internet connectivity test
     static unsigned long lastConnectivityCheck = 0;
-    if (millis() - lastConnectivityCheck > CONNECTIVITY_CHECK_INTERVAL_MS) {
+    if (millis() - lastConnectivityCheck > configManager->getConnectivityCheckInterval()) {
         lastConnectivityCheck = millis();
         
         WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
@@ -268,7 +268,7 @@ void updatePIDControl() {
         fabs(last_saved_setpoint - g_pid_input.setpoint_temp) > 0.01f) {
         pendingConfigWrite = true;
     }
-    if (pendingConfigWrite && (millis() - lastConfigWrite > PID_CONFIG_WRITE_INTERVAL_MS)) {
+    if (pendingConfigWrite && (millis() - lastConfigWrite > configManager->getPidConfigWriteInterval())) {
         configManager->setPidKp(g_pid_input.Kp);
         configManager->setPidKi(g_pid_input.Ki);
         configManager->setPidKd(g_pid_input.Kd);

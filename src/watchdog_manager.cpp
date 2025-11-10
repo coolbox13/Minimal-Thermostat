@@ -23,37 +23,42 @@ WatchdogManager::WatchdogManager()
 
 bool WatchdogManager::begin() {
   LOG_I(TAG, "Initializing watchdog manager");
-  
+
   // Load the last reboot reason from persistent storage
   loadRebootReason();
-  
+
   // Check if we should enter safe mode
   if (shouldEnterSafeMode()) {
     enterSafeMode();
   }
-  
+
+  // Get ConfigManager instance for timeout values
+  ConfigManager* configManager = ConfigManager::getInstance();
+  systemWatchdogTimeout = configManager->getSystemWatchdogTimeout();
+  wifiWatchdogTimeout = configManager->getWifiWatchdogTimeout();
+
   // Initialize the ESP task watchdog (convert ms to seconds)
-  esp_err_t err = esp_task_wdt_init(SYSTEM_WATCHDOG_TIMEOUT / 1000, true);
+  esp_err_t err = esp_task_wdt_init(systemWatchdogTimeout / 1000, true);
   if (err != ESP_OK) {
     LOG_E(TAG, "Failed to initialize system watchdog: %d", err);
     return false;
   }
-  
+
   // Add current task to watchdog
   err = esp_task_wdt_add(NULL);
   if (err != ESP_OK) {
     LOG_E(TAG, "Failed to add task to watchdog: %d", err);
     return false;
   }
-  
+
   systemWatchdogEnabled = true;
-  LOG_I(TAG, "System watchdog initialized with timeout of %d ms", SYSTEM_WATCHDOG_TIMEOUT);
-  
+  LOG_I(TAG, "System watchdog initialized with timeout of %d ms", systemWatchdogTimeout);
+
   // Initialize WiFi watchdog
   wifiWatchdogEnabled = true;
   lastWiFiWatchdogReset = millis();
-  LOG_I(TAG, "WiFi watchdog initialized with timeout of %d ms", WIFI_WATCHDOG_TIMEOUT);
-  
+  LOG_I(TAG, "WiFi watchdog initialized with timeout of %d ms", wifiWatchdogTimeout);
+
   return true;
 }
 
@@ -87,16 +92,16 @@ bool WatchdogManager::checkWiFiWatchdog() {
   if (!wifiWatchdogEnabled || watchdogsPaused) {
     return false;
   }
-  
+
   uint32_t currentTime = millis();
   uint32_t elapsed = currentTime - lastWiFiWatchdogReset;
-  
+
   // Check if WiFi watchdog has timed out
-  if (elapsed >= WIFI_WATCHDOG_TIMEOUT) {
+  if (elapsed >= wifiWatchdogTimeout) {
     LOG_W(TAG, "WiFi watchdog timeout after %d ms", elapsed);
     return true;
   }
-  
+
   return false;
 }
 

@@ -147,6 +147,68 @@ float ConfigManager::getSetpoint() {
     return roundToPrecision(_preferences.getFloat("setpoint", DEFAULT_SETPOINT), 1);
 }
 
+// Timing parameters
+uint32_t ConfigManager::getSensorUpdateInterval() {
+    return _preferences.getUInt("sens_upd_int", DEFAULT_SENSOR_UPDATE_INTERVAL_MS);
+}
+void ConfigManager::setSensorUpdateInterval(uint32_t interval) {
+    _preferences.putUInt("sens_upd_int", interval);
+}
+uint32_t ConfigManager::getPidUpdateInterval() {
+    return _preferences.getUInt("pid_upd_int", DEFAULT_PID_UPDATE_INTERVAL_MS);
+}
+void ConfigManager::setPidUpdateInterval(uint32_t interval) {
+    _preferences.putUInt("pid_upd_int", interval);
+}
+uint32_t ConfigManager::getConnectivityCheckInterval() {
+    return _preferences.getUInt("conn_chk_int", DEFAULT_CONNECTIVITY_CHECK_INTERVAL_MS);
+}
+void ConfigManager::setConnectivityCheckInterval(uint32_t interval) {
+    _preferences.putUInt("conn_chk_int", interval);
+}
+uint32_t ConfigManager::getPidConfigWriteInterval() {
+    return _preferences.getUInt("pid_wr_int", DEFAULT_PID_CONFIG_WRITE_INTERVAL_MS);
+}
+void ConfigManager::setPidConfigWriteInterval(uint32_t interval) {
+    _preferences.putUInt("pid_wr_int", interval);
+}
+uint16_t ConfigManager::getWifiConnectTimeout() {
+    return _preferences.getUShort("wifi_conn_to", DEFAULT_WIFI_CONNECT_TIMEOUT_SEC);
+}
+void ConfigManager::setWifiConnectTimeout(uint16_t timeout) {
+    _preferences.putUShort("wifi_conn_to", timeout);
+}
+uint8_t ConfigManager::getMaxReconnectAttempts() {
+    return _preferences.getUChar("max_reconn", DEFAULT_MAX_RECONNECT_ATTEMPTS);
+}
+void ConfigManager::setMaxReconnectAttempts(uint8_t attempts) {
+    _preferences.putUChar("max_reconn", attempts);
+}
+uint32_t ConfigManager::getSystemWatchdogTimeout() {
+    return _preferences.getUInt("sys_wdt_to", DEFAULT_SYSTEM_WATCHDOG_TIMEOUT_MS);
+}
+void ConfigManager::setSystemWatchdogTimeout(uint32_t timeout) {
+    _preferences.putUInt("sys_wdt_to", timeout);
+}
+uint32_t ConfigManager::getWifiWatchdogTimeout() {
+    return _preferences.getUInt("wifi_wdt_to", DEFAULT_WIFI_WATCHDOG_TIMEOUT_MS);
+}
+void ConfigManager::setWifiWatchdogTimeout(uint32_t timeout) {
+    _preferences.putUInt("wifi_wdt_to", timeout);
+}
+float ConfigManager::getPidDeadband() {
+    return roundToPrecision(_preferences.getFloat("pid_deadb", DEFAULT_PID_DEADBAND), 1);
+}
+void ConfigManager::setPidDeadband(float deadband) {
+    _preferences.putFloat("pid_deadb", roundToPrecision(deadband, 1));
+}
+float ConfigManager::getPidAdaptationInterval() {
+    return roundToPrecision(_preferences.getFloat("pid_adapt", DEFAULT_PID_ADAPTATION_INTERVAL_SEC), 1);
+}
+void ConfigManager::setPidAdaptationInterval(float interval) {
+    _preferences.putFloat("pid_adapt", roundToPrecision(interval, 1));
+}
+
 // MODIFIED: Updated getJson to use getters directly (which now apply rounding)
 void ConfigManager::getJson(JsonDocument& doc) {
     // Create JSON structure directly
@@ -172,7 +234,19 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["pid"]["ki"] = getPidKi();
     doc["pid"]["kd"] = getPidKd();
     doc["pid"]["setpoint"] = getSetpoint();
-    
+    doc["pid"]["deadband"] = getPidDeadband();
+    doc["pid"]["adaptation_interval"] = getPidAdaptationInterval();
+
+    // Add timing parameters
+    doc["timing"]["sensor_update_interval"] = getSensorUpdateInterval();
+    doc["timing"]["pid_update_interval"] = getPidUpdateInterval();
+    doc["timing"]["connectivity_check_interval"] = getConnectivityCheckInterval();
+    doc["timing"]["pid_config_write_interval"] = getPidConfigWriteInterval();
+    doc["timing"]["wifi_connect_timeout"] = getWifiConnectTimeout();
+    doc["timing"]["max_reconnect_attempts"] = getMaxReconnectAttempts();
+    doc["timing"]["system_watchdog_timeout"] = getSystemWatchdogTimeout();
+    doc["timing"]["wifi_watchdog_timeout"] = getWifiWatchdogTimeout();
+
     LOG_D(TAG, "Created JSON configuration");
 }
 
@@ -339,6 +413,102 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setSetpoint(setpoint);
     }
+    if (doc["pid"].containsKey("deadband")) {
+        float deadband = roundToPrecision(doc["pid"]["deadband"].as<float>(), 1);
+        if (deadband < 0 || deadband > 5) {
+            errorMessage = "PID deadband must be between 0°C and 5°C";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidDeadband(deadband);
+    }
+    if (doc["pid"].containsKey("adaptation_interval")) {
+        float interval = roundToPrecision(doc["pid"]["adaptation_interval"].as<float>(), 1);
+        if (interval < 10 || interval > 600) {
+            errorMessage = "PID adaptation interval must be between 10 and 600 seconds";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidAdaptationInterval(interval);
+    }
+    return true;
+}
+bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("timing")) {
+        return true;
+    }
+    if (doc["timing"].containsKey("sensor_update_interval")) {
+        uint32_t interval = doc["timing"]["sensor_update_interval"].as<uint32_t>();
+        if (interval < 1000 || interval > 300000) {
+            errorMessage = "Sensor update interval must be between 1000ms and 300000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setSensorUpdateInterval(interval);
+    }
+    if (doc["timing"].containsKey("pid_update_interval")) {
+        uint32_t interval = doc["timing"]["pid_update_interval"].as<uint32_t>();
+        if (interval < 1000 || interval > 60000) {
+            errorMessage = "PID update interval must be between 1000ms and 60000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidUpdateInterval(interval);
+    }
+    if (doc["timing"].containsKey("connectivity_check_interval")) {
+        uint32_t interval = doc["timing"]["connectivity_check_interval"].as<uint32_t>();
+        if (interval < 60000 || interval > 3600000) {
+            errorMessage = "Connectivity check interval must be between 60000ms and 3600000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setConnectivityCheckInterval(interval);
+    }
+    if (doc["timing"].containsKey("pid_config_write_interval")) {
+        uint32_t interval = doc["timing"]["pid_config_write_interval"].as<uint32_t>();
+        if (interval < 60000 || interval > 3600000) {
+            errorMessage = "PID config write interval must be between 60000ms and 3600000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidConfigWriteInterval(interval);
+    }
+    if (doc["timing"].containsKey("wifi_connect_timeout")) {
+        uint16_t timeout = doc["timing"]["wifi_connect_timeout"].as<uint16_t>();
+        if (timeout < 10 || timeout > 600) {
+            errorMessage = "WiFi connect timeout must be between 10s and 600s";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWifiConnectTimeout(timeout);
+    }
+    if (doc["timing"].containsKey("max_reconnect_attempts")) {
+        uint8_t attempts = doc["timing"]["max_reconnect_attempts"].as<uint8_t>();
+        if (attempts < 1 || attempts > 100) {
+            errorMessage = "Max reconnect attempts must be between 1 and 100";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setMaxReconnectAttempts(attempts);
+    }
+    if (doc["timing"].containsKey("system_watchdog_timeout")) {
+        uint32_t timeout = doc["timing"]["system_watchdog_timeout"].as<uint32_t>();
+        if (timeout < 60000 || timeout > 7200000) {
+            errorMessage = "System watchdog timeout must be between 60000ms and 7200000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setSystemWatchdogTimeout(timeout);
+    }
+    if (doc["timing"].containsKey("wifi_watchdog_timeout")) {
+        uint32_t timeout = doc["timing"]["wifi_watchdog_timeout"].as<uint32_t>();
+        if (timeout < 60000 || timeout > 7200000) {
+            errorMessage = "WiFi watchdog timeout must be between 60000ms and 7200000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWifiWatchdogTimeout(timeout);
+    }
     return true;
 }
 
@@ -356,6 +526,7 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     if (!validateAndApplyKNXSettings(doc, errorMessage)) return false;
     if (!validateBME280Settings(doc, errorMessage)) return false;
     if (!validateAndApplyPIDSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyTimingSettings(doc, errorMessage)) return false;
     LOG_I(TAG, "Configuration imported successfully");
     return true;
 }
