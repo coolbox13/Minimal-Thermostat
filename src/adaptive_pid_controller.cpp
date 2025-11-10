@@ -7,7 +7,7 @@
 #include <math.h>
 
 // Define TAG for logging
-static const char* TAG_PID = "PID";
+static const char* TAG = "PID";
 
 // Internal state variables
 static float prev_error = 0.0f;      // Previous error for derivative term
@@ -87,8 +87,8 @@ void initializePIDController(void) {
     g_history_index = 0;
     
     // Log the loaded parameters
-    LOG_I(TAG_PID, "PID controller initialized with parameters from storage");
-    LOG_I(TAG_PID, "Kp: %.3f, Ki: %.3f, Kd: %.3f, Setpoint: %.2f°C", 
+    LOG_I(TAG, "PID controller initialized with parameters from storage");
+    LOG_I(TAG, "Kp: %.3f, Ki: %.3f, Kd: %.3f, Setpoint: %.2f°C", 
           g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd, g_pid_input.setpoint_temp);
 }
 
@@ -101,9 +101,9 @@ void setPidKp(float kp) {
     // Validate to ensure positive value
     if (kp >= 0.0f) {
         g_pid_input.Kp = kp;
-        LOG_D(TAG_PID, "Kp updated to: %.3f", kp);
+        LOG_D(TAG, "Kp updated to: %.3f", kp);
     } else {
-        LOG_W(TAG_PID, "Invalid Kp value (%.3f) - must be non-negative", kp);
+        LOG_W(TAG, "Invalid Kp value (%.3f) - must be non-negative", kp);
     }
 }
 
@@ -116,9 +116,9 @@ void setPidKi(float ki) {
     // Validate to ensure positive value
     if (ki >= 0.0f) {
         g_pid_input.Ki = ki;
-        LOG_D(TAG_PID, "Ki updated to: %.3f", ki);
+        LOG_D(TAG, "Ki updated to: %.3f", ki);
     } else {
-        LOG_W(TAG_PID, "Invalid Ki value (%.3f) - must be non-negative", ki);
+        LOG_W(TAG, "Invalid Ki value (%.3f) - must be non-negative", ki);
     }
 }
 
@@ -131,9 +131,9 @@ void setPidKd(float kd) {
     // Validate to ensure positive value
     if (kd >= 0.0f) {
         g_pid_input.Kd = kd;
-        LOG_D(TAG_PID, "Kd updated to: %.3f", kd);
+        LOG_D(TAG, "Kd updated to: %.3f", kd);
     } else {
-        LOG_W(TAG_PID, "Invalid Kd value (%.3f) - must be non-negative", kd);
+        LOG_W(TAG, "Invalid Kd value (%.3f) - must be non-negative", kd);
     }
 }
 

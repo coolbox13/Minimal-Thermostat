@@ -6,9 +6,23 @@
 #include "config.h"
 #include <WiFi.h>  // Add this include for WiFi functionality
 
-// Preferences namespace for storing reboot reasons
+/**
+ * PREFERENCES NAMESPACE: "watchdog"
+ *
+ * This namespace stores watchdog-specific state and recovery tracking:
+ * - reboot_reason: Last reboot cause (watchdog, manual, etc.)
+ * - consecutive_resets: Counter for watchdog-triggered reboots
+ * - safe_mode_flag: Safe mode activation state
+ *
+ * Separate from ConfigManager's "thermostat" namespace to isolate recovery
+ * state from user configuration. This allows watchdog state to be cleared
+ * independently without affecting application settings.
+ *
+ * See config_manager.h for complete namespace documentation.
+ */
 #define PREF_NAMESPACE "watchdog"
 #define PREF_REBOOT_REASON "reboot_reason"
+#define PREF_CONSECUTIVE_RESETS "consecutive_resets"
 
 WatchdogManager::WatchdogManager() 
   : systemWatchdogEnabled(false),

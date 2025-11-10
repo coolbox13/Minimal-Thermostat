@@ -20,7 +20,18 @@
 #include "wifi_connection.h"
 #include "event_log.h"
 
-
+/**
+ * LOGGING TAG NAMING STANDARD:
+ *
+ * Single-purpose files: Use `static const char* TAG = "MODULE"`
+ * Examples:
+ *   - config_manager.cpp: TAG = "CONFIG"
+ *   - knx_manager.cpp: TAG = "KNX"
+ *   - adaptive_pid_controller.cpp: TAG = "PID"
+ *
+ * Multi-purpose files: Use `static const char* TAG_PURPOSE = "PURPOSE"`
+ * Example (main.cpp handles multiple concerns):
+ */
 static const char* TAG_MAIN = "MAIN";
 static const char* TAG_SENSOR = "SENSOR";
 static const char* TAG_PID = "PID";
@@ -47,7 +58,6 @@ unsigned long lastWifiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 60000; // Check WiFi every minute
 unsigned long lastConnectedTime = 0;
 int reconnectAttempts = 0;
-bool configPortalActive = false;
 
 // Function declarations
 void setupWiFi();
