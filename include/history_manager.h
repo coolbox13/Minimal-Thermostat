@@ -2,6 +2,7 @@
 #define HISTORY_MANAGER_H
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 /**
  * @brief Data point for storing sensor readings and valve position
