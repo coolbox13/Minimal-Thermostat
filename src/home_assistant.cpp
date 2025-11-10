@@ -332,6 +332,17 @@ void HomeAssistant::updateDiagnostics(int wifiRSSI, unsigned long uptime) {
     _mqttClient.publish("esp32_thermostat/uptime", uptimeStr);
 }
 
+// Update manual valve override status
+void HomeAssistant::updateManualOverride(bool enabled, int position) {
+    // Publish override enabled status
+    _mqttClient.publish("esp32_thermostat/manual_override/enabled", enabled ? "ON" : "OFF");
+
+    // Publish override position
+    char posStr[8];
+    itoa(position, posStr, 10);
+    _mqttClient.publish("esp32_thermostat/manual_override/position", posStr);
+}
+
 // Update availability status
 void HomeAssistant::updateAvailability(bool isOnline) {
     bool published = _mqttClient.publish(_availabilityTopic.c_str(), isOnline ? "online" : "offline", true);

@@ -61,7 +61,27 @@
                         <div id="status" class="status"></div>
                     </div>
                 </div>
-                
+
+                <div class="card">
+                    <h2 class="card-title">Manual Override</h2>
+                    <div class="control-row">
+                        <span class="control-label">Valve Position</span>
+                        <div class="slider-container">
+                            <input type="range" id="override-slider" min="0" max="100" step="5" value="0" disabled>
+                        </div>
+                        <span id="override-value" class="value-display">0%</span>
+                    </div>
+                    <div class="control-row">
+                        <button id="toggle-override">Enable Manual Control</button>
+                        <div id="override-status" class="status"></div>
+                    </div>
+                    <div class="control-row" id="override-info" style="display:none;">
+                        <small style="color: #7f8c8d;">
+                            <span id="override-timer"></span>
+                        </small>
+                    </div>
+                </div>
+
                 <div class="card">
                     <h2 class="card-title">System</h2>
                     <div class="control-row">

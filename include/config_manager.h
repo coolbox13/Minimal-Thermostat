@@ -236,6 +236,55 @@ public:
     float getPidAdaptationInterval();
     void setPidAdaptationInterval(float interval);
 
+    // Manual valve override settings
+    /**
+     * @brief Check if manual valve override is enabled
+     * @return true if manual override is active, false otherwise
+     */
+    bool getManualOverrideEnabled();
+
+    /**
+     * @brief Enable or disable manual valve override
+     * @param enabled true to enable manual override, false to disable
+     */
+    void setManualOverrideEnabled(bool enabled);
+
+    /**
+     * @brief Get the manual override valve position
+     * @return Manual valve position (0-100%)
+     */
+    uint8_t getManualOverridePosition();
+
+    /**
+     * @brief Set the manual override valve position
+     * @param position Valve position 0-100%
+     */
+    void setManualOverridePosition(uint8_t position);
+
+    /**
+     * @brief Get the manual override timeout duration in seconds
+     * @return Timeout duration in seconds (0 = no timeout)
+     */
+    uint32_t getManualOverrideTimeout();
+
+    /**
+     * @brief Set the manual override timeout duration
+     * @param timeout Timeout in seconds (0 = no auto-disable, default 3600 = 1 hour)
+     */
+    void setManualOverrideTimeout(uint32_t timeout);
+
+    /**
+     * @brief Get when manual override was activated (millis timestamp)
+     * @return Activation timestamp in milliseconds since boot
+     */
+    unsigned long getManualOverrideActivationTime();
+
+    /**
+     * @brief Set when manual override was activated
+     * @param timestamp Activation time in milliseconds since boot
+     */
+    void setManualOverrideActivationTime(unsigned long timestamp);
+
     // Webhook settings
     /**
      * @brief Get the webhook URL for IFTTT/Zapier integration
@@ -345,6 +394,8 @@ private:
     static constexpr uint32_t DEFAULT_WIFI_WATCHDOG_TIMEOUT_MS = 1800000;
     static constexpr float DEFAULT_PID_DEADBAND = 0.2f;
     static constexpr float DEFAULT_PID_ADAPTATION_INTERVAL_SEC = 60.0f;
+    static constexpr uint8_t DEFAULT_MANUAL_OVERRIDE_POSITION = 0;
+    static constexpr uint32_t DEFAULT_MANUAL_OVERRIDE_TIMEOUT_SEC = 3600; // 1 hour
     static constexpr float DEFAULT_WEBHOOK_TEMP_LOW_THRESHOLD = 15.0f;
     static constexpr float DEFAULT_WEBHOOK_TEMP_HIGH_THRESHOLD = 30.0f;
 
@@ -354,6 +405,7 @@ private:
     bool validateAndApplyKNXSettings(const JsonDocument& doc, String& errorMessage);
     bool validateBME280Settings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyPIDSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyManualOverrideSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyWebhookSettings(const JsonDocument& doc, String& errorMessage);
 

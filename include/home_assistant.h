@@ -32,6 +32,9 @@ public:
     // Update system diagnostics (WiFi signal strength, uptime)
     void updateDiagnostics(int wifiRSSI, unsigned long uptime);
 
+    // Update manual valve override status
+    void updateManualOverride(bool enabled, int position);
+
 private:
     PubSubClient& _mqttClient;
     String _nodeId;

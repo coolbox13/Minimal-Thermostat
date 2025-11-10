@@ -318,28 +318,50 @@ void updateSensorReadings() {
 
 // Modified updatePIDControl function for main.cpp
 void updatePIDControl() {
+    ConfigManager* configManager = ConfigManager::getInstance();
+
     // Get current temperature from BME280
     float currentTemp = bme280.readTemperature();
-    
+
     // Get current valve position from KNX (feedback)
     float valvePosition = knxManager.getValvePosition();
-    
-    // Update PID controller
-    updatePIDController(currentTemp, valvePosition);
-    
-    // Get new valve position from PID
-    float pidOutput = getPIDOutput();
-    
-    // Apply PID output to valve control via KNX
-    knxManager.setValvePosition(pidOutput);
-    
-    // Log PID information
-    LOG_D(TAG_PID, "PID controller updated:");
-    LOG_D(TAG_PID, "Temperature: %.2f°C, Setpoint: %.2f°C", 
-          currentTemp, g_pid_input.setpoint_temp);
-    LOG_D(TAG_PID, "Valve position: %.1f%%", pidOutput);
-    LOG_D(TAG_PID, "PID params - Kp: %.3f, Ki: %.3f, Kd: %.3f", 
-          g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
+
+    // Check manual override timeout
+    if (configManager->getManualOverrideEnabled()) {
+        uint32_t timeout = configManager->getManualOverrideTimeout();
+        unsigned long activationTime = configManager->getManualOverrideActivationTime();
+
+        // If timeout is set (> 0) and has expired, disable manual override
+        if (timeout > 0 && (millis() - activationTime) / 1000 > timeout) {
+            LOG_I(TAG_PID, "Manual override timeout expired, disabling");
+            configManager->setManualOverrideEnabled(false);
+        }
+    }
+
+    // Determine valve position based on manual override or PID
+    float finalValvePosition;
+    if (configManager->getManualOverrideEnabled()) {
+        // Use manual override position
+        finalValvePosition = configManager->getManualOverridePosition();
+        LOG_D(TAG_PID, "Manual override active: %.1f%%", finalValvePosition);
+    } else {
+        // Update PID controller
+        updatePIDController(currentTemp, valvePosition);
+
+        // Get new valve position from PID
+        finalValvePosition = getPIDOutput();
+
+        // Log PID information
+        LOG_D(TAG_PID, "PID controller updated:");
+        LOG_D(TAG_PID, "Temperature: %.2f°C, Setpoint: %.2f°C",
+              currentTemp, g_pid_input.setpoint_temp);
+        LOG_D(TAG_PID, "Valve position: %.1f%%", finalValvePosition);
+        LOG_D(TAG_PID, "PID params - Kp: %.3f, Ki: %.3f, Kd: %.3f",
+              g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
+    }
+
+    // Apply final valve position to KNX
+    knxManager.setValvePosition(finalValvePosition);
     
     // Save PID parameters to config with write coalescing to reduce flash wear
     // Write to flash max once every 5 minutes if parameters have changed

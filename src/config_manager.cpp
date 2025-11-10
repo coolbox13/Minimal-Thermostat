@@ -223,6 +223,41 @@ void ConfigManager::setPidAdaptationInterval(float interval) {
     _preferences.putFloat("pid_adapt", roundToPrecision(interval, 1));
 }
 
+// Manual valve override settings
+bool ConfigManager::getManualOverrideEnabled() {
+    return _preferences.getBool("man_ovr_en", false);
+}
+
+void ConfigManager::setManualOverrideEnabled(bool enabled) {
+    _preferences.putBool("man_ovr_en", enabled);
+}
+
+uint8_t ConfigManager::getManualOverridePosition() {
+    return _preferences.getUChar("man_ovr_pos", DEFAULT_MANUAL_OVERRIDE_POSITION);
+}
+
+void ConfigManager::setManualOverridePosition(uint8_t position) {
+    // Clamp to 0-100%
+    if (position > 100) position = 100;
+    _preferences.putUChar("man_ovr_pos", position);
+}
+
+uint32_t ConfigManager::getManualOverrideTimeout() {
+    return _preferences.getUInt("man_ovr_to", DEFAULT_MANUAL_OVERRIDE_TIMEOUT_SEC);
+}
+
+void ConfigManager::setManualOverrideTimeout(uint32_t timeout) {
+    _preferences.putUInt("man_ovr_to", timeout);
+}
+
+unsigned long ConfigManager::getManualOverrideActivationTime() {
+    return _preferences.getULong("man_ovr_act", 0);
+}
+
+void ConfigManager::setManualOverrideActivationTime(unsigned long timestamp) {
+    _preferences.putULong("man_ovr_act", timestamp);
+}
+
 // Webhook settings
 String ConfigManager::getWebhookUrl() {
     return _preferences.getString("webhook_url", "");
@@ -283,6 +318,11 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["pid"]["setpoint"] = getSetpoint();
     doc["pid"]["deadband"] = getPidDeadband();
     doc["pid"]["adaptation_interval"] = getPidAdaptationInterval();
+
+    // Add manual override parameters
+    doc["manual_override"]["enabled"] = getManualOverrideEnabled();
+    doc["manual_override"]["position"] = getManualOverridePosition();
+    doc["manual_override"]["timeout"] = getManualOverrideTimeout();
 
     // Add timing parameters
     doc["timing"]["sensor_update_interval"] = getSensorUpdateInterval();
@@ -486,6 +526,42 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
     }
     return true;
 }
+
+bool ConfigManager::validateAndApplyManualOverrideSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("manual_override")) {
+        return true; // Manual override section is optional
+    }
+
+    if (doc["manual_override"].containsKey("enabled")) {
+        bool enabled = doc["manual_override"]["enabled"].as<bool>();
+        setManualOverrideEnabled(enabled);
+        LOG_D(TAG, "Manual override enabled: %d", enabled);
+    }
+
+    if (doc["manual_override"].containsKey("position")) {
+        int position = doc["manual_override"]["position"].as<int>();
+        if (position < 0 || position > 100) {
+            errorMessage = "Manual override position must be between 0 and 100";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setManualOverridePosition((uint8_t)position);
+        LOG_D(TAG, "Manual override position: %d%%", position);
+    }
+
+    if (doc["manual_override"].containsKey("timeout")) {
+        uint32_t timeout = doc["manual_override"]["timeout"].as<uint32_t>();
+        if (timeout > 86400) { // Max 24 hours
+            errorMessage = "Manual override timeout must be <= 86400 seconds (24 hours)";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setManualOverrideTimeout(timeout);
+        LOG_D(TAG, "Manual override timeout: %lu seconds", timeout);
+    }
+
+    return true;
+}
 bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage) {
     if (!doc.containsKey("timing")) {
         return true;
@@ -622,6 +698,7 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     if (!validateAndApplyKNXSettings(doc, errorMessage)) return false;
     if (!validateBME280Settings(doc, errorMessage)) return false;
     if (!validateAndApplyPIDSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyManualOverrideSettings(doc, errorMessage)) return false;
     if (!validateAndApplyTimingSettings(doc, errorMessage)) return false;
     if (!validateAndApplyWebhookSettings(doc, errorMessage)) return false;
     LOG_I(TAG, "Configuration imported successfully");

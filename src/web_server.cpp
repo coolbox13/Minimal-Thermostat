@@ -307,6 +307,69 @@ void WebServerManager::setupDefaultRoutes() {
         }
     });
 
+    // Manual valve override - Enable/Disable
+    _server->on("/api/manual-override", HTTP_POST, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+
+        if (!request->hasParam("enabled", true)) {
+            request->send(400, "application/json", "{\"success\":false,\"message\":\"Missing enabled parameter\"}");
+            return;
+        }
+
+        bool enabled = request->getParam("enabled", true)->value() == "true" ||
+                      request->getParam("enabled", true)->value() == "1";
+
+        // If enabling, require position parameter
+        if (enabled) {
+            if (!request->hasParam("position", true)) {
+                request->send(400, "application/json", "{\"success\":false,\"message\":\"Missing position parameter\"}");
+                return;
+            }
+
+            int position = request->getParam("position", true)->value().toInt();
+            if (position < 0 || position > 100) {
+                request->send(400, "application/json", "{\"success\":false,\"message\":\"Position must be 0-100\"}");
+                return;
+            }
+
+            configManager->setManualOverridePosition((uint8_t)position);
+            configManager->setManualOverrideActivationTime(millis());
+            configManager->setManualOverrideEnabled(true);
+
+            request->send(200, "application/json",
+                "{\"success\":true,\"enabled\":true,\"position\":" + String(position) + "}");
+        } else {
+            // Disable manual override
+            configManager->setManualOverrideEnabled(false);
+            request->send(200, "application/json", "{\"success\":true,\"enabled\":false}");
+        }
+    });
+
+    // Get manual override status
+    _server->on("/api/manual-override", HTTP_GET, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+
+        StaticJsonDocument<256> doc;
+        doc["enabled"] = configManager->getManualOverrideEnabled();
+        doc["position"] = configManager->getManualOverridePosition();
+        doc["timeout"] = configManager->getManualOverrideTimeout();
+
+        if (configManager->getManualOverrideEnabled()) {
+            unsigned long activationTime = configManager->getManualOverrideActivationTime();
+            unsigned long elapsed = (millis() - activationTime) / 1000;
+            doc["elapsed_seconds"] = elapsed;
+
+            uint32_t timeout = configManager->getManualOverrideTimeout();
+            if (timeout > 0) {
+                doc["remaining_seconds"] = (timeout > elapsed) ? (timeout - elapsed) : 0;
+            }
+        }
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
     // Get current configuration
     _server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
