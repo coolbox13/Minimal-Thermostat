@@ -279,6 +279,22 @@ void WebServerManager::setupDefaultRoutes() {
         ESP.restart();
     });
 
+    // Factory reset - clear all settings and reboot
+    _server->on("/api/factory-reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+
+        if (configManager->factoryReset()) {
+            request->send(200, "application/json",
+                "{\"success\":true,\"message\":\"Factory reset completed. Rebooting...\"}");
+            // Schedule reboot after response is sent
+            delay(500);
+            ESP.restart();
+        } else {
+            request->send(500, "application/json",
+                "{\"success\":false,\"message\":\"Factory reset failed\"}");
+        }
+    });
+
     // Set up 404 handler last to ensure it catches unmatched routes
     _server->onNotFound([](AsyncWebServerRequest *request) {
         String html = R"(<!DOCTYPE html>

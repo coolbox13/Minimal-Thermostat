@@ -23,7 +23,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Reboot device button handler
     document.getElementById('reboot-device').addEventListener('click', rebootDevice);
-    
+
+    // Factory reset button handler
+    document.getElementById('factory-reset').addEventListener('click', factoryReset);
+
     // Add input blur handlers to format values properly when user finishes editing
     document.getElementById('pid_kp').addEventListener('blur', function() {
         this.value = formatNumberWithPrecision(parseFloat(this.value), 2);
@@ -266,7 +269,7 @@ function rebootDevice() {
         const statusElement = document.getElementById('config-status');
         statusElement.textContent = 'Rebooting...';
         statusElement.className = 'status status-loading';
-        
+
         fetch('/api/reboot', { method: 'POST' })
             .then(() => {
                 // Keep the "Rebooting..." message
@@ -274,6 +277,32 @@ function rebootDevice() {
             .catch(error => {
                 console.error('Error rebooting device:', error);
                 statusElement.textContent = 'Error rebooting device';
+                statusElement.className = 'status status-error';
+            });
+    }
+}
+
+// Function to perform factory reset
+function factoryReset() {
+    if (confirm('WARNING: This will erase ALL settings and restart with defaults!\n\nAre you absolutely sure you want to perform a factory reset?')) {
+        const statusElement = document.getElementById('config-status');
+        statusElement.textContent = 'Performing factory reset...';
+        statusElement.className = 'status status-loading';
+
+        fetch('/api/factory-reset', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusElement.textContent = 'Factory reset completed. Device rebooting...';
+                    statusElement.className = 'status status-success';
+                } else {
+                    statusElement.textContent = 'Factory reset failed: ' + data.message;
+                    statusElement.className = 'status status-error';
+                }
+            })
+            .catch(error => {
+                console.error('Error performing factory reset:', error);
+                statusElement.textContent = 'Error performing factory reset';
                 statusElement.className = 'status status-error';
             });
     }
