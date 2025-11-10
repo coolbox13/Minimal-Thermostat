@@ -190,7 +190,7 @@ class SensorHealthMonitor {
 ### 1.3 Control Enhancements
 
 #### **Suggestion: Manual Valve Override**
-**Priority:** Low
+**Priority:** High
 **Complexity:** Low
 
 **Description:**
