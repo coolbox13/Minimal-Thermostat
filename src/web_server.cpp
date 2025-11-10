@@ -214,13 +214,74 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
         StaticJsonDocument<1024> doc;
-        
+
         configManager->getJson(doc);
-        
+
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
     });
+
+    // Export configuration as downloadable JSON file
+    _server->on("/api/config/export", HTTP_GET, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+        StaticJsonDocument<1024> doc;
+
+        configManager->getJson(doc);
+
+        String response;
+        serializeJsonPretty(doc, response);
+
+        // Generate filename with timestamp
+        char filename[50];
+        snprintf(filename, sizeof(filename), "thermostat-config-%lu.json", millis() / 1000);
+
+        AsyncWebServerResponse *downloadResponse = request->beginResponse(200, "application/json", response);
+        downloadResponse->addHeader("Content-Disposition", String("attachment; filename=") + filename);
+        request->send(downloadResponse);
+    });
+
+    // Import configuration from uploaded JSON file
+    _server->on("/api/config/import", HTTP_POST,
+        [](AsyncWebServerRequest *request) {
+            // Response will be sent after upload processing
+        },
+        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+            static String fileContent;
+
+            if (index == 0) {
+                fileContent = "";
+            }
+
+            // Append data to buffer
+            for (size_t i = 0; i < len; i++) {
+                fileContent += (char)data[i];
+            }
+
+            // Process when upload is complete
+            if (final) {
+                ConfigManager* configManager = ConfigManager::getInstance();
+                StaticJsonDocument<1024> doc;
+
+                DeserializationError error = deserializeJson(doc, fileContent);
+                if (error) {
+                    request->send(400, "application/json",
+                        "{\"success\":false,\"message\":\"Invalid JSON file: " + String(error.c_str()) + "\"}");
+                    return;
+                }
+
+                String errorMessage;
+                bool success = configManager->setFromJson(doc, errorMessage);
+                if (success) {
+                    request->send(200, "application/json",
+                        "{\"success\":true,\"message\":\"Configuration imported successfully\"}");
+                } else {
+                    request->send(500, "application/json",
+                        "{\"success\":false,\"message\":\"" + errorMessage + "\"}");
+                }
+            }
+        }
+    );
 
     // Update configuration
     _server->on("/api/config", HTTP_POST, 

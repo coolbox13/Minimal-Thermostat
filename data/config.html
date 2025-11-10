@@ -144,6 +144,19 @@
                 <div id="config-status" class="status"></div>
             </form>
         </div>
+
+        <div class="card">
+            <h2 class="card-title">Backup & Restore</h2>
+            <p style="margin-bottom: 15px;">Export your configuration for backup or import a previously saved configuration.</p>
+
+            <div class="action-buttons">
+                <button type="button" id="export-config" style="background-color: #27ae60;">Export Configuration</button>
+                <button type="button" id="import-config" style="background-color: #f39c12;">Import Configuration</button>
+            </div>
+
+            <input type="file" id="config-file-input" accept=".json" style="display: none;">
+            <div id="backup-status" class="status"></div>
+        </div>
     </div>
 
     <script src="config.js"></script>
