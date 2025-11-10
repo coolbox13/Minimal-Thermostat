@@ -33,6 +33,7 @@
                 <button class="tab-button" data-tab="bme280">BME280</button>
                 <button class="tab-button" data-tab="pid">PID Control</button>
                 <button class="tab-button" data-tab="timing">Timing</button>
+                <button class="tab-button" data-tab="webhook">Webhooks</button>
             </div>
             
             <form id="config-form">
@@ -203,6 +204,55 @@
                         <label for="max_reconnect_attempts">Max Reconnect Attempts:</label>
                         <input type="number" id="max_reconnect_attempts" name="max_reconnect_attempts" step="1" min="1" max="100" class="form-input">
                         <span class="form-hint">Number of attempts (1-100, default: 10)</span>
+                    </div>
+                </div>
+
+                <!-- Webhook Settings Tab -->
+                <div id="webhook" class="tab-content">
+                    <h3>Webhook / IFTTT Integration</h3>
+                    <p style="margin-bottom: 15px;">
+                        Configure webhooks to send events to IFTTT, Zapier, or custom endpoints for temperature alerts and notifications.
+                    </p>
+
+                    <div class="form-row">
+                        <label for="webhook_enabled">Enable Webhooks:</label>
+                        <input type="checkbox" id="webhook_enabled" name="webhook_enabled" style="width: auto;">
+                        <span class="form-hint">Turn on/off webhook notifications</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="webhook_url">Webhook URL:</label>
+                        <input type="url" id="webhook_url" name="webhook_url" class="form-input" placeholder="https://maker.ifttt.com/trigger/event/with/key/YOUR_KEY">
+                        <span class="form-hint">Full URL including authentication key</span>
+                    </div>
+
+                    <h4>Temperature Alerts</h4>
+                    <div class="form-row">
+                        <label for="webhook_temp_low">Low Temperature Threshold:</label>
+                        <input type="number" id="webhook_temp_low" name="webhook_temp_low" step="0.5" min="-20" max="50" class="form-input">
+                        <span class="form-hint">°C - Send alert when temperature drops below this</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="webhook_temp_high">High Temperature Threshold:</label>
+                        <input type="number" id="webhook_temp_high" name="webhook_temp_high" step="0.5" min="-20" max="50" class="form-input">
+                        <span class="form-hint">°C - Send alert when temperature exceeds this</span>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="button" id="test-webhook" style="background-color: #f39c12;">Test Webhook</button>
+                        <span id="webhook-test-status" class="form-hint"></span>
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 10px; background-color: #ecf0f1; border-radius: 4px;">
+                        <strong>IFTTT Setup:</strong>
+                        <ol style="margin: 10px 0 0 20px; line-height: 1.6;">
+                            <li>Create an IFTTT account at <a href="https://ifttt.com" target="_blank">ifttt.com</a></li>
+                            <li>Go to Webhooks service and get your key</li>
+                            <li>Create an applet with Webhooks as trigger</li>
+                            <li>Use events: temperature_low, temperature_high, valve_alert, wifi_status</li>
+                            <li>Paste your webhook URL above</li>
+                        </ol>
                     </div>
                 </div>
 
