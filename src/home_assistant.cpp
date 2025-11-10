@@ -150,17 +150,127 @@ void HomeAssistant::registerEntities() {
     _mqttClient.subscribe("esp32_thermostat/mode/set");
     _mqttClient.subscribe("esp32_thermostat/temperature/set");
     Serial.println("Subscribed to thermostat control topics");
-    
+
     // Publish initial states
     _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
-    
+
     // Publish initial setpoint from PID config
     char setpointStr[8];
     dtostrf(PID_SETPOINT, 1, 1, setpointStr);
     _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
-    
+
     // Add restart command option
     _mqttClient.subscribe("esp32_thermostat/restart");
+
+    delay(100); // Small delay between entity registrations
+
+    // Binary sensor for heating status
+    String heatingTopic = String(HA_DISCOVERY_PREFIX) + "/binary_sensor/" + _nodeId + "/heating/config";
+    String heatingPayload = "{";
+    heatingPayload += "\"name\":\"Heating Status\",";
+    heatingPayload += "\"unique_id\":\"" + String(_nodeId) + "_heating_status\",";
+    heatingPayload += "\"device_class\":\"running\",";
+    heatingPayload += "\"state_topic\":\"esp32_thermostat/heating/state\",";
+    heatingPayload += "\"payload_on\":\"ON\",";
+    heatingPayload += "\"payload_off\":\"OFF\",";
+    heatingPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    heatingPayload += "\"icon\":\"mdi:radiator\",";
+    heatingPayload += "\"device\":" + deviceInfo;
+    heatingPayload += "}";
+    bool heatingSuccess = _mqttClient.publish(heatingTopic.c_str(), heatingPayload.c_str(), true);
+    Serial.print("Published heating status config: ");
+    Serial.println(heatingSuccess ? "Success" : "FAILED");
+
+    delay(100);
+
+    // PID Kp parameter sensor
+    String kpTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_kp/config";
+    String kpPayload = "{";
+    kpPayload += "\"name\":\"PID Kp\",";
+    kpPayload += "\"unique_id\":\"" + String(_nodeId) + "_pid_kp\",";
+    kpPayload += "\"state_topic\":\"esp32_thermostat/pid/kp\",";
+    kpPayload += "\"value_template\":\"{{ value }}\",";
+    kpPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    kpPayload += "\"icon\":\"mdi:chart-bell-curve\",";
+    kpPayload += "\"device\":" + deviceInfo;
+    kpPayload += "}";
+    bool kpSuccess = _mqttClient.publish(kpTopic.c_str(), kpPayload.c_str(), true);
+    Serial.print("Published PID Kp config: ");
+    Serial.println(kpSuccess ? "Success" : "FAILED");
+
+    delay(100);
+
+    // PID Ki parameter sensor
+    String kiTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_ki/config";
+    String kiPayload = "{";
+    kiPayload += "\"name\":\"PID Ki\",";
+    kiPayload += "\"unique_id\":\"" + String(_nodeId) + "_pid_ki\",";
+    kiPayload += "\"state_topic\":\"esp32_thermostat/pid/ki\",";
+    kiPayload += "\"value_template\":\"{{ value }}\",";
+    kiPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    kiPayload += "\"icon\":\"mdi:chart-bell-curve\",";
+    kiPayload += "\"device\":" + deviceInfo;
+    kiPayload += "}";
+    bool kiSuccess = _mqttClient.publish(kiTopic.c_str(), kiPayload.c_str(), true);
+    Serial.print("Published PID Ki config: ");
+    Serial.println(kiSuccess ? "Success" : "FAILED");
+
+    delay(100);
+
+    // PID Kd parameter sensor
+    String kdTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_kd/config";
+    String kdPayload = "{";
+    kdPayload += "\"name\":\"PID Kd\",";
+    kdPayload += "\"unique_id\":\"" + String(_nodeId) + "_pid_kd\",";
+    kdPayload += "\"state_topic\":\"esp32_thermostat/pid/kd\",";
+    kdPayload += "\"value_template\":\"{{ value }}\",";
+    kdPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    kdPayload += "\"icon\":\"mdi:chart-bell-curve\",";
+    kdPayload += "\"device\":" + deviceInfo;
+    kdPayload += "}";
+    bool kdSuccess = _mqttClient.publish(kdTopic.c_str(), kdPayload.c_str(), true);
+    Serial.print("Published PID Kd config: ");
+    Serial.println(kdSuccess ? "Success" : "FAILED");
+
+    delay(100);
+
+    // WiFi signal strength sensor
+    String wifiTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/wifi_signal/config";
+    String wifiPayload = "{";
+    wifiPayload += "\"name\":\"WiFi Signal\",";
+    wifiPayload += "\"unique_id\":\"" + String(_nodeId) + "_wifi_signal\",";
+    wifiPayload += "\"device_class\":\"signal_strength\",";
+    wifiPayload += "\"state_topic\":\"esp32_thermostat/wifi/rssi\",";
+    wifiPayload += "\"unit_of_measurement\":\"dBm\",";
+    wifiPayload += "\"value_template\":\"{{ value }}\",";
+    wifiPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    wifiPayload += "\"state_class\":\"measurement\",";
+    wifiPayload += "\"icon\":\"mdi:wifi\",";
+    wifiPayload += "\"device\":" + deviceInfo;
+    wifiPayload += "}";
+    bool wifiSuccess = _mqttClient.publish(wifiTopic.c_str(), wifiPayload.c_str(), true);
+    Serial.print("Published WiFi signal config: ");
+    Serial.println(wifiSuccess ? "Success" : "FAILED");
+
+    delay(100);
+
+    // Uptime sensor
+    String uptimeTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/uptime/config";
+    String uptimePayload = "{";
+    uptimePayload += "\"name\":\"Uptime\",";
+    uptimePayload += "\"unique_id\":\"" + String(_nodeId) + "_uptime\",";
+    uptimePayload += "\"device_class\":\"duration\",";
+    uptimePayload += "\"state_topic\":\"esp32_thermostat/uptime\",";
+    uptimePayload += "\"unit_of_measurement\":\"s\",";
+    uptimePayload += "\"value_template\":\"{{ value }}\",";
+    uptimePayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
+    uptimePayload += "\"state_class\":\"total_increasing\",";
+    uptimePayload += "\"icon\":\"mdi:clock-outline\",";
+    uptimePayload += "\"device\":" + deviceInfo;
+    uptimePayload += "}";
+    bool uptimeSuccess = _mqttClient.publish(uptimeTopic.c_str(), uptimePayload.c_str(), true);
+    Serial.print("Published uptime config: ");
+    Serial.println(uptimeSuccess ? "Success" : "FAILED");
 }
 
 // Send state updates for each entity
@@ -186,12 +296,40 @@ void HomeAssistant::updateStates(float temperature, float humidity, float pressu
     // Update action state based on valve position
     if (valvePosition > 0) {
         _mqttClient.publish("esp32_thermostat/action", "heating");
+        _mqttClient.publish("esp32_thermostat/heating/state", "ON");
     } else {
         _mqttClient.publish("esp32_thermostat/action", "idle");
+        _mqttClient.publish("esp32_thermostat/heating/state", "OFF");
     }
-    
+
     // Also publish a general "online" status message
     _mqttClient.publish(_availabilityTopic.c_str(), "online", true);
+}
+
+// Update PID parameters
+void HomeAssistant::updatePIDParameters(float kp, float ki, float kd) {
+    char kpStr[10];
+    dtostrf(kp, 1, 2, kpStr);
+    _mqttClient.publish("esp32_thermostat/pid/kp", kpStr);
+
+    char kiStr[10];
+    dtostrf(ki, 1, 3, kiStr);
+    _mqttClient.publish("esp32_thermostat/pid/ki", kiStr);
+
+    char kdStr[10];
+    dtostrf(kd, 1, 3, kdStr);
+    _mqttClient.publish("esp32_thermostat/pid/kd", kdStr);
+}
+
+// Update system diagnostics
+void HomeAssistant::updateDiagnostics(int wifiRSSI, unsigned long uptime) {
+    char rssiStr[8];
+    itoa(wifiRSSI, rssiStr, 10);
+    _mqttClient.publish("esp32_thermostat/wifi/rssi", rssiStr);
+
+    char uptimeStr[16];
+    ultoa(uptime / 1000, uptimeStr, 10); // Convert ms to seconds
+    _mqttClient.publish("esp32_thermostat/uptime", uptimeStr);
 }
 
 // Update availability status
