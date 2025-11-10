@@ -7,6 +7,7 @@
 #include "adaptive_pid_controller.h"
 #include "persistence_manager.h"
 #include "event_log.h"
+#include "history_manager.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -178,14 +179,32 @@ void WebServerManager::setupDefaultRoutes() {
         extern float humidity;
         extern float pressure;
         extern AdaptivePID_Input g_pid_input;
-        
+
         StaticJsonDocument<200> doc;
         doc["temperature"] = temperature;
         doc["humidity"] = humidity;
         doc["pressure"] = pressure;
         doc["valve"] = g_pid_input.valve_feedback;
         doc["setpoint"] = g_pid_input.setpoint_temp;
-        
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // Historical data endpoint
+    _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
+        HistoryManager* historyManager = HistoryManager::getInstance();
+
+        // Check for maxPoints parameter
+        int maxPoints = 0;
+        if (request->hasParam("maxPoints")) {
+            maxPoints = request->getParam("maxPoints")->value().toInt();
+        }
+
+        DynamicJsonDocument doc(8192);  // Large buffer for history data
+        historyManager->getHistoryJson(doc, maxPoints);
+
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
@@ -206,13 +225,74 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
         StaticJsonDocument<1024> doc;
-        
+
         configManager->getJson(doc);
-        
+
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
     });
+
+    // Export configuration as downloadable JSON file
+    _server->on("/api/config/export", HTTP_GET, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+        StaticJsonDocument<1024> doc;
+
+        configManager->getJson(doc);
+
+        String response;
+        serializeJsonPretty(doc, response);
+
+        // Generate filename with timestamp
+        char filename[50];
+        snprintf(filename, sizeof(filename), "thermostat-config-%lu.json", millis() / 1000);
+
+        AsyncWebServerResponse *downloadResponse = request->beginResponse(200, "application/json", response);
+        downloadResponse->addHeader("Content-Disposition", String("attachment; filename=") + filename);
+        request->send(downloadResponse);
+    });
+
+    // Import configuration from uploaded JSON file
+    _server->on("/api/config/import", HTTP_POST,
+        [](AsyncWebServerRequest *request) {
+            // Response will be sent after upload processing
+        },
+        [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+            static String fileContent;
+
+            if (index == 0) {
+                fileContent = "";
+            }
+
+            // Append data to buffer
+            for (size_t i = 0; i < len; i++) {
+                fileContent += (char)data[i];
+            }
+
+            // Process when upload is complete
+            if (final) {
+                ConfigManager* configManager = ConfigManager::getInstance();
+                StaticJsonDocument<1024> doc;
+
+                DeserializationError error = deserializeJson(doc, fileContent);
+                if (error) {
+                    request->send(400, "application/json",
+                        "{\"success\":false,\"message\":\"Invalid JSON file: " + String(error.c_str()) + "\"}");
+                    return;
+                }
+
+                String errorMessage;
+                bool success = configManager->setFromJson(doc, errorMessage);
+                if (success) {
+                    request->send(200, "application/json",
+                        "{\"success\":true,\"message\":\"Configuration imported successfully\"}");
+                } else {
+                    request->send(500, "application/json",
+                        "{\"success\":false,\"message\":\"" + errorMessage + "\"}");
+                }
+            }
+        }
+    );
 
     // Update configuration
     _server->on("/api/config", HTTP_POST, 
@@ -335,6 +415,22 @@ void WebServerManager::setupDefaultRoutes() {
                 "if(!r.ok)throw new Error('Failed');allLogs=[];displayLogs();alert('Logs cleared')}catch(e){console.error('Error:',e);alert('Failed to clear logs')}}"
                 "document.getElementById('refresh-logs').addEventListener('click',fetchLogs);document.getElementById('clear-logs').addEventListener('click',clearLogs);"
                 "document.getElementById('filter-level').addEventListener('change',displayLogs);fetchLogs();setInterval(fetchLogs,10000);</script></body></html>");
+        }
+    });
+
+    // Factory reset - clear all settings and reboot
+    _server->on("/api/factory-reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+        ConfigManager* configManager = ConfigManager::getInstance();
+
+        if (configManager->factoryReset()) {
+            request->send(200, "application/json",
+                "{\"success\":true,\"message\":\"Factory reset completed. Rebooting...\"}");
+            // Schedule reboot after response is sent
+            delay(500);
+            ESP.restart();
+        } else {
+            request->send(500, "application/json",
+                "{\"success\":false,\"message\":\"Factory reset failed\"}");
         }
     });
 

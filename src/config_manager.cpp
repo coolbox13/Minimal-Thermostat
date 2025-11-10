@@ -576,3 +576,47 @@ void ConfigManager::setLastConnectedTime(unsigned long timestamp) {
     _preferences.putULong("last_conn_time", timestamp);
     _preferences.end();
 }
+
+bool ConfigManager::factoryReset() {
+    LOG_I(TAG, "Performing factory reset - clearing all preferences");
+
+    Preferences prefs;
+
+    // Clear "thermostat" namespace (user configuration)
+    if (prefs.begin("thermostat", false)) {
+        prefs.clear();
+        prefs.end();
+        LOG_I(TAG, "Cleared 'thermostat' namespace");
+    } else {
+        LOG_E(TAG, "Failed to open 'thermostat' namespace for clearing");
+        return false;
+    }
+
+    // Clear "config" namespace (diagnostic data)
+    if (prefs.begin("config", false)) {
+        prefs.clear();
+        prefs.end();
+        LOG_I(TAG, "Cleared 'config' namespace");
+    } else {
+        LOG_W(TAG, "Failed to open 'config' namespace for clearing");
+    }
+
+    // Clear "watchdog" namespace (recovery state)
+    if (prefs.begin("watchdog", false)) {
+        prefs.clear();
+        prefs.end();
+        LOG_I(TAG, "Cleared 'watchdog' namespace");
+    } else {
+        LOG_W(TAG, "Failed to open 'watchdog' namespace for clearing");
+    }
+
+    // Reinitialize with defaults
+    LOG_I(TAG, "Reinitializing with default values");
+    if (!begin()) {
+        LOG_E(TAG, "Failed to reinitialize after factory reset");
+        return false;
+    }
+
+    LOG_I(TAG, "Factory reset completed successfully");
+    return true;
+}

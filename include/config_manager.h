@@ -347,6 +347,22 @@ public:
          * @param timestamp Timestamp in milliseconds
          */
         void setLastConnectedTime(unsigned long timestamp);
+
+        /**
+         * @brief Perform a factory reset by clearing all stored preferences
+         *
+         * This method clears all three preference namespaces:
+         * - "thermostat": User configuration (WiFi, MQTT, KNX, PID, timing)
+         * - "config": Diagnostic data (reboot reasons, timestamps)
+         * - "watchdog": Recovery state (consecutive resets, safe mode)
+         *
+         * After clearing, it reinitializes the "thermostat" namespace with
+         * default values. The caller is responsible for rebooting the device
+         * after calling this method.
+         *
+         * @return true if factory reset was successful, false otherwise
+         */
+        bool factoryReset();
 };
 
 #endif // CONFIG_MANAGER_H

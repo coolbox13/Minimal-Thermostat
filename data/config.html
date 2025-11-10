@@ -2,7 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="Smart ESP32 KNX Thermostat Configuration">
+    <meta name="theme-color" content="#1e88e5">
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Thermostat">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
     <title>ESP32 KNX Thermostat - Configuration</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -198,11 +209,25 @@
                 <div class="action-buttons">
                     <button type="submit" id="save-config">Save Configuration</button>
                     <button type="button" id="reboot-device">Reboot Device</button>
+                    <button type="button" id="factory-reset" style="background-color: #e74c3c;">Factory Reset</button>
                     <a href="/"><button type="button">Back to Dashboard</button></a>
                 </div>
                 
                 <div id="config-status" class="status"></div>
             </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Backup & Restore</h2>
+            <p style="margin-bottom: 15px;">Export your configuration for backup or import a previously saved configuration.</p>
+
+            <div class="action-buttons">
+                <button type="button" id="export-config" style="background-color: #27ae60;">Export Configuration</button>
+                <button type="button" id="import-config" style="background-color: #f39c12;">Import Configuration</button>
+            </div>
+
+            <input type="file" id="config-file-input" accept=".json" style="display: none;">
+            <div id="backup-status" class="status"></div>
         </div>
     </div>
 

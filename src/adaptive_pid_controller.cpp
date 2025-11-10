@@ -15,6 +15,7 @@ static float integral_error = 0.0f;   // Accumulated integral error
 static float prev_temp = 0.0f;        // Previous temperature
 static float setpoint_time = 0.0f;    // Time since setpoint change
 static float adaptation_timer = 0.0f; // Time since last adaptation
+static float adaptation_interval_sec = 60.0f; // Adaptation interval in seconds (configurable)
 static int oscillation_count = 0;     // Count of oscillations for tuning
 
 // Performance history
@@ -58,21 +59,23 @@ void initializePIDController(void) {
     g_pid_input.Kp = configManager->getPidKp();
     g_pid_input.Ki = configManager->getPidKi();
     g_pid_input.Kd = configManager->getPidKd();
-    
+
     g_pid_input.valve_feedback = 0.0f;  // Start with valve closed
-    
+
     // Output constraints
     g_pid_input.output_min = 0.0f;   // Minimum valve position
     g_pid_input.output_max = 100.0f; // Maximum valve position
 
-    // Control parameters - load from ConfigManager
-    g_pid_input.deadband = configManager->getPidDeadband();
+    // Control parameters
+    g_pid_input.deadband = configManager->getPidDeadband(); // Load from config
     g_pid_input.dt = 1.0f;           // 1 second control interval
+
+    // Load adaptation interval from config
+    adaptation_interval_sec = configManager->getPidAdaptationInterval();
 
     // Adaptation parameters - enable by default
     g_pid_input.adaptation_enabled = 1;   // Enable self-learning
     g_pid_input.adaptation_rate = 0.05f;  // Conservative adaptation rate (0.05 = 5%)
-    adaptation_interval_sec = configManager->getPidAdaptationInterval();
     
     // Initialize the controller
     AdaptivePID_Init(&g_pid_input);

@@ -23,7 +23,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Reboot device button handler
     document.getElementById('reboot-device').addEventListener('click', rebootDevice);
-    
+
+    // Factory reset button handler
+    document.getElementById('factory-reset').addEventListener('click', factoryReset);
+
+    // Export configuration button handler
+    document.getElementById('export-config').addEventListener('click', exportConfiguration);
+
+    // Import configuration button handler
+    document.getElementById('import-config').addEventListener('click', function() {
+        document.getElementById('config-file-input').click();
+    });
+
+    // File input change handler
+    document.getElementById('config-file-input').addEventListener('change', importConfiguration);
+
     // Add input blur handlers to format values properly when user finishes editing
     document.getElementById('pid_kp').addEventListener('blur', function() {
         this.value = formatNumberWithPrecision(parseFloat(this.value), 2);
@@ -300,7 +314,7 @@ function rebootDevice() {
         const statusElement = document.getElementById('config-status');
         statusElement.textContent = 'Rebooting...';
         statusElement.className = 'status status-loading';
-        
+
         fetch('/api/reboot', { method: 'POST' })
             .then(() => {
                 // Keep the "Rebooting..." message
@@ -311,4 +325,95 @@ function rebootDevice() {
                 statusElement.className = 'status status-error';
             });
     }
+}
+
+// Function to perform factory reset
+function factoryReset() {
+    if (confirm('WARNING: This will erase ALL settings and restart with defaults!\n\nAre you absolutely sure you want to perform a factory reset?')) {
+        const statusElement = document.getElementById('config-status');
+        statusElement.textContent = 'Performing factory reset...';
+        statusElement.className = 'status status-loading';
+
+        fetch('/api/factory-reset', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusElement.textContent = 'Factory reset completed. Device rebooting...';
+                    statusElement.className = 'status status-success';
+                } else {
+                    statusElement.textContent = 'Factory reset failed: ' + data.message;
+                    statusElement.className = 'status status-error';
+                }
+            })
+            .catch(error => {
+                console.error('Error performing factory reset:', error);
+                statusElement.textContent = 'Error performing factory reset';
+                statusElement.className = 'status status-error';
+            });
+    }
+}
+
+// Function to export configuration
+function exportConfiguration() {
+    const statusElement = document.getElementById('backup-status');
+    statusElement.textContent = 'Downloading configuration...';
+    statusElement.className = 'status status-loading';
+
+    // Trigger download by navigating to export endpoint
+    window.location.href = '/api/config/export';
+
+    // Show success message after a short delay
+    setTimeout(() => {
+        statusElement.textContent = 'Configuration exported successfully';
+        statusElement.className = 'status status-success';
+
+        // Clear message after 3 seconds
+        setTimeout(() => {
+            statusElement.textContent = '';
+            statusElement.className = 'status';
+        }, 3000);
+    }, 500);
+}
+
+// Function to import configuration
+function importConfiguration(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const statusElement = document.getElementById('backup-status');
+    statusElement.textContent = 'Importing configuration...';
+    statusElement.className = 'status status-loading';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/api/config/import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusElement.textContent = 'Configuration imported successfully. Reloading...';
+            statusElement.className = 'status status-success';
+
+            // Reload the configuration after a short delay
+            setTimeout(() => {
+                loadConfiguration();
+                statusElement.textContent = '';
+                statusElement.className = 'status';
+            }, 2000);
+        } else {
+            statusElement.textContent = 'Import failed: ' + data.message;
+            statusElement.className = 'status status-error';
+        }
+    })
+    .catch(error => {
+        console.error('Error importing configuration:', error);
+        statusElement.textContent = 'Error importing configuration';
+        statusElement.className = 'status status-error';
+    });
+
+    // Clear the file input so the same file can be imported again if needed
+    event.target.value = '';
 }
