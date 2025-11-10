@@ -88,11 +88,15 @@ button {
     background-color: #1e88e5;
     color: white;
     border: none;
-    padding: 10px 15px;
+    padding: 12px 20px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.3s;
+    font-size: 14px;
+    min-height: 44px;
+    min-width: 44px;
+    transition: background-color 0.3s, transform 0.1s;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
 }
 
 button:hover {
@@ -101,6 +105,7 @@ button:hover {
 
 button:active {
     background-color: #1565c0;
+    transform: scale(0.98);
 }
 
 .value-display {
@@ -260,51 +265,146 @@ select:focus {
 
 /* Responsive Layout */
 @media (max-width: 650px) {
+    /* Larger padding for mobile */
+    .container {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    /* Larger header text on mobile */
+    h1 {
+        font-size: 20px;
+    }
+
+    .card-title {
+        font-size: 16px;
+    }
+
     .flex-container {
         flex-direction: column;
     }
-    
+
     .control-row {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .slider-container {
         width: 100%;
         margin: 10px 0;
     }
-    
+
+    /* Larger slider for easier touch control */
+    input[type="range"] {
+        height: 40px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #1e88e5;
+        cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #1e88e5;
+        cursor: pointer;
+        border: none;
+    }
+
     .status {
         margin-left: 0;
         margin-top: 10px;
+        width: 100%;
     }
-    
+
+    /* Make buttons full-width and larger on mobile */
+    button {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 16px;
+        min-height: 48px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* Form improvements for mobile */
     .form-row {
         flex-direction: column;
         align-items: flex-start;
+        margin-bottom: 20px;
     }
-    
+
     label {
-        margin-bottom: 5px;
+        margin-bottom: 8px;
         width: 100%;
+        font-size: 14px;
     }
-    
+
     .form-input,
     input[type="text"],
     input[type="number"],
     input[type="password"],
     select {
         width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        min-height: 48px;
     }
-    
+
     .form-hint {
         margin-left: 0;
-        margin-top: 3px;
+        margin-top: 5px;
+        font-size: 13px;
     }
-    
+
+    /* Larger checkboxes for mobile */
+    .form-checkbox {
+        transform: scale(1.5);
+        margin-right: 15px;
+    }
+
+    /* Better tab buttons for mobile */
     .tab-buttons {
         overflow-x: auto;
         white-space: nowrap;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .tab-button {
+        padding: 12px 18px;
+        font-size: 14px;
+        min-height: 44px;
+        flex-shrink: 0;
+    }
+
+    /* Larger reading values on mobile */
+    .reading {
+        padding: 12px;
+    }
+
+    .reading-value {
+        font-size: 20px;
+    }
+
+    .reading-label {
+        font-size: 14px;
     }
 }
