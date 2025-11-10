@@ -76,8 +76,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- Temperature History Graph -->
+        <div class="card">
+            <h2 class="card-title">Temperature History</h2>
+            <canvas id="historyChart" style="max-height: 400px;"></canvas>
+            <div style="margin-top: 10px; text-align: center;">
+                <button id="refresh-history" style="display: inline-block; width: auto; min-width: 150px;">Refresh Graph</button>
+            </div>
+        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

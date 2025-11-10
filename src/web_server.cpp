@@ -6,6 +6,7 @@
 #include "valve_control.h"
 #include "adaptive_pid_controller.h"
 #include "persistence_manager.h"
+#include "history_manager.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -186,14 +187,32 @@ void WebServerManager::setupDefaultRoutes() {
         extern float humidity;
         extern float pressure;
         extern AdaptivePID_Input g_pid_input;
-        
+
         StaticJsonDocument<200> doc;
         doc["temperature"] = temperature;
         doc["humidity"] = humidity;
         doc["pressure"] = pressure;
         doc["valve"] = g_pid_input.valve_feedback;
         doc["setpoint"] = g_pid_input.setpoint_temp;
-        
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // Historical data endpoint
+    _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
+        HistoryManager* historyManager = HistoryManager::getInstance();
+
+        // Check for maxPoints parameter
+        int maxPoints = 0;
+        if (request->hasParam("maxPoints")) {
+            maxPoints = request->getParam("maxPoints")->value().toInt();
+        }
+
+        DynamicJsonDocument doc(8192);  // Large buffer for history data
+        historyManager->getHistoryJson(doc, maxPoints);
+
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
