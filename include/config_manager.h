@@ -50,7 +50,38 @@ public:
     
     float getSetpoint();
     void setSetpoint(float setpoint);
-    
+
+    // Timing parameters
+    uint32_t getSensorUpdateInterval();
+    void setSensorUpdateInterval(uint32_t interval);
+
+    uint32_t getPidUpdateInterval();
+    void setPidUpdateInterval(uint32_t interval);
+
+    uint32_t getConnectivityCheckInterval();
+    void setConnectivityCheckInterval(uint32_t interval);
+
+    uint32_t getPidConfigWriteInterval();
+    void setPidConfigWriteInterval(uint32_t interval);
+
+    uint16_t getWifiConnectTimeout();
+    void setWifiConnectTimeout(uint16_t timeout);
+
+    uint8_t getMaxReconnectAttempts();
+    void setMaxReconnectAttempts(uint8_t attempts);
+
+    uint32_t getSystemWatchdogTimeout();
+    void setSystemWatchdogTimeout(uint32_t timeout);
+
+    uint32_t getWifiWatchdogTimeout();
+    void setWifiWatchdogTimeout(uint32_t timeout);
+
+    float getPidDeadband();
+    void setPidDeadband(float deadband);
+
+    float getPidAdaptationInterval();
+    void setPidAdaptationInterval(float interval);
+
     // Export all settings as JSON
     void getJson(JsonDocument& doc);
     
@@ -59,7 +90,10 @@ public:
     
     // Enhanced version with error reporting
     bool setFromJson(const JsonDocument& doc, String& errorMessage);
-    
+
+    // Utility function for consistent rounding
+    static float roundToPrecision(float value, int decimals);
+
 private:
     ConfigManager();
     static ConfigManager* _instance;
@@ -75,12 +109,25 @@ private:
     static constexpr uint8_t DEFAULT_KNX_LINE = 1;
     static constexpr uint8_t DEFAULT_KNX_MEMBER = 159;
 
+    // Default timing values (matching config.h constants)
+    static constexpr uint32_t DEFAULT_SENSOR_UPDATE_INTERVAL_MS = 30000;
+    static constexpr uint32_t DEFAULT_PID_UPDATE_INTERVAL_MS = 10000;
+    static constexpr uint32_t DEFAULT_CONNECTIVITY_CHECK_INTERVAL_MS = 300000;
+    static constexpr uint32_t DEFAULT_PID_CONFIG_WRITE_INTERVAL_MS = 300000;
+    static constexpr uint16_t DEFAULT_WIFI_CONNECT_TIMEOUT_SEC = 180;
+    static constexpr uint8_t DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
+    static constexpr uint32_t DEFAULT_SYSTEM_WATCHDOG_TIMEOUT_MS = 2700000;
+    static constexpr uint32_t DEFAULT_WIFI_WATCHDOG_TIMEOUT_MS = 1800000;
+    static constexpr float DEFAULT_PID_DEADBAND = 0.2f;
+    static constexpr float DEFAULT_PID_ADAPTATION_INTERVAL_SEC = 60.0f;
+
     // Validation helper functions
     bool validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyMQTTSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyKNXSettings(const JsonDocument& doc, String& errorMessage);
     bool validateBME280Settings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyPIDSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage);
 
 public:
         /**

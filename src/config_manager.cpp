@@ -18,6 +18,11 @@ ConfigManager::ConfigManager() {
     // Private constructor
 }
 
+float ConfigManager::roundToPrecision(float value, int decimals) {
+    float multiplier = pow(10.0f, decimals);
+    return roundf(value * multiplier) / multiplier;
+}
+
 bool ConfigManager::begin() {
     LOG_I(TAG, "Initializing configuration storage");
     if (!_preferences.begin("thermostat", false)) {
@@ -116,56 +121,92 @@ void ConfigManager::setUseTestAddresses(bool useTest) {
     _preferences.putBool("knx_test", useTest);
 }
 
-// PID Controller settings - MODIFIED: Updated getter to apply consistent rounding
+// PID Controller settings
 float ConfigManager::getPidKp() {
-    float kp = _preferences.getFloat("pid_kp", DEFAULT_KP);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(kp * 100) / 100.0f; // Round to 2 decimal places
+    return roundToPrecision(_preferences.getFloat("pid_kp", DEFAULT_KP), 2);
 }
-
-// 1. Update the setter methods to limit precision directly
 void ConfigManager::setPidKp(float kp) {
-    // Round to 2 decimal places
-    kp = roundf(kp * 100) / 100.0f;
-    _preferences.putFloat("pid_kp", kp);
+    _preferences.putFloat("pid_kp", roundToPrecision(kp, 2));
 }
-
 void ConfigManager::setPidKi(float ki) {
-    // Round to 3 decimal places
-    ki = roundf(ki * 1000) / 1000.0f;
-    _preferences.putFloat("pid_ki", ki);
+    _preferences.putFloat("pid_ki", roundToPrecision(ki, 3));
 }
-
 void ConfigManager::setPidKd(float kd) {
-    // Round to 3 decimal places
-    kd = roundf(kd * 1000) / 1000.0f;
-    _preferences.putFloat("pid_kd", kd);
+    _preferences.putFloat("pid_kd", roundToPrecision(kd, 3));
 }
-
 void ConfigManager::setSetpoint(float setpoint) {
-    // Round to 1 decimal place
-    setpoint = roundf(setpoint * 10) / 10.0f;
-    _preferences.putFloat("setpoint", setpoint);
+    _preferences.putFloat("setpoint", roundToPrecision(setpoint, 1));
 }
-
-// MODIFIED: Updated getter methods to apply consistent rounding
 float ConfigManager::getPidKi() {
-    float ki = _preferences.getFloat("pid_ki", DEFAULT_KI);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(ki * 1000) / 1000.0f; // Round to 3 decimal places
+    return roundToPrecision(_preferences.getFloat("pid_ki", DEFAULT_KI), 3);
 }
-
 float ConfigManager::getPidKd() {
-    float kd = _preferences.getFloat("pid_kd", DEFAULT_KD);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(kd * 1000) / 1000.0f; // Round to 3 decimal places
+    return roundToPrecision(_preferences.getFloat("pid_kd", DEFAULT_KD), 3);
+}
+float ConfigManager::getSetpoint() {
+    return roundToPrecision(_preferences.getFloat("setpoint", DEFAULT_SETPOINT), 1);
 }
 
-// MODIFIED: Updated getSetpoint method to apply consistent rounding
-float ConfigManager::getSetpoint() {
-    float setpoint = _preferences.getFloat("setpoint", DEFAULT_SETPOINT);
-    // Apply consistent rounding to ensure proper precision when retrieved
-    return roundf(setpoint * 10) / 10.0f; // Round to 1 decimal place
+// Timing parameters
+uint32_t ConfigManager::getSensorUpdateInterval() {
+    return _preferences.getUInt("sens_upd_int", DEFAULT_SENSOR_UPDATE_INTERVAL_MS);
+}
+void ConfigManager::setSensorUpdateInterval(uint32_t interval) {
+    _preferences.putUInt("sens_upd_int", interval);
+}
+uint32_t ConfigManager::getPidUpdateInterval() {
+    return _preferences.getUInt("pid_upd_int", DEFAULT_PID_UPDATE_INTERVAL_MS);
+}
+void ConfigManager::setPidUpdateInterval(uint32_t interval) {
+    _preferences.putUInt("pid_upd_int", interval);
+}
+uint32_t ConfigManager::getConnectivityCheckInterval() {
+    return _preferences.getUInt("conn_chk_int", DEFAULT_CONNECTIVITY_CHECK_INTERVAL_MS);
+}
+void ConfigManager::setConnectivityCheckInterval(uint32_t interval) {
+    _preferences.putUInt("conn_chk_int", interval);
+}
+uint32_t ConfigManager::getPidConfigWriteInterval() {
+    return _preferences.getUInt("pid_wr_int", DEFAULT_PID_CONFIG_WRITE_INTERVAL_MS);
+}
+void ConfigManager::setPidConfigWriteInterval(uint32_t interval) {
+    _preferences.putUInt("pid_wr_int", interval);
+}
+uint16_t ConfigManager::getWifiConnectTimeout() {
+    return _preferences.getUShort("wifi_conn_to", DEFAULT_WIFI_CONNECT_TIMEOUT_SEC);
+}
+void ConfigManager::setWifiConnectTimeout(uint16_t timeout) {
+    _preferences.putUShort("wifi_conn_to", timeout);
+}
+uint8_t ConfigManager::getMaxReconnectAttempts() {
+    return _preferences.getUChar("max_reconn", DEFAULT_MAX_RECONNECT_ATTEMPTS);
+}
+void ConfigManager::setMaxReconnectAttempts(uint8_t attempts) {
+    _preferences.putUChar("max_reconn", attempts);
+}
+uint32_t ConfigManager::getSystemWatchdogTimeout() {
+    return _preferences.getUInt("sys_wdt_to", DEFAULT_SYSTEM_WATCHDOG_TIMEOUT_MS);
+}
+void ConfigManager::setSystemWatchdogTimeout(uint32_t timeout) {
+    _preferences.putUInt("sys_wdt_to", timeout);
+}
+uint32_t ConfigManager::getWifiWatchdogTimeout() {
+    return _preferences.getUInt("wifi_wdt_to", DEFAULT_WIFI_WATCHDOG_TIMEOUT_MS);
+}
+void ConfigManager::setWifiWatchdogTimeout(uint32_t timeout) {
+    _preferences.putUInt("wifi_wdt_to", timeout);
+}
+float ConfigManager::getPidDeadband() {
+    return roundToPrecision(_preferences.getFloat("pid_deadb", DEFAULT_PID_DEADBAND), 1);
+}
+void ConfigManager::setPidDeadband(float deadband) {
+    _preferences.putFloat("pid_deadb", roundToPrecision(deadband, 1));
+}
+float ConfigManager::getPidAdaptationInterval() {
+    return roundToPrecision(_preferences.getFloat("pid_adapt", DEFAULT_PID_ADAPTATION_INTERVAL_SEC), 1);
+}
+void ConfigManager::setPidAdaptationInterval(float interval) {
+    _preferences.putFloat("pid_adapt", roundToPrecision(interval, 1));
 }
 
 // MODIFIED: Updated getJson to use getters directly (which now apply rounding)
@@ -193,7 +234,19 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["pid"]["ki"] = getPidKi();
     doc["pid"]["kd"] = getPidKd();
     doc["pid"]["setpoint"] = getSetpoint();
-    
+    doc["pid"]["deadband"] = getPidDeadband();
+    doc["pid"]["adaptation_interval"] = getPidAdaptationInterval();
+
+    // Add timing parameters
+    doc["timing"]["sensor_update_interval"] = getSensorUpdateInterval();
+    doc["timing"]["pid_update_interval"] = getPidUpdateInterval();
+    doc["timing"]["connectivity_check_interval"] = getConnectivityCheckInterval();
+    doc["timing"]["pid_config_write_interval"] = getPidConfigWriteInterval();
+    doc["timing"]["wifi_connect_timeout"] = getWifiConnectTimeout();
+    doc["timing"]["max_reconnect_attempts"] = getMaxReconnectAttempts();
+    doc["timing"]["system_watchdog_timeout"] = getSystemWatchdogTimeout();
+    doc["timing"]["wifi_watchdog_timeout"] = getWifiWatchdogTimeout();
+
     LOG_D(TAG, "Created JSON configuration");
 }
 
@@ -321,8 +374,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         return true;
     }
     if (doc["pid"].containsKey("kp")) {
-        float kp = doc["pid"]["kp"].as<float>();
-        kp = roundf(kp * 100) / 100.0f;
+        float kp = roundToPrecision(doc["pid"]["kp"].as<float>(), 2);
         LOG_D(TAG, "Parsed Kp: %.2f (rounded)", kp);
         if (kp < 0) {
             errorMessage = "PID Kp must be >= 0";
@@ -332,8 +384,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         setPidKp(kp);
     }
     if (doc["pid"].containsKey("ki")) {
-        float ki = doc["pid"]["ki"].as<float>();
-        ki = roundf(ki * 1000) / 1000.0f;
+        float ki = roundToPrecision(doc["pid"]["ki"].as<float>(), 3);
         LOG_D(TAG, "Parsed Ki: %.3f (rounded)", ki);
         if (ki < 0) {
             errorMessage = "PID Ki must be >= 0";
@@ -343,8 +394,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         setPidKi(ki);
     }
     if (doc["pid"].containsKey("kd")) {
-        float kd = doc["pid"]["kd"].as<float>();
-        kd = roundf(kd * 1000) / 1000.0f;
+        float kd = roundToPrecision(doc["pid"]["kd"].as<float>(), 3);
         LOG_D(TAG, "Parsed Kd: %.3f (rounded)", kd);
         if (kd < 0) {
             errorMessage = "PID Kd must be >= 0";
@@ -354,8 +404,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         setPidKd(kd);
     }
     if (doc["pid"].containsKey("setpoint")) {
-        float setpoint = doc["pid"]["setpoint"].as<float>();
-        setpoint = roundf(setpoint * 10) / 10.0f;
+        float setpoint = roundToPrecision(doc["pid"]["setpoint"].as<float>(), 1);
         LOG_D(TAG, "Parsed setpoint: %.1f (rounded)", setpoint);
         if (setpoint < 5 || setpoint > 30) {
             errorMessage = "Temperature setpoint must be between 5°C and 30°C";
@@ -363,6 +412,102 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
             return false;
         }
         setSetpoint(setpoint);
+    }
+    if (doc["pid"].containsKey("deadband")) {
+        float deadband = roundToPrecision(doc["pid"]["deadband"].as<float>(), 1);
+        if (deadband < 0 || deadband > 5) {
+            errorMessage = "PID deadband must be between 0°C and 5°C";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidDeadband(deadband);
+    }
+    if (doc["pid"].containsKey("adaptation_interval")) {
+        float interval = roundToPrecision(doc["pid"]["adaptation_interval"].as<float>(), 1);
+        if (interval < 10 || interval > 600) {
+            errorMessage = "PID adaptation interval must be between 10 and 600 seconds";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidAdaptationInterval(interval);
+    }
+    return true;
+}
+bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("timing")) {
+        return true;
+    }
+    if (doc["timing"].containsKey("sensor_update_interval")) {
+        uint32_t interval = doc["timing"]["sensor_update_interval"].as<uint32_t>();
+        if (interval < 1000 || interval > 300000) {
+            errorMessage = "Sensor update interval must be between 1000ms and 300000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setSensorUpdateInterval(interval);
+    }
+    if (doc["timing"].containsKey("pid_update_interval")) {
+        uint32_t interval = doc["timing"]["pid_update_interval"].as<uint32_t>();
+        if (interval < 1000 || interval > 60000) {
+            errorMessage = "PID update interval must be between 1000ms and 60000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidUpdateInterval(interval);
+    }
+    if (doc["timing"].containsKey("connectivity_check_interval")) {
+        uint32_t interval = doc["timing"]["connectivity_check_interval"].as<uint32_t>();
+        if (interval < 60000 || interval > 3600000) {
+            errorMessage = "Connectivity check interval must be between 60000ms and 3600000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setConnectivityCheckInterval(interval);
+    }
+    if (doc["timing"].containsKey("pid_config_write_interval")) {
+        uint32_t interval = doc["timing"]["pid_config_write_interval"].as<uint32_t>();
+        if (interval < 60000 || interval > 3600000) {
+            errorMessage = "PID config write interval must be between 60000ms and 3600000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setPidConfigWriteInterval(interval);
+    }
+    if (doc["timing"].containsKey("wifi_connect_timeout")) {
+        uint16_t timeout = doc["timing"]["wifi_connect_timeout"].as<uint16_t>();
+        if (timeout < 10 || timeout > 600) {
+            errorMessage = "WiFi connect timeout must be between 10s and 600s";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWifiConnectTimeout(timeout);
+    }
+    if (doc["timing"].containsKey("max_reconnect_attempts")) {
+        uint8_t attempts = doc["timing"]["max_reconnect_attempts"].as<uint8_t>();
+        if (attempts < 1 || attempts > 100) {
+            errorMessage = "Max reconnect attempts must be between 1 and 100";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setMaxReconnectAttempts(attempts);
+    }
+    if (doc["timing"].containsKey("system_watchdog_timeout")) {
+        uint32_t timeout = doc["timing"]["system_watchdog_timeout"].as<uint32_t>();
+        if (timeout < 60000 || timeout > 7200000) {
+            errorMessage = "System watchdog timeout must be between 60000ms and 7200000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setSystemWatchdogTimeout(timeout);
+    }
+    if (doc["timing"].containsKey("wifi_watchdog_timeout")) {
+        uint32_t timeout = doc["timing"]["wifi_watchdog_timeout"].as<uint32_t>();
+        if (timeout < 60000 || timeout > 7200000) {
+            errorMessage = "WiFi watchdog timeout must be between 60000ms and 7200000ms";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setWifiWatchdogTimeout(timeout);
     }
     return true;
 }
@@ -381,6 +526,7 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     if (!validateAndApplyKNXSettings(doc, errorMessage)) return false;
     if (!validateBME280Settings(doc, errorMessage)) return false;
     if (!validateAndApplyPIDSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyTimingSettings(doc, errorMessage)) return false;
     LOG_I(TAG, "Configuration imported successfully");
     return true;
 }

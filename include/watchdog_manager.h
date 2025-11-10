@@ -86,7 +86,11 @@ private:
   // WiFi watchdog state
   bool wifiWatchdogEnabled;
   uint32_t lastWiFiWatchdogReset;
-  
+  uint32_t wifiWatchdogTimeout;
+
+  // System watchdog timeout
+  uint32_t systemWatchdogTimeout;
+
   // Reboot tracking
   RebootReason lastRebootReason;
   

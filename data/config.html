@@ -21,6 +21,7 @@
                 <button class="tab-button" data-tab="knx">KNX</button>
                 <button class="tab-button" data-tab="bme280">BME280</button>
                 <button class="tab-button" data-tab="pid">PID Control</button>
+                <button class="tab-button" data-tab="timing">Timing</button>
             </div>
             
             <form id="config-form">
@@ -132,8 +133,68 @@
                         <input type="number" id="setpoint" name="setpoint" step="0.5" min="5" max="30" class="form-input">
                         <span class="form-hint">Range: 5.0°C - 30.0°C (1 decimal place)</span>
                     </div>
+                    <div class="form-row">
+                        <label for="pid_deadband">Deadband:</label>
+                        <input type="number" id="pid_deadband" name="pid_deadband" step="0.1" min="0" max="5" class="form-input">
+                        <span class="form-hint">Temperature deadband ±°C (0-5, 1 decimal place)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_adaptation_interval">Adaptation Interval:</label>
+                        <input type="number" id="pid_adaptation_interval" name="pid_adaptation_interval" step="1" min="10" max="600" class="form-input">
+                        <span class="form-hint">Seconds between PID adaptations (10-600)</span>
+                    </div>
                 </div>
-                
+
+                <!-- Timing Settings Tab -->
+                <div id="timing" class="tab-content">
+                    <h3>Timing Settings</h3>
+                    <h4>Update Intervals</h4>
+                    <div class="form-row">
+                        <label for="sensor_update_interval">Sensor Update Interval:</label>
+                        <input type="number" id="sensor_update_interval" name="sensor_update_interval" step="1000" min="1000" max="300000" class="form-input">
+                        <span class="form-hint">Milliseconds (1000-300000, default: 30000 = 30s)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_update_interval">PID Update Interval:</label>
+                        <input type="number" id="pid_update_interval" name="pid_update_interval" step="1000" min="1000" max="60000" class="form-input">
+                        <span class="form-hint">Milliseconds (1000-60000, default: 10000 = 10s)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="connectivity_check_interval">Connectivity Check Interval:</label>
+                        <input type="number" id="connectivity_check_interval" name="connectivity_check_interval" step="1000" min="60000" max="3600000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-3600000, default: 300000 = 5min)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_config_write_interval">PID Config Write Interval:</label>
+                        <input type="number" id="pid_config_write_interval" name="pid_config_write_interval" step="1000" min="60000" max="3600000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-3600000, default: 300000 = 5min)</span>
+                    </div>
+
+                    <h4>Timeout Settings</h4>
+                    <div class="form-row">
+                        <label for="wifi_connect_timeout">WiFi Connect Timeout:</label>
+                        <input type="number" id="wifi_connect_timeout" name="wifi_connect_timeout" step="1" min="10" max="600" class="form-input">
+                        <span class="form-hint">Seconds (10-600, default: 180 = 3min)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="system_watchdog_timeout">System Watchdog Timeout:</label>
+                        <input type="number" id="system_watchdog_timeout" name="system_watchdog_timeout" step="1000" min="60000" max="7200000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-7200000, default: 2700000 = 45min)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="wifi_watchdog_timeout">WiFi Watchdog Timeout:</label>
+                        <input type="number" id="wifi_watchdog_timeout" name="wifi_watchdog_timeout" step="1000" min="60000" max="7200000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-7200000, default: 1800000 = 30min)</span>
+                    </div>
+
+                    <h4>Reconnection Settings</h4>
+                    <div class="form-row">
+                        <label for="max_reconnect_attempts">Max Reconnect Attempts:</label>
+                        <input type="number" id="max_reconnect_attempts" name="max_reconnect_attempts" step="1" min="1" max="100" class="form-input">
+                        <span class="form-hint">Number of attempts (1-100, default: 10)</span>
+                    </div>
+                </div>
+
                 <div class="action-buttons">
                     <button type="submit" id="save-config">Save Configuration</button>
                     <button type="button" id="reboot-device">Reboot Device</button>
