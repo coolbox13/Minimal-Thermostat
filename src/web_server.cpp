@@ -280,10 +280,12 @@ void WebServerManager::setupDefaultRoutes() {
     // Get current configuration
     _server->on("/api/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
-        StaticJsonDocument<1024> doc;
-        
+        // Increased from 1024 to 2048 to accommodate webhook URL (up to 512 chars)
+        // and other configuration fields. Total estimated size: ~1500 bytes max
+        DynamicJsonDocument doc(2048);
+
         configManager->getJson(doc);
-        
+
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
