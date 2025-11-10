@@ -11,7 +11,6 @@ alwaysApply: false
 - Always declare the type of each variable and function (parameters and return value).
 - Create necessary types and classes.
 - Use Doxygen style comments to document public classes and methods.
-- Don't leave blank lines within a function.
 - Follow the one-definition rule (ODR).
 
 ## Nomenclature
