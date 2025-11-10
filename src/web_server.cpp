@@ -180,19 +180,92 @@ void WebServerManager::setupDefaultRoutes() {
         extern float humidity;
         extern float pressure;
         extern AdaptivePID_Input g_pid_input;
-        
+
         StaticJsonDocument<200> doc;
         doc["temperature"] = temperature;
         doc["humidity"] = humidity;
         doc["pressure"] = pressure;
         doc["valve"] = g_pid_input.valve_feedback;
         doc["setpoint"] = g_pid_input.setpoint_temp;
-        
+
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
     });
-    
+
+    // System status dashboard endpoint
+    _server->on("/api/status", HTTP_GET, [](AsyncWebServerRequest *request) {
+        extern BME280Sensor bme280;
+        extern float temperature;
+        extern float humidity;
+        extern float pressure;
+        extern AdaptivePID_Input g_pid_input;
+
+        ConfigManager* configManager = ConfigManager::getInstance();
+
+        DynamicJsonDocument doc(2048);
+
+        // System information
+        doc["system"]["uptime"] = millis() / 1000; // seconds
+        doc["system"]["free_heap"] = ESP.getFreeHeap();
+        doc["system"]["total_heap"] = ESP.getHeapSize();
+        doc["system"]["chip_model"] = ESP.getChipModel();
+        doc["system"]["chip_revision"] = ESP.getChipRevision();
+        doc["system"]["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
+
+        // WiFi information
+        if (WiFi.status() == WL_CONNECTED) {
+            doc["wifi"]["connected"] = true;
+            doc["wifi"]["ssid"] = WiFi.SSID();
+            doc["wifi"]["rssi"] = WiFi.RSSI();
+            doc["wifi"]["ip"] = WiFi.localIP().toString();
+            doc["wifi"]["mac"] = WiFi.macAddress();
+
+            // Signal quality (convert RSSI to percentage)
+            int rssi = WiFi.RSSI();
+            int quality;
+            if (rssi >= -50) quality = 100;
+            else if (rssi <= -100) quality = 0;
+            else quality = 2 * (rssi + 100);
+            doc["wifi"]["quality"] = quality;
+        } else {
+            doc["wifi"]["connected"] = false;
+            doc["wifi"]["ssid"] = "";
+            doc["wifi"]["rssi"] = 0;
+            doc["wifi"]["quality"] = 0;
+        }
+
+        // Sensor information
+        doc["sensor"]["temperature"] = temperature;
+        doc["sensor"]["humidity"] = humidity;
+        doc["sensor"]["pressure"] = pressure;
+        doc["sensor"]["healthy"] = bme280.isHealthy();
+
+        // PID Controller information
+        doc["pid"]["setpoint"] = g_pid_input.setpoint_temp;
+        doc["pid"]["valve_position"] = g_pid_input.valve_feedback;
+        doc["pid"]["kp"] = configManager->getPidKp();
+        doc["pid"]["ki"] = configManager->getPidKi();
+        doc["pid"]["kd"] = configManager->getPidKd();
+        doc["pid"]["deadband"] = configManager->getPidDeadband();
+
+        // Diagnostic information
+        doc["diagnostics"]["last_reboot_reason"] = configManager->getLastRebootReason();
+        doc["diagnostics"]["reboot_count"] = configManager->getRebootCount();
+        doc["diagnostics"]["consecutive_watchdog_reboots"] = configManager->getConsecutiveWatchdogReboots();
+
+        // Configuration
+        doc["mqtt"]["server"] = configManager->getMqttServer();
+        doc["mqtt"]["port"] = configManager->getMqttPort();
+        doc["knx"]["address"] = String(configManager->getKnxArea()) + "." +
+                                 String(configManager->getKnxLine()) + "." +
+                                 String(configManager->getKnxMember());
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
     // Set temperature setpoint
     _server->on("/api/setpoint", HTTP_POST, [](AsyncWebServerRequest *request) {
         if (request->hasParam("value", true)) {
