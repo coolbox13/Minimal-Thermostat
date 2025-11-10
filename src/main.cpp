@@ -180,6 +180,49 @@ void initializePID() {
     LOG_I(TAG_PID, "PID controller initialized with setpoint: %.2f°C", setpoint);
 }
 void performInitialSetup() {
+    // Log comprehensive memory and flash information
+    LOG_I(TAG_MAIN, "========== MEMORY & FLASH INFORMATION ==========");
+
+    // RAM Information
+    uint32_t freeHeap = ESP.getFreeHeap();
+    uint32_t totalHeap = ESP.getHeapSize();
+    uint32_t usedHeap = totalHeap - freeHeap;
+    float heapPercent = (float)usedHeap / totalHeap * 100.0f;
+    LOG_I(TAG_MAIN, "RAM: %u KB free / %u KB total (%.1f%% used)",
+          freeHeap / 1024, totalHeap / 1024, heapPercent);
+
+    // Flash Information
+    uint32_t flashSize = ESP.getFlashChipSize();
+    uint32_t freeFlash = ESP.getFreeSketchSpace();
+    uint32_t usedFlash = ESP.getSketchSize();
+    uint32_t otaPartition = freeFlash + usedFlash;
+    float flashPercent = (float)usedFlash / otaPartition * 100.0f;
+
+    LOG_I(TAG_MAIN, "Flash Total: %u KB (%u MB)", flashSize / 1024, flashSize / 1024 / 1024);
+    LOG_I(TAG_MAIN, "OTA Partition: %u KB total", otaPartition / 1024);
+    LOG_I(TAG_MAIN, "OTA Usage: %u KB used / %u KB free (%.1f%% used)",
+          usedFlash / 1024, freeFlash / 1024, flashPercent);
+
+    if (flashPercent > 95.0f) {
+        LOG_W(TAG_MAIN, "WARNING: Flash usage critically high (>95%%)!");
+    } else if (flashPercent > 90.0f) {
+        LOG_W(TAG_MAIN, "CAUTION: Flash usage high (>90%%)");
+    }
+
+    // SPIFFS Information
+    uint32_t spiffsTotal = SPIFFS.totalBytes();
+    uint32_t spiffsUsed = SPIFFS.usedBytes();
+    uint32_t spiffsFree = spiffsTotal - spiffsUsed;
+    float spiffsPercent = (float)spiffsUsed / spiffsTotal * 100.0f;
+    LOG_I(TAG_MAIN, "SPIFFS: %u KB used / %u KB total (%.1f%% used)",
+          spiffsUsed / 1024, spiffsTotal / 1024, spiffsPercent);
+    LOG_I(TAG_MAIN, "SPIFFS Free: %u KB (%.1f%% available)",
+          spiffsFree / 1024, (float)spiffsFree / spiffsTotal * 100.0f);
+
+    LOG_I(TAG_MAIN, "Chip: %s Rev %d @ %d MHz",
+          ESP.getChipModel(), ESP.getChipRevision(), ESP.getCpuFreqMHz());
+    LOG_I(TAG_MAIN, "==============================================");
+
     updateSensorReadings();
     if (WiFi.status() == WL_CONNECTED) {
         lastConnectedTime = millis();

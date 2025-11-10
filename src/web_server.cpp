@@ -228,6 +228,18 @@ void WebServerManager::setupDefaultRoutes() {
         doc["system"]["uptime"] = millis() / 1000; // seconds
         doc["system"]["free_heap"] = ESP.getFreeHeap();
         doc["system"]["total_heap"] = ESP.getHeapSize();
+
+        // Flash memory - pre-calculated values
+        uint32_t freeFlash = ESP.getFreeSketchSpace();
+        uint32_t usedFlash = ESP.getSketchSize();
+        uint32_t totalOtaPartition = freeFlash + usedFlash;
+        uint8_t flashPercent = (freeFlash * 100) / totalOtaPartition;
+
+        doc["system"]["free_flash_kb"] = freeFlash / 1024;
+        doc["system"]["used_flash_kb"] = usedFlash / 1024;
+        doc["system"]["ota_partition_kb"] = totalOtaPartition / 1024;
+        doc["system"]["flash_percent_free"] = flashPercent;
+
         doc["system"]["chip_model"] = ESP.getChipModel();
         doc["system"]["chip_revision"] = ESP.getChipRevision();
         doc["system"]["cpu_freq_mhz"] = ESP.getCpuFreqMHz();
@@ -258,7 +270,6 @@ void WebServerManager::setupDefaultRoutes() {
         doc["sensor"]["temperature"] = temperature;
         doc["sensor"]["humidity"] = humidity;
         doc["sensor"]["pressure"] = pressure;
-        doc["sensor"]["healthy"] = bme280.isHealthy();
 
         // PID Controller information
         doc["pid"]["setpoint"] = g_pid_input.setpoint_temp;

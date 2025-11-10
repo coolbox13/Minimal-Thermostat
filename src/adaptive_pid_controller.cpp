@@ -26,9 +26,6 @@ static float crossed_setpoint = 0;    // Flag for overshoot detection
 static float previous_error_sign = 0; // Previous error sign for oscillation detection
 static float rise_time_marker = -1;   // For rise time measurement
 
-// Adaptation interval from ConfigManager
-static float adaptation_interval_sec = 60.0f;
-
 // Global controller state
 AdaptivePID_Input g_pid_input;
 AdaptivePID_Output g_pid_output;

@@ -56,6 +56,21 @@ function updateSystemStatus(data) {
             memoryStatus.className = 'status-item error';
         }
 
+        // Flash memory - use pre-calculated values from backend
+        document.getElementById('flash-value').textContent = data.system.free_flash_kb.toLocaleString();
+        document.getElementById('flash-subtitle').textContent =
+            `${data.system.flash_percent_free}% free (${data.system.used_flash_kb.toLocaleString()} KB used / ${data.system.ota_partition_kb.toLocaleString()} KB partition)`;
+
+        // Color code flash (stricter thresholds for OTA partition)
+        const flashStatus = document.getElementById('flash-status');
+        if (data.system.flash_percent_free > 15) {
+            flashStatus.className = 'status-item good';
+        } else if (data.system.flash_percent_free > 5) {
+            flashStatus.className = 'status-item warning';
+        } else {
+            flashStatus.className = 'status-item error';
+        }
+
         // Chip info
         document.getElementById('chip-model').textContent = data.system.chip_model;
         document.getElementById('chip-details').textContent =
@@ -103,15 +118,6 @@ function updateSystemStatus(data) {
 
     // Sensor Information
     if (data.sensor) {
-        const sensorStatus = document.getElementById('sensor-status');
-        if (data.sensor.healthy) {
-            document.getElementById('sensor-health').textContent = 'Healthy';
-            sensorStatus.className = 'status-item good';
-        } else {
-            document.getElementById('sensor-health').textContent = 'Error';
-            sensorStatus.className = 'status-item error';
-        }
-
         document.getElementById('sensor-temp').textContent = data.sensor.temperature.toFixed(1);
         document.getElementById('sensor-humidity').textContent = data.sensor.humidity.toFixed(1);
         document.getElementById('sensor-pressure').textContent = data.sensor.pressure.toFixed(1);

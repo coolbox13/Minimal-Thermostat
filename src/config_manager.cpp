@@ -41,10 +41,24 @@ bool ConfigManager::begin() {
         setPidKi(DEFAULT_KI);
         setPidKd(DEFAULT_KD);
         setSetpoint(DEFAULT_SETPOINT);
-        
+        setPidDeadband(DEFAULT_PID_DEADBAND);
+        setLastRebootReason("First boot");
+        setRebootCount(0);
+        setConsecutiveWatchdogReboots(0);
+
         // Mark as initialized
         _preferences.putBool("initialized", true);
         LOG_I(TAG, "First run - initialized defaults");
+    }
+
+    // Initialize any missing keys (for devices upgrading from older firmware)
+    if (!_preferences.isKey("pid_deadb")) {
+        setPidDeadband(DEFAULT_PID_DEADBAND);
+        LOG_I(TAG, "Initialized missing pid_deadb key");
+    }
+    if (!_preferences.isKey("reboot_reason")) {
+        setLastRebootReason("Unknown");
+        LOG_I(TAG, "Initialized missing reboot_reason key");
     }
 
     return true;
@@ -616,48 +630,31 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
 
 
 void ConfigManager::setLastRebootReason(const String& reason) {
-    _preferences.begin("config", false);
     _preferences.putString("reboot_reason", reason);
-    _preferences.end();
 }
 
 String ConfigManager::getLastRebootReason() {
-    _preferences.begin("config", true);
-    String reason = _preferences.getString("reboot_reason", "Unknown");
-    _preferences.end();
-    return reason;
+    return _preferences.getString("reboot_reason", "Unknown");
 }
 
 void ConfigManager::setRebootCount(int count) {
-    _preferences.begin("config", false);
     _preferences.putInt("reboot_count", count);
-    _preferences.end();
 }
 
 int ConfigManager::getRebootCount() {
-    _preferences.begin("config", true);
-    int count = _preferences.getInt("reboot_count", 0);
-    _preferences.end();
-    return count;
+    return _preferences.getInt("reboot_count", 0);
 }
 
 void ConfigManager::setConsecutiveWatchdogReboots(int count) {
-    _preferences.begin("config", false);
     _preferences.putInt("wdt_reboots", count);
-    _preferences.end();
 }
 
 int ConfigManager::getConsecutiveWatchdogReboots() {
-    _preferences.begin("config", true);
-    int count = _preferences.getInt("wdt_reboots", 0);
-    _preferences.end();
-    return count;
+    return _preferences.getInt("wdt_reboots", 0);
 }
 
 void ConfigManager::setLastConnectedTime(unsigned long timestamp) {
-    _preferences.begin("config", false);
     _preferences.putULong("last_conn_time", timestamp);
-    _preferences.end();
 }
 
 bool ConfigManager::factoryReset() {
