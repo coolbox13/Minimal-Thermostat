@@ -335,8 +335,10 @@ void WebServerManager::setupDefaultRoutes() {
         char filename[50];
         snprintf(filename, sizeof(filename), "thermostat-config-%lu.json", millis() / 1000);
 
-        AsyncWebServerResponse *downloadResponse = request->beginResponse(200, "application/json", response);
-        downloadResponse->addHeader("Content-Disposition", String("attachment; filename=") + filename);
+        // Use application/octet-stream to force download instead of displaying in browser
+        AsyncWebServerResponse *downloadResponse = request->beginResponse(200, "application/octet-stream", response);
+        downloadResponse->addHeader("Content-Disposition", String("attachment; filename=\"") + filename + "\"");
+        downloadResponse->addHeader("Content-Type", "application/json");
         request->send(downloadResponse);
     });
 
@@ -383,27 +385,29 @@ void WebServerManager::setupDefaultRoutes() {
     );
 
     // Update configuration
-    _server->on("/api/config", HTTP_POST, 
+    _server->on("/api/config", HTTP_POST,
         [](AsyncWebServerRequest *request) {
             // Response will be sent after processing is complete via the onBody handler
         },
         NULL, // Upload handler is NULL
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            static DynamicJsonDocument jsonDoc(1024);
+            // Increased from 1024 to 2048 to accommodate webhook URL (up to 512 chars)
+            // and other configuration fields. Total estimated size: ~1500 bytes max
+            static DynamicJsonDocument jsonDoc(2048);
             static String jsonBuffer;
-            
+
             if (index == 0) {
                 jsonBuffer = "";
             }
-            
+
             // Add data to buffer with size check
-            if (jsonBuffer.length() + len < 1024) {
+            if (jsonBuffer.length() + len < 2048) {
                 for (size_t i = 0; i < len; i++) {
                     jsonBuffer += (char)data[i];
                 }
             } else {
                 // Buffer would overflow
-                request->send(400, "application/json", 
+                request->send(400, "application/json",
                     "{\"success\":false,\"message\":\"Configuration data too large\"}");
                 return;
             }

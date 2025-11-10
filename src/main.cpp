@@ -19,6 +19,7 @@
 #include "watchdog_manager.h"
 #include "wifi_connection.h"
 #include "event_log.h"
+#include "history_manager.h"
 
 /**
  * LOGGING TAG NAMING STANDARD:
@@ -297,16 +298,20 @@ void updateSensorReadings() {
     temperature = bme280.readTemperature();
     humidity = bme280.readHumidity();
     pressure = bme280.readPressure();
-    
+
     LOG_D(TAG_SENSOR, "Sensor readings updated:");
     LOG_D(TAG_SENSOR, "Temperature: %.2f °C", temperature);
     LOG_D(TAG_SENSOR, "Humidity: %.2f %%", humidity);
     LOG_D(TAG_SENSOR, "Pressure: %.2f hPa", pressure);
     LOG_D(TAG_SENSOR, "Valve position: %d %%", knxManager.getValvePosition());
-    
+
+    // Add data point to history for graphing
+    HistoryManager* historyManager = HistoryManager::getInstance();
+    historyManager->addDataPoint(temperature, humidity, pressure, knxManager.getValvePosition());
+
     // Send sensor data to KNX
     knxManager.sendSensorData(temperature, humidity, pressure);
-    
+
     // Publish sensor data to MQTT
     mqttManager.publishSensorData(temperature, humidity, pressure);
 }
