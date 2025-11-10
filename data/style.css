@@ -303,7 +303,13 @@ select:focus {
         height: 40px;
         -webkit-appearance: none;
         appearance: none;
-        background: transparent;
+    }
+
+    /* Slider track for WebKit (Safari, Chrome on iOS) */
+    input[type="range"]::-webkit-slider-track {
+        height: 8px;
+        border-radius: 4px;
+        background: #ddd;
     }
 
     input[type="range"]::-webkit-slider-thumb {
@@ -314,6 +320,14 @@ select:focus {
         border-radius: 50%;
         background: #1e88e5;
         cursor: pointer;
+        margin-top: -8px; /* Center thumb on track */
+    }
+
+    /* Slider track for Firefox */
+    input[type="range"]::-moz-range-track {
+        height: 8px;
+        border-radius: 4px;
+        background: #ddd;
     }
 
     input[type="range"]::-moz-range-thumb {

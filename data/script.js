@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function enableManualOverride() {
         const position = overrideSlider ? overrideSlider.value : 0;
+        console.log('Enabling manual override with position:', position);
 
         fetch('/api/manual-override', {
             method: 'POST',
@@ -111,8 +112,12 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: `enabled=true&position=${position}`
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Response data:', data);
             if (data.success) {
                 manualOverrideEnabled = true;
                 if (overrideSlider) overrideSlider.disabled = false;

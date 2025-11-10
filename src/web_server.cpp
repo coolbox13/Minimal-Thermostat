@@ -387,7 +387,8 @@ void WebServerManager::setupDefaultRoutes() {
     // Export configuration as downloadable JSON file
     _server->on("/api/config/export", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
-        StaticJsonDocument<1024> doc;
+        // Increased from 1024 to 2048 to match /api/config endpoint
+        DynamicJsonDocument doc(2048);
 
         configManager->getJson(doc);
 
@@ -398,10 +399,9 @@ void WebServerManager::setupDefaultRoutes() {
         char filename[50];
         snprintf(filename, sizeof(filename), "thermostat-config-%lu.json", millis() / 1000);
 
-        // Use application/octet-stream to force download instead of displaying in browser
-        AsyncWebServerResponse *downloadResponse = request->beginResponse(200, "application/octet-stream", response);
+        // Use application/json with Content-Disposition header to trigger download
+        AsyncWebServerResponse *downloadResponse = request->beginResponse(200, "application/json", response);
         downloadResponse->addHeader("Content-Disposition", String("attachment; filename=\"") + filename + "\"");
-        downloadResponse->addHeader("Content-Type", "application/json");
         request->send(downloadResponse);
     });
 
@@ -425,7 +425,8 @@ void WebServerManager::setupDefaultRoutes() {
             // Process when upload is complete
             if (final) {
                 ConfigManager* configManager = ConfigManager::getInstance();
-                StaticJsonDocument<1024> doc;
+                // Increased from 1024 to 2048 to match export endpoint
+                DynamicJsonDocument doc(2048);
 
                 DeserializationError error = deserializeJson(doc, fileContent);
                 if (error) {

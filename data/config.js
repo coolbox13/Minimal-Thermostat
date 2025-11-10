@@ -376,20 +376,46 @@ function exportConfiguration() {
     statusElement.textContent = 'Downloading configuration...';
     statusElement.className = 'status status-loading';
 
-    // Trigger download by navigating to export endpoint
-    window.location.href = '/api/config/export';
+    // Fetch configuration and trigger download
+    fetch('/api/config/export')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch configuration');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
 
-    // Show success message after a short delay
-    setTimeout(() => {
-        statusElement.textContent = 'Configuration exported successfully';
-        statusElement.className = 'status status-success';
+            // Generate filename with timestamp
+            const timestamp = Math.floor(Date.now() / 1000);
+            a.download = `thermostat-config-${timestamp}.json`;
 
-        // Clear message after 3 seconds
-        setTimeout(() => {
-            statusElement.textContent = '';
-            statusElement.className = 'status';
-        }, 3000);
-    }, 500);
+            document.body.appendChild(a);
+            a.click();
+
+            // Cleanup
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            statusElement.textContent = 'Configuration exported successfully';
+            statusElement.className = 'status status-success';
+
+            // Clear message after 3 seconds
+            setTimeout(() => {
+                statusElement.textContent = '';
+                statusElement.className = 'status';
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Export error:', error);
+            statusElement.textContent = `Export failed: ${error.message}`;
+            statusElement.className = 'status status-error';
+        });
 }
 
 // Function to import configuration
