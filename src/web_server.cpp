@@ -19,11 +19,6 @@ WebServerManager* WebServerManager::getInstance() {
 
 WebServerManager::WebServerManager() : _server(nullptr) {}
 
-// Add the callback type definition and variable here
-typedef std::function<void()> KnxAddressChangedCallback;
-KnxAddressChangedCallback _knxAddressChangedCallback = nullptr;
-
-// Add the method to register the callback
 void WebServerManager::setKnxAddressChangedCallback(KnxAddressChangedCallback callback) {
     _knxAddressChangedCallback = callback;
     Serial.println("KNX address changed callback registered");

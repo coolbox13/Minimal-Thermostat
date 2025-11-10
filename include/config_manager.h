@@ -4,51 +4,205 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
+/**
+ * @brief Configuration manager for persistent storage of thermostat settings
+ *
+ * PREFERENCES NAMESPACE STRUCTURE:
+ * This class uses multiple ESP32 Preferences namespaces to organize data:
+ *
+ * 1. "thermostat" - Main application configuration (persistent across reboots)
+ *    - Network settings (WiFi credentials)
+ *    - MQTT configuration
+ *    - KNX addressing
+ *    - PID controller parameters
+ *    - Timing intervals and timeouts
+ *    All settings in this namespace persist across reboots and are user-configurable.
+ *
+ * 2. "config" - System diagnostic data (runtime tracking)
+ *    - Reboot reasons and counts
+ *    - Watchdog reboot tracking
+ *    - Last connected timestamp
+ *    This namespace stores diagnostic/troubleshooting information.
+ *
+ * 3. "watchdog" - Watchdog state (managed by WatchdogManager)
+ *    - See watchdog_manager.cpp for details
+ *    - Consecutive reset tracking
+ *    - Safe mode state
+ *
+ * RATIONALE FOR SEPARATION:
+ * - Separating configuration from diagnostics allows independent backup/restore
+ * - Different namespaces prevent accidental overwriting of critical data
+ * - Diagnostic data can be cleared without affecting configuration
+ *
+ * NOTE: Future improvement could consolidate "config" and "watchdog" into
+ * a single "diagnostics" namespace. Current structure maintained for
+ * backward compatibility with existing deployments.
+ */
 class ConfigManager {
 public:
+    /**
+     * @brief Get the singleton instance of ConfigManager
+     * @return Pointer to the ConfigManager instance
+     */
     static ConfigManager* getInstance();
-    
+
+    /**
+     * @brief Initialize the configuration manager and load stored settings
+     * @return true if initialization successful, false otherwise
+     */
     bool begin();
+
+    /**
+     * @brief Close the preferences storage
+     */
     void end();
-    
+
     // Network settings
+    /**
+     * @brief Get the configured WiFi SSID
+     * @return WiFi network name
+     */
     String getWifiSSID();
+
+    /**
+     * @brief Set the WiFi SSID for network connection
+     * @param ssid Network name (max 32 characters)
+     */
     void setWifiSSID(const String& ssid);
-    
+
+    /**
+     * @brief Get the configured WiFi password
+     * @return WiFi password
+     */
     String getWifiPassword();
+
+    /**
+     * @brief Set the WiFi password for network connection
+     * @param password Network password (max 64 characters)
+     */
     void setWifiPassword(const String& password);
-    
+
     // MQTT settings
+    /**
+     * @brief Get the MQTT broker server address
+     * @return Server hostname or IP address
+     */
     String getMqttServer();
+
+    /**
+     * @brief Set the MQTT broker server address
+     * @param server Hostname or IP address of MQTT broker
+     */
     void setMqttServer(const String& server);
-    
+
+    /**
+     * @brief Get the MQTT broker port number
+     * @return Port number (default: 1883)
+     */
     uint16_t getMqttPort();
+
+    /**
+     * @brief Set the MQTT broker port number
+     * @param port Port number (1-65535)
+     */
     void setMqttPort(uint16_t port);
-    
+
     // KNX settings
+    /**
+     * @brief Get the KNX area address component
+     * @return Area number (0-15)
+     */
     uint8_t getKnxArea();
+
+    /**
+     * @brief Set the KNX area address component
+     * @param area Area number (0-15)
+     */
     void setKnxArea(uint8_t area);
-    
+
+    /**
+     * @brief Get the KNX line address component
+     * @return Line number (0-15)
+     */
     uint8_t getKnxLine();
+
+    /**
+     * @brief Set the KNX line address component
+     * @param line Line number (0-15)
+     */
     void setKnxLine(uint8_t line);
-    
+
+    /**
+     * @brief Get the KNX member address component
+     * @return Member number (0-255)
+     */
     uint8_t getKnxMember();
+
+    /**
+     * @brief Set the KNX member address component
+     * @param member Member number (0-255)
+     */
     void setKnxMember(uint8_t member);
-    
+
+    /**
+     * @brief Check if test KNX addresses should be used
+     * @return true if test addresses enabled, false for production
+     */
     bool getUseTestAddresses();
+
+    /**
+     * @brief Enable or disable test KNX addresses
+     * @param useTest true for test addresses, false for production
+     */
     void setUseTestAddresses(bool useTest);
-    
+
     // PID Controller settings
+    /**
+     * @brief Get the proportional gain (Kp) parameter
+     * @return Kp value (rounded to 2 decimal places)
+     */
     float getPidKp();
+
+    /**
+     * @brief Set the proportional gain (Kp) parameter
+     * @param kp Kp value (will be rounded to 2 decimal places)
+     */
     void setPidKp(float kp);
-    
+
+    /**
+     * @brief Get the integral gain (Ki) parameter
+     * @return Ki value (rounded to 3 decimal places)
+     */
     float getPidKi();
+
+    /**
+     * @brief Set the integral gain (Ki) parameter
+     * @param ki Ki value (will be rounded to 3 decimal places)
+     */
     void setPidKi(float ki);
-    
+
+    /**
+     * @brief Get the derivative gain (Kd) parameter
+     * @return Kd value (rounded to 3 decimal places)
+     */
     float getPidKd();
+
+    /**
+     * @brief Set the derivative gain (Kd) parameter
+     * @param kd Kd value (will be rounded to 3 decimal places)
+     */
     void setPidKd(float kd);
-    
+
+    /**
+     * @brief Get the temperature setpoint
+     * @return Setpoint in °C (rounded to 1 decimal place)
+     */
     float getSetpoint();
+
+    /**
+     * @brief Set the temperature setpoint
+     * @param setpoint Target temperature in °C (5-30°C, rounded to 1 decimal)
+     */
     void setSetpoint(float setpoint);
 
     // Timing parameters
@@ -82,16 +236,38 @@ public:
     float getPidAdaptationInterval();
     void setPidAdaptationInterval(float interval);
 
-    // Export all settings as JSON
+    /**
+     * @brief Export all configuration settings to JSON
+     * @param doc JsonDocument to populate with current settings
+     */
     void getJson(JsonDocument& doc);
-    
-    // Import settings from JSON (original version for backward compatibility)
+
+    /**
+     * @brief Import configuration settings from JSON
+     * @param doc JsonDocument containing settings to import
+     * @return true if all settings valid and applied, false on error
+     */
     bool setFromJson(const JsonDocument& doc);
-    
-    // Enhanced version with error reporting
+
+    /**
+     * @brief Import configuration settings from JSON with error reporting
+     * @param doc JsonDocument containing settings to import
+     * @param errorMessage Output parameter set to error description on failure
+     * @return true if all settings valid and applied, false on error
+     */
     bool setFromJson(const JsonDocument& doc, String& errorMessage);
 
-    // Utility function for consistent rounding
+    /**
+     * @brief Round a float value to specified decimal places
+     * @param value Value to round
+     * @param decimals Number of decimal places (0-6)
+     * @return Rounded value
+     *
+     * Used to ensure consistent precision for PID parameters:
+     * - Kp: 2 decimals
+     * - Ki/Kd: 3 decimals
+     * - Setpoint: 1 decimal
+     */
     static float roundToPrecision(float value, int decimals);
 
 private:
