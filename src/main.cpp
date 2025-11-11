@@ -21,6 +21,8 @@
 #include "event_log.h"
 #include "history_manager.h"
 #include "ntp_manager.h"
+#include "sensor_health_monitor.h"
+#include "valve_health_monitor.h"
 
 /**
  * LOGGING TAG NAMING STANDARD:
@@ -37,6 +39,7 @@
 static const char* TAG_MAIN = "MAIN";
 static const char* TAG_SENSOR = "SENSOR";
 static const char* TAG_PID = "PID";
+static const char* TAG_MQTT = "MQTT";
 
 // Global variables
 BME280Sensor bme280;
@@ -202,12 +205,24 @@ void initializeKNXAndMQTT() {
         LOG_I(TAG_MAIN, "KNX address configuration changed, reloading addresses");
         knxManager.reloadAddresses();
     });
+
+    // HA MQTT FIX: Publish initial PID parameters after MQTT connection
+    // This ensures PID sensors don't show "Unknown" in Home Assistant
+    float kp = configManager->getPidKp();
+    float ki = configManager->getPidKi();
+    float kd = configManager->getPidKd();
+    mqttManager.updatePIDParameters(kp, ki, kd);
+    LOG_D(TAG_MQTT, "Published initial PID parameters: Kp=%.3f, Ki=%.3f, Kd=%.3f", kp, ki, kd);
 }
 void initializePID() {
     initializePIDController();
     float setpoint = configManager->getSetpoint();
     setTemperatureSetpoint(setpoint);
     LOG_I(TAG_PID, "PID controller initialized with setpoint: %.2f°C", setpoint);
+
+    // Initialize health monitors
+    SensorHealthMonitor::getInstance()->begin();
+    ValveHealthMonitor::getInstance()->begin();
 }
 void performInitialSetup() {
     // Log comprehensive memory and flash information
@@ -311,7 +326,7 @@ void loop() {
     static unsigned long lastConnectivityCheck = 0;
     if (millis() - lastConnectivityCheck > configManager->getConnectivityCheckInterval()) {
         lastConnectivityCheck = millis();
-        
+
         WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
         if (wifiManager.getState() == WiFiConnectionState::CONNECTED) {
             if (wifiManager.testInternetConnectivity()) {
@@ -320,6 +335,16 @@ void loop() {
                 LOG_W(TAG_WIFI, "Internet connectivity test failed despite WiFi connection");
             }
         }
+    }
+
+    // HA MQTT FIX: Update diagnostics every 60 seconds for Home Assistant
+    static unsigned long lastDiagnosticsUpdate = 0;
+    if (millis() - lastDiagnosticsUpdate > 60000) {
+        int rssi = WiFi.RSSI();
+        unsigned long uptime = millis() / 1000;
+        mqttManager.updateDiagnostics(rssi, uptime);
+        lastDiagnosticsUpdate = millis();
+        LOG_D(TAG_MQTT, "Published diagnostics: RSSI=%d dBm, Uptime=%lu s", rssi, uptime);
     }
 }
 
@@ -348,17 +373,45 @@ void updateSensorReadings() {
 // Modified updatePIDControl function for main.cpp
 void updatePIDControl() {
     ConfigManager* configManager = ConfigManager::getInstance();
+    SensorHealthMonitor* sensorHealth = SensorHealthMonitor::getInstance();
 
     // Get current temperature from BME280
     float currentTemp = bme280.readTemperature();
 
     // CRITICAL FIX: Validate sensor reading before processing (Audit Fix #1)
     // Reject NaN, infinity, and values outside physically possible range
-    if (isnan(currentTemp) || isinf(currentTemp) || currentTemp < -40.0f || currentTemp > 85.0f) {
+    bool isValidReading = !(isnan(currentTemp) || isinf(currentTemp) ||
+                           currentTemp < -40.0f || currentTemp > 85.0f);
+
+    // Item #9: Record sensor reading for health monitoring
+    sensorHealth->recordReading(isValidReading, currentTemp);
+
+    if (!isValidReading) {
         LOG_E(TAG_PID, "Invalid sensor reading: %.2f°C - skipping PID update", currentTemp);
+
+        // Item #9: Check for sensor failure alerts
+        uint32_t consecutiveFailures = sensorHealth->getConsecutiveFailures();
+        if (consecutiveFailures == 3) {
+            // First alert at 3 consecutive failures
+            LOG_W(TAG_SENSOR, "ALERT: Sensor may be failing (%lu consecutive failures)", consecutiveFailures);
+            EventLog::getInstance().addEntry(LOG_WARNING, TAG_SENSOR,
+                "Sensor health warning: 3 consecutive failures");
+        } else if (consecutiveFailures >= 10) {
+            // Critical alert at 10+ consecutive failures
+            LOG_E(TAG_SENSOR, "CRITICAL: Sensor failure detected (%lu consecutive failures)", consecutiveFailures);
+            EventLog::getInstance().addEntry(LOG_ERROR, TAG_SENSOR,
+                "CRITICAL: Sensor failure - 10+ consecutive failures");
+        }
+
         // Skip this control cycle to prevent feeding bad data to PID
         // Valve position remains unchanged from last valid cycle
         return;
+    }
+
+    // Item #9: Check if sensor has recovered from failure
+    if (sensorHealth->hasRecovered()) {
+        LOG_I(TAG_SENSOR, "Sensor has recovered from failure state");
+        EventLog::getInstance().addEntry(LOG_INFO, TAG_SENSOR, "Sensor recovered");
     }
 
     // Get current valve position from KNX (feedback)
@@ -404,7 +457,45 @@ void updatePIDControl() {
 
     // Apply final valve position to KNX
     knxManager.setValvePosition(finalValvePosition);
-    
+
+    // Item #10: Valve health monitoring with feedback validation
+    // Wait briefly for valve to respond and for feedback to arrive
+    static unsigned long lastValveCheck = 0;
+    unsigned long valveCheckElapsed = millis() - lastValveCheck;
+    if (valveCheckElapsed > 2000) { // Check every 2+ seconds (slower than PID update)
+        ValveHealthMonitor* valveHealth = ValveHealthMonitor::getInstance();
+
+        // Get actual valve position from KNX feedback
+        float actualValvePosition = knxManager.getValvePosition();
+
+        // Record commanded vs actual for health analysis
+        valveHealth->recordCommand(finalValvePosition, actualValvePosition);
+
+        // Check for valve issues
+        if (!valveHealth->isValveHealthy()) {
+            uint32_t consecutiveStuck = valveHealth->getConsecutiveStuckCount();
+            float error = valveHealth->getLastError();
+
+            if (consecutiveStuck >= 5) {
+                LOG_E(TAG_PID, "CRITICAL: Valve appears stuck or non-responsive (error=%.1f%%, consecutive=%lu)",
+                      error, consecutiveStuck);
+                EventLog::getInstance().addEntry(LOG_ERROR, "VALVE",
+                    "CRITICAL: Valve stuck or non-responsive");
+            } else {
+                LOG_W(TAG_PID, "WARNING: Valve position mismatch (commanded=%.1f%%, actual=%.1f%%, error=%.1f%%)",
+                      finalValvePosition, actualValvePosition, error);
+            }
+        }
+
+        // Check if valve has recovered
+        if (valveHealth->hasRecovered()) {
+            LOG_I(TAG_PID, "Valve has recovered and is responding correctly");
+            EventLog::getInstance().addEntry(LOG_INFO, "VALVE", "Valve recovered");
+        }
+
+        lastValveCheck = millis();
+    }
+
     // Save PID parameters to config with write coalescing to reduce flash wear
     // Write to flash max once every 5 minutes if parameters have changed
     static float last_saved_kp = g_pid_input.Kp;
@@ -433,6 +524,9 @@ void updatePIDControl() {
         lastConfigWrite = millis();
         pendingConfigWrite = false;
         LOG_I(TAG_PID, "PID parameters written to flash storage");
+
+        // HA MQTT FIX: Publish PID parameters to Home Assistant after saving
+        mqttManager.updatePIDParameters(g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
     }
 }
 

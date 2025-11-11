@@ -3,12 +3,19 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Load status on page load
     loadSystemStatus();
+    loadHealthStatus();
 
     // Refresh button
-    document.getElementById('refresh-status').addEventListener('click', loadSystemStatus);
+    document.getElementById('refresh-status').addEventListener('click', function() {
+        loadSystemStatus();
+        loadHealthStatus();
+    });
 
     // Auto-refresh every 10 seconds
-    setInterval(loadSystemStatus, 10000);
+    setInterval(function() {
+        loadSystemStatus();
+        loadHealthStatus();
+    }, 10000);
 });
 
 function loadSystemStatus() {
@@ -190,5 +197,90 @@ function formatUptime(seconds) {
         return `${minutes}m ${secs}s`;
     } else {
         return `${secs}s`;
+    }
+}
+
+// Health Monitoring Functions (Items #9 & #10)
+function loadHealthStatus() {
+    // Load sensor health
+    fetch('/api/sensor-health')
+        .then(response => response.json())
+        .then(data => {
+            updateSensorHealth(data);
+        })
+        .catch(error => {
+            console.error('Error loading sensor health:', error);
+        });
+
+    // Load valve health
+    fetch('/api/valve-health')
+        .then(response => response.json())
+        .then(data => {
+            updateValveHealth(data);
+        })
+        .catch(error => {
+            console.error('Error loading valve health:', error);
+        });
+}
+
+function updateSensorHealth(data) {
+    const statusElement = document.getElementById('sensor-health-status');
+    const valueElement = document.getElementById('sensor-health-value');
+    const detailsElement = document.getElementById('sensor-health-details');
+
+    if (data.healthy) {
+        statusElement.className = 'status-item good';
+        valueElement.textContent = '✓ Healthy';
+        detailsElement.textContent = `Failure rate: ${data.failure_rate.toFixed(1)}% | ${data.total_readings} readings`;
+    } else {
+        const consecutiveFailures = data.consecutive_failures;
+        if (consecutiveFailures >= 10) {
+            statusElement.className = 'status-item error';
+            valueElement.textContent = '✗ CRITICAL';
+            detailsElement.textContent = `${consecutiveFailures} consecutive failures!`;
+        } else {
+            statusElement.className = 'status-item warning';
+            valueElement.textContent = '⚠ Warning';
+            detailsElement.textContent = `${consecutiveFailures} consecutive failures`;
+        }
+    }
+
+    // Add last good reading info if available
+    if (data.last_good_value !== null && !isNaN(data.last_good_value)) {
+        const timeSince = data.seconds_since_good_reading;
+        if (timeSince < 60) {
+            detailsElement.textContent += ` | Last: ${data.last_good_value.toFixed(1)}°C (${timeSince}s ago)`;
+        } else {
+            const minAgo = Math.floor(timeSince / 60);
+            detailsElement.textContent += ` | Last: ${data.last_good_value.toFixed(1)}°C (${minAgo}m ago)`;
+        }
+    }
+}
+
+function updateValveHealth(data) {
+    const statusElement = document.getElementById('valve-health-status');
+    const valueElement = document.getElementById('valve-health-value');
+    const detailsElement = document.getElementById('valve-health-details');
+
+    if (data.healthy) {
+        statusElement.className = 'status-item good';
+        valueElement.textContent = '✓ Healthy';
+        detailsElement.textContent = `Avg error: ${data.average_error.toFixed(1)}% | Max: ${data.max_error.toFixed(1)}%`;
+    } else {
+        const consecutiveStuck = data.consecutive_stuck;
+        if (consecutiveStuck >= 5) {
+            statusElement.className = 'status-item error';
+            valueElement.textContent = '✗ STUCK';
+            detailsElement.textContent = `Valve non-responsive! Error: ${data.last_error.toFixed(1)}%`;
+        } else {
+            statusElement.className = 'status-item warning';
+            valueElement.textContent = '⚠ Warning';
+            detailsElement.textContent = `Position error: ${data.last_error.toFixed(1)}% | Stuck events: ${data.stuck_count}`;
+        }
+    }
+
+    // Add commanded vs actual if available
+    if (data.last_commanded !== undefined) {
+        detailsElement.textContent += ` | Cmd: ${data.last_commanded.toFixed(0)}%, Act: ${data.last_actual.toFixed(0)}%`;
     }
 }

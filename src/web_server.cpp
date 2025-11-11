@@ -11,6 +11,8 @@
 #include "webhook_manager.h"
 #include "config_manager.h"
 #include "ntp_manager.h"
+#include "sensor_health_monitor.h"
+#include "valve_health_monitor.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -335,6 +337,49 @@ void WebServerManager::setupDefaultRoutes() {
         doc["knx"]["address"] = String(configManager->getKnxArea()) + "." +
                                  String(configManager->getKnxLine()) + "." +
                                  String(configManager->getKnxMember());
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // Sensor health status endpoint (Item #9)
+    _server->on("/api/sensor-health", HTTP_GET, [](AsyncWebServerRequest *request) {
+        SensorHealthMonitor* sensorHealth = SensorHealthMonitor::getInstance();
+
+        DynamicJsonDocument doc(512);
+
+        doc["healthy"] = sensorHealth->isSensorHealthy();
+        doc["consecutive_failures"] = sensorHealth->getConsecutiveFailures();
+        doc["total_readings"] = sensorHealth->getTotalReadings();
+        doc["failed_readings"] = sensorHealth->getFailedReadings();
+        doc["failure_rate"] = sensorHealth->getFailureRate();
+        doc["last_good_reading_time"] = sensorHealth->getLastGoodReadingTime();
+        doc["last_good_value"] = sensorHealth->getLastGoodValue();
+
+        // Calculate time since last good reading
+        unsigned long timeSinceGood = millis() - sensorHealth->getLastGoodReadingTime();
+        doc["seconds_since_good_reading"] = timeSinceGood / 1000;
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // Valve health status endpoint (Item #10)
+    _server->on("/api/valve-health", HTTP_GET, [](AsyncWebServerRequest *request) {
+        ValveHealthMonitor* valveHealth = ValveHealthMonitor::getInstance();
+
+        DynamicJsonDocument doc(512);
+
+        doc["healthy"] = valveHealth->isValveHealthy();
+        doc["average_error"] = valveHealth->getAverageError();
+        doc["max_error"] = valveHealth->getMaxError();
+        doc["stuck_count"] = valveHealth->getStuckCount();
+        doc["consecutive_stuck"] = valveHealth->getConsecutiveStuckCount();
+        doc["last_commanded"] = valveHealth->getLastCommandedPosition();
+        doc["last_actual"] = valveHealth->getLastActualPosition();
+        doc["last_error"] = valveHealth->getLastError();
 
         String response;
         serializeJson(doc, response);

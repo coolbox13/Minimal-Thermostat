@@ -178,26 +178,48 @@ void KNXManager::reloadAddresses() {
 
 void KNXManager::setupAddresses() {
     bool useTestAddresses = isUsingTestAddresses();
-    
+
     LOG_I(TAG, "Using KNX %s addresses", useTestAddresses ? "TEST" : "PRODUCTION");
-    
-    // Always set up both address sets for quick switching
-    _valveAddress = _knx.GA_to_address(KNX_GA_VALVE_MAIN, KNX_GA_VALVE_MID, KNX_GA_VALVE_SUB);
+
+    if (useTestAddresses) {
+        // TEST MODE: Use hardcoded test addresses from config.h
+        _valveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+        _valveStatusAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+        _testValveAddress = _valveAddress; // Same as command address in test mode
+
+        LOG_I(TAG, "TEST mode valve command: %d/%d/%d",
+             _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
+        LOG_I(TAG, "TEST mode valve feedback: %d/%d/%d (same as command)",
+             _valveStatusAddress.ga.area, _valveStatusAddress.ga.line, _valveStatusAddress.ga.member);
+    } else {
+        // PRODUCTION MODE: Use configurable addresses from user settings
+        uint8_t cmdArea = _configManager->getKnxValveCommandArea();
+        uint8_t cmdLine = _configManager->getKnxValveCommandLine();
+        uint8_t cmdMember = _configManager->getKnxValveCommandMember();
+
+        uint8_t fbArea = _configManager->getKnxValveFeedbackArea();
+        uint8_t fbLine = _configManager->getKnxValveFeedbackLine();
+        uint8_t fbMember = _configManager->getKnxValveFeedbackMember();
+
+        _valveAddress = _knx.GA_to_address(cmdArea, cmdLine, cmdMember);
+        _valveStatusAddress = _knx.GA_to_address(fbArea, fbLine, fbMember);
+        _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+
+        LOG_I(TAG, "PRODUCTION valve command: %d/%d/%d",
+             _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
+        LOG_I(TAG, "PRODUCTION valve feedback: %d/%d/%d",
+             _valveStatusAddress.ga.area, _valveStatusAddress.ga.line, _valveStatusAddress.ga.member);
+    }
+
+    // Sensor addresses are always production (not affected by test mode toggle)
     _temperatureAddress = _knx.GA_to_address(KNX_GA_TEMPERATURE_MAIN, KNX_GA_TEMPERATURE_MID, KNX_GA_TEMPERATURE_SUB);
     _humidityAddress = _knx.GA_to_address(KNX_GA_HUMIDITY_MAIN, KNX_GA_HUMIDITY_MID, KNX_GA_HUMIDITY_SUB);
     _pressureAddress = _knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
-    
-    // Test valve address is always set
-    _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
-    
-    // Debug print the current addresses
-    LOG_D(TAG, "KNX addresses configured:");
-    LOG_D(TAG, "Production valve address: %d/%d/%d", 
-         _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
-    LOG_D(TAG, "Test valve address: %d/%d/%d", 
-         _testValveAddress.ga.area, _testValveAddress.ga.line, _testValveAddress.ga.member);
-    LOG_D(TAG, "Temperature sensor address: %d/%d/%d", 
-         _temperatureAddress.ga.area, _temperatureAddress.ga.line, _temperatureAddress.ga.member);
+
+    LOG_D(TAG, "Sensor addresses: Temp=%d/%d/%d, Humidity=%d/%d/%d, Pressure=%d/%d/%d",
+         _temperatureAddress.ga.area, _temperatureAddress.ga.line, _temperatureAddress.ga.member,
+         _humidityAddress.ga.area, _humidityAddress.ga.line, _humidityAddress.ga.member,
+         _pressureAddress.ga.area, _pressureAddress.ga.line, _pressureAddress.ga.member);
 }
 
 void KNXManager::knxCallback(message_t const &msg, void *arg) {
@@ -207,24 +229,55 @@ void KNXManager::knxCallback(message_t const &msg, void *arg) {
     
     // Get the destination address from the message
     address_t dest = msg.received_on;
-    
-    // Check if this is a message for our valve control GA
-    // We need to check both possible addresses
-    bool isValveMsg = false;
+
+    // Check if this is a message for our valve control or status GA
+    // We need to check all possible valve-related addresses
+    bool isValveCommandMsg = false;
+    bool isValveStatusMsg = false;
+
+    // Check command addresses (for writing valve position)
     if (dest.value == instance->_valveAddress.value) {
-        isValveMsg = true;
+        isValveCommandMsg = true;
     } else if (dest.value == instance->_testValveAddress.value) {
-        isValveMsg = true;
+        isValveCommandMsg = true;
     }
-    
-    if (isValveMsg) {
+
+    // Check status/feedback address (for reading actual valve position)
+    if (dest.value == instance->_valveStatusAddress.value) {
+        isValveStatusMsg = true;
+    }
+
+    // Handle valve command messages (write commands to control valve)
+    if (isValveCommandMsg) {
         // Check if we have data and it's a write command
         if (msg.data_len > 0 && msg.ct == KNX_CT_WRITE) {
             // Extract valve position value (assuming it's a scaling value 0-100%)
             int position = (int)msg.data[0];
             instance->setValvePosition(position);
-            
-            LOG_I(TAG, "KNX valve position received: %d%%", position);
+
+            LOG_I(TAG, "KNX valve command received: %d%%", position);
+        }
+    }
+
+    // Handle valve status messages (feedback from valve actuator about actual position)
+    if (isValveStatusMsg) {
+        // Check if we have data (could be write, read response, or group value read)
+        if (msg.data_len > 0) {
+            // Extract actual valve position from feedback
+            int actualPosition = (int)msg.data[0];
+
+            // Update internal valve position from feedback
+            {
+                std::lock_guard<std::mutex> lock(instance->_mutex);
+                instance->_valvePosition = constrain(actualPosition, 0, 100);
+            }
+
+            LOG_I(TAG, "KNX valve status feedback received: %d%%", actualPosition);
+
+            // Update MQTT with actual valve position
+            if (instance->_mqttManager) {
+                instance->_mqttManager->setValvePosition(actualPosition);
+            }
         }
     }
 }

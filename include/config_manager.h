@@ -193,6 +193,78 @@ public:
      */
     void setUseTestAddresses(bool useTest);
 
+    /**
+     * @brief Get the KNX valve command address area component (production mode)
+     * @return Area number (0-15) for valve command
+     */
+    uint8_t getKnxValveCommandArea();
+
+    /**
+     * @brief Set the KNX valve command address area component (production mode)
+     * @param area Area number (0-15) for valve command
+     */
+    void setKnxValveCommandArea(uint8_t area);
+
+    /**
+     * @brief Get the KNX valve command address line component (production mode)
+     * @return Line number (0-15) for valve command
+     */
+    uint8_t getKnxValveCommandLine();
+
+    /**
+     * @brief Set the KNX valve command address line component (production mode)
+     * @param line Line number (0-15) for valve command
+     */
+    void setKnxValveCommandLine(uint8_t line);
+
+    /**
+     * @brief Get the KNX valve command address member component (production mode)
+     * @return Member number (0-255) for valve command
+     */
+    uint8_t getKnxValveCommandMember();
+
+    /**
+     * @brief Set the KNX valve command address member component (production mode)
+     * @param member Member number (0-255) for valve command
+     */
+    void setKnxValveCommandMember(uint8_t member);
+
+    /**
+     * @brief Get the KNX valve feedback address area component (production mode)
+     * @return Area number (0-15) for valve position feedback
+     */
+    uint8_t getKnxValveFeedbackArea();
+
+    /**
+     * @brief Set the KNX valve feedback address area component (production mode)
+     * @param area Area number (0-15) for valve position feedback
+     */
+    void setKnxValveFeedbackArea(uint8_t area);
+
+    /**
+     * @brief Get the KNX valve feedback address line component (production mode)
+     * @return Line number (0-15) for valve position feedback
+     */
+    uint8_t getKnxValveFeedbackLine();
+
+    /**
+     * @brief Set the KNX valve feedback address line component (production mode)
+     * @param line Line number (0-15) for valve position feedback
+     */
+    void setKnxValveFeedbackLine(uint8_t line);
+
+    /**
+     * @brief Get the KNX valve feedback address member component (production mode)
+     * @return Member number (0-255) for valve position feedback
+     */
+    uint8_t getKnxValveFeedbackMember();
+
+    /**
+     * @brief Set the KNX valve feedback address member component (production mode)
+     * @param member Member number (0-255) for valve position feedback
+     */
+    void setKnxValveFeedbackMember(uint8_t member);
+
     // PID Controller settings
     /**
      * @brief Get the proportional gain (Kp) parameter
