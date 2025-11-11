@@ -10,6 +10,7 @@
 #include "history_manager.h"
 #include "webhook_manager.h"
 #include "config_manager.h"
+#include "ntp_manager.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -136,6 +137,50 @@ void WebServerManager::handlePIDParameterUpdates(const JsonDocument& jsonDoc) {
         Serial.println(setpoint, 1);
     }
     Serial.println("PID parameters updated from web interface with precision-controlled values");
+}
+
+void WebServerManager::handleNTPUpdate(const JsonDocument& jsonDoc) {
+    if (!jsonDoc.containsKey("network")) {
+        return;
+    }
+    
+    // Update NTP manager if settings changed and WiFi is connected
+    if (WiFi.status() == WL_CONNECTED) {
+        NTPManager& ntpManager = NTPManager::getInstance();
+        ConfigManager* configManager = ConfigManager::getInstance();
+        
+        bool ntpChanged = false;
+        
+        if (jsonDoc["network"].containsKey("ntp_server")) {
+            String ntpServer = configManager->getNtpServer();
+            ntpManager.setNTPServer(ntpServer.c_str());
+            ntpChanged = true;
+        }
+        
+        if (jsonDoc["network"].containsKey("ntp_timezone_offset")) {
+            int timezoneOffset = configManager->getNtpTimezoneOffset();
+            ntpManager.setTimezoneOffset(timezoneOffset);
+            ntpChanged = true;
+        }
+        
+        if (jsonDoc["network"].containsKey("ntp_daylight_offset")) {
+            int daylightOffset = configManager->getNtpDaylightOffset();
+            ntpManager.setDaylightOffset(daylightOffset);
+            ntpChanged = true;
+        }
+        
+        // Re-sync time if NTP settings changed
+        if (ntpChanged) {
+            Serial.println("NTP settings updated, re-syncing time...");
+            if (ntpManager.syncTime(10000)) {
+                String timeStr = ntpManager.getFormattedTime();
+                Serial.print("Time re-synchronized: ");
+                Serial.println(timeStr);
+            } else {
+                Serial.println("NTP time re-synchronization failed");
+            }
+        }
+    }
 }
 
 // Fixed version of web server routes to handle static files properly
@@ -499,6 +544,7 @@ void WebServerManager::setupDefaultRoutes() {
                 if (success) {
                     this->handleKNXAddressChange(jsonDoc, oldUseTestSetting);
                     this->handlePIDParameterUpdates(jsonDoc);
+                    this->handleNTPUpdate(jsonDoc);
                     request->send(200, "application/json", "{\"success\":true}");
                 } else {
                     request->send(500, "application/json",

@@ -82,6 +82,43 @@ public:
      */
     void setWifiPassword(const String& password);
 
+    // NTP settings
+    /**
+     * @brief Get the NTP server hostname
+     * @return NTP server hostname or IP address
+     */
+    String getNtpServer();
+
+    /**
+     * @brief Set the NTP server hostname
+     * @param server NTP server hostname or IP address
+     */
+    void setNtpServer(const String& server);
+
+    /**
+     * @brief Get the timezone offset in seconds from UTC
+     * @return Timezone offset in seconds
+     */
+    int getNtpTimezoneOffset();
+
+    /**
+     * @brief Set the timezone offset in seconds from UTC
+     * @param offset Timezone offset in seconds (e.g., UTC+1 = 3600, UTC+2 = 7200)
+     */
+    void setNtpTimezoneOffset(int offset);
+
+    /**
+     * @brief Get the daylight saving time offset in seconds
+     * @return Daylight saving offset in seconds
+     */
+    int getNtpDaylightOffset();
+
+    /**
+     * @brief Set the daylight saving time offset in seconds
+     * @param offset Daylight saving offset in seconds (typically 3600 for 1 hour)
+     */
+    void setNtpDaylightOffset(int offset);
+
     // MQTT settings
     /**
      * @brief Get the MQTT broker server address

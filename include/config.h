@@ -73,4 +73,12 @@
 #define MAX_RECONNECT_ATTEMPTS 10        // Maximum reconnection attempts before reboot
 #define MAX_CONSECUTIVE_RESETS 3  // Maximum consecutive resets before entering safe mode
 
+// NTP Configuration
+#define NTP_SERVER "pool.ntp.org"        // Default NTP server
+#define NTP_TIMEZONE_OFFSET 0            // Timezone offset in seconds from UTC (0 = UTC)
+                                         // Examples: UTC+1 = 3600, UTC+2 = 7200, UTC-5 = -18000
+#define NTP_DAYLIGHT_OFFSET 0            // Daylight saving offset in seconds (0 = no DST)
+                                         // For CEST (Central European Summer Time): 3600
+#define NTP_SYNC_TIMEOUT_MS 10000        // NTP sync timeout (10 seconds)
+
 #endif // CONFIG_H

@@ -44,6 +44,7 @@ private:
     // Config update helper methods
     void handleKNXAddressChange(const JsonDocument& jsonDoc, bool oldUseTestSetting);
     void handlePIDParameterUpdates(const JsonDocument& jsonDoc);
+    void handleNTPUpdate(const JsonDocument& jsonDoc);
 };
 
 #endif // WEB_SERVER_H

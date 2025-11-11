@@ -20,6 +20,7 @@
 #include "wifi_connection.h"
 #include "event_log.h"
 #include "history_manager.h"
+#include "ntp_manager.h"
 
 /**
  * LOGGING TAG NAMING STANDARD:
@@ -119,19 +120,47 @@ void initializeSensor() {
 }
 void initializeWiFi() {
     LOG_I(TAG_WIFI, "Initializing WiFi connection manager...");
+    
+    // Initialize NTP manager with config values
+    NTPManager& ntpManager = NTPManager::getInstance();
+    String ntpServer = configManager->getNtpServer();
+    int timezoneOffset = configManager->getNtpTimezoneOffset();
+    int daylightOffset = configManager->getNtpDaylightOffset();
+    ntpManager.begin(ntpServer.c_str(), timezoneOffset, daylightOffset);
+    
     WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
-    wifiManager.registerEventCallback([&wifiManager](const WiFiConnectionEvent& event) {
+    wifiManager.registerEventCallback([&wifiManager, &ntpManager](const WiFiConnectionEvent& event) {
         LOG_I(TAG_WIFI, "WiFi event: %s - %s",
               wifiManager.getEventTypeName(event.type),
               event.message.c_str());
         if (event.type == WiFiEventType::CONNECTED) {
             LOG_I(TAG_WIFI, "Connected to: %s", event.ssid.c_str());
             LOG_I(TAG_WIFI, "IP address: %s", event.networkInfo.ip.toString().c_str());
+            
+            // Sync time with NTP server after WiFi connection
+            LOG_I(TAG_WIFI, "Synchronizing time with NTP server...");
+            if (ntpManager.syncTime(NTP_SYNC_TIMEOUT_MS)) {
+                String timeStr = ntpManager.getFormattedTime();
+                LOG_I(TAG_WIFI, "Time synchronized: %s", timeStr.c_str());
+            } else {
+                LOG_W(TAG_WIFI, "NTP time synchronization failed");
+            }
         }
     });
     bool wifiConnected = wifiManager.begin(configManager->getWifiConnectTimeout(), true);
     if (!wifiConnected) {
         LOG_W(TAG_WIFI, "WiFi connection failed or timed out during setup");
+    } else {
+        // If WiFi is already connected, sync time immediately
+        if (WiFi.status() == WL_CONNECTED) {
+            LOG_I(TAG_WIFI, "WiFi already connected, syncing time...");
+            if (ntpManager.syncTime(NTP_SYNC_TIMEOUT_MS)) {
+                String timeStr = ntpManager.getFormattedTime();
+                LOG_I(TAG_WIFI, "Time synchronized: %s", timeStr.c_str());
+            } else {
+                LOG_W(TAG_WIFI, "NTP time synchronization failed");
+            }
+        }
     }
 }
 void initializeWebServer() {

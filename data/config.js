@@ -93,6 +93,9 @@ function loadConfiguration() {
             if (data.network) {
                 document.getElementById('wifi_ssid').value = data.network.wifi_ssid || '';
                 // Don't set password for security reasons
+                document.getElementById('ntp_server').value = data.network.ntp_server || 'pool.ntp.org';
+                document.getElementById('ntp_timezone_offset').value = data.network.ntp_timezone_offset || 0;
+                document.getElementById('ntp_daylight_offset').value = data.network.ntp_daylight_offset || 0;
             }
             
             // MQTT settings
@@ -173,7 +176,10 @@ function saveConfiguration(e) {
     const config = {
         network: {
             wifi_ssid: formData.get('wifi_ssid'),
-            wifi_pass: formData.get('wifi_pass')
+            wifi_pass: formData.get('wifi_pass'),
+            ntp_server: formData.get('ntp_server') || 'pool.ntp.org',
+            ntp_timezone_offset: parseInt(formData.get('ntp_timezone_offset')) || 0,
+            ntp_daylight_offset: parseInt(formData.get('ntp_daylight_offset')) || 0
         },
         mqtt: {
             server: formData.get('mqtt_server'),

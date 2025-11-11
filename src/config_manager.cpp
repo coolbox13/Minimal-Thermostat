@@ -85,6 +85,31 @@ void ConfigManager::setWifiPassword(const String& password) {
     _preferences.putString("wifi_pass", password);
 }
 
+// NTP settings
+String ConfigManager::getNtpServer() {
+    return _preferences.getString("ntp_server", NTP_SERVER);
+}
+
+void ConfigManager::setNtpServer(const String& server) {
+    _preferences.putString("ntp_server", server);
+}
+
+int ConfigManager::getNtpTimezoneOffset() {
+    return _preferences.getInt("ntp_tz_offset", NTP_TIMEZONE_OFFSET);
+}
+
+void ConfigManager::setNtpTimezoneOffset(int offset) {
+    _preferences.putInt("ntp_tz_offset", offset);
+}
+
+int ConfigManager::getNtpDaylightOffset() {
+    return _preferences.getInt("ntp_dst_offset", NTP_DAYLIGHT_OFFSET);
+}
+
+void ConfigManager::setNtpDaylightOffset(int offset) {
+    _preferences.putInt("ntp_dst_offset", offset);
+}
+
 // MQTT settings
 String ConfigManager::getMqttServer() {
     return _preferences.getString("mqtt_srv", "192.168.178.32");
@@ -296,6 +321,9 @@ void ConfigManager::getJson(JsonDocument& doc) {
     // Create JSON structure directly
     doc["network"]["wifi_ssid"] = getWifiSSID();
     doc["network"]["wifi_pass"] = "**********"; // Don't expose password in JSON
+    doc["network"]["ntp_server"] = getNtpServer();
+    doc["network"]["ntp_timezone_offset"] = getNtpTimezoneOffset();
+    doc["network"]["ntp_daylight_offset"] = getNtpDaylightOffset();
     
     doc["mqtt"]["server"] = getMqttServer();
     doc["mqtt"]["port"] = getMqttPort();
@@ -368,6 +396,46 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
             setWifiPassword(pass);
         }
     }
+    
+    // NTP settings
+    if (doc["network"].containsKey("ntp_server")) {
+        String ntpServer = doc["network"]["ntp_server"].as<String>();
+        if (ntpServer.length() > 0 && ntpServer.length() <= 64) {
+            setNtpServer(ntpServer);
+            LOG_D(TAG, "NTP server set to: %s", ntpServer.c_str());
+        } else {
+            errorMessage = "NTP server must be between 1 and 64 characters";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    
+    if (doc["network"].containsKey("ntp_timezone_offset")) {
+        int offset = doc["network"]["ntp_timezone_offset"].as<int>();
+        // Valid range: -43200 to 43200 (UTC-12 to UTC+12)
+        if (offset >= -43200 && offset <= 43200) {
+            setNtpTimezoneOffset(offset);
+            LOG_D(TAG, "NTP timezone offset set to: %d seconds", offset);
+        } else {
+            errorMessage = "NTP timezone offset must be between -43200 and 43200 seconds";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    
+    if (doc["network"].containsKey("ntp_daylight_offset")) {
+        int offset = doc["network"]["ntp_daylight_offset"].as<int>();
+        // Valid range: 0 to 7200 (0 to 2 hours)
+        if (offset >= 0 && offset <= 7200) {
+            setNtpDaylightOffset(offset);
+            LOG_D(TAG, "NTP daylight offset set to: %d seconds", offset);
+        } else {
+            errorMessage = "NTP daylight offset must be between 0 and 7200 seconds";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    
     return true;
 }
 bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String& errorMessage) {
