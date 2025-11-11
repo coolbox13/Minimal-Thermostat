@@ -17,10 +17,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load current configuration
     loadConfiguration();
-    
+
+    // KNX test mode toggle handler
+    document.getElementById('knx_test').addEventListener('change', function() {
+        toggleKnxAddressMode(this.checked);
+    });
+
     // Save configuration form submit handler
     document.getElementById('config-form').addEventListener('submit', saveConfiguration);
-    
+
     // Reboot device button handler
     document.getElementById('reboot-device').addEventListener('click', rebootDevice);
 
@@ -77,9 +82,30 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function formatNumberWithPrecision(value, decimals) {
     if (isNaN(value)) return '';
-    
+
     // Use toFixed to get the right number of decimal places with trailing zeros
     return value.toFixed(decimals);
+}
+
+/**
+ * Toggle between test and production KNX address modes
+ * Shows/hides appropriate UI sections based on mode
+ *
+ * @param {boolean} useTest - true for test mode, false for production
+ */
+function toggleKnxAddressMode(useTest) {
+    const testDisplay = document.getElementById('test_addresses_display');
+    const prodConfig = document.getElementById('production_addresses_config');
+
+    if (useTest) {
+        // Show test addresses display, hide production config
+        testDisplay.style.display = 'block';
+        prodConfig.style.display = 'none';
+    } else {
+        // Hide test addresses display, show production config
+        testDisplay.style.display = 'none';
+        prodConfig.style.display = 'block';
+    }
 }
 
 // Function to load the current configuration from the API
@@ -110,6 +136,23 @@ function loadConfiguration() {
                 document.getElementById('knx_line').value = data.knx.line || 1;
                 document.getElementById('knx_member').value = data.knx.member || 1;
                 document.getElementById('knx_test').checked = data.knx.use_test || false;
+
+                // Load valve command address (production mode)
+                if (data.knx.valve_command) {
+                    document.getElementById('knx_valve_cmd_area').value = data.knx.valve_command.area || 1;
+                    document.getElementById('knx_valve_cmd_line').value = data.knx.valve_command.line || 1;
+                    document.getElementById('knx_valve_cmd_member').value = data.knx.valve_command.member || 1;
+                }
+
+                // Load valve feedback address (production mode)
+                if (data.knx.valve_feedback) {
+                    document.getElementById('knx_valve_fb_area').value = data.knx.valve_feedback.area || 1;
+                    document.getElementById('knx_valve_fb_line').value = data.knx.valve_feedback.line || 1;
+                    document.getElementById('knx_valve_fb_member').value = data.knx.valve_feedback.member || 2;
+                }
+
+                // Set initial UI state based on test mode toggle
+                toggleKnxAddressMode(data.knx.use_test || false);
             }
             
             // BME280 settings - these are served from the API but not stored in ConfigManager yet
@@ -189,7 +232,17 @@ function saveConfiguration(e) {
             area: parseInt(formData.get('knx_area')),
             line: parseInt(formData.get('knx_line')),
             member: parseInt(formData.get('knx_member')),
-            use_test: formData.get('knx_test') === 'on'
+            use_test: formData.get('knx_test') === 'on',
+            valve_command: {
+                area: parseInt(formData.get('knx_valve_cmd_area')),
+                line: parseInt(formData.get('knx_valve_cmd_line')),
+                member: parseInt(formData.get('knx_valve_cmd_member'))
+            },
+            valve_feedback: {
+                area: parseInt(formData.get('knx_valve_fb_area')),
+                line: parseInt(formData.get('knx_valve_fb_line')),
+                member: parseInt(formData.get('knx_valve_fb_member'))
+            }
         },
         bme280: {
             address: formData.get('bme280_address'),
