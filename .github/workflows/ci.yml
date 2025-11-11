@@ -74,7 +74,7 @@ jobs:
         pip install platformio
 
     - name: Run unit tests
-      run: echo "Native tests disabled - ESP32 code requires hardware mocking"
+      run: pio test -e native
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -82,7 +82,7 @@ jobs:
       with:
         name: test-results
         path: |
-          .pio/build/native/test-output.log
+          .pio/test/
         retention-days: 30
 
   lint:
