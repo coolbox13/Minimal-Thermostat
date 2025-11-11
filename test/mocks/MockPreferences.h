@@ -190,6 +190,11 @@ public:
                stringValues.count(k) || boolValues.count(k) ||
                ucharValues.count(k) || ushortValues.count(k);
     }
+
+    // Alias for hasKey (ESP32 Preferences API compatibility)
+    bool isKey(const char* key) const {
+        return hasKey(key);
+    }
 };
 
 #endif // MOCK_PREFERENCES_H

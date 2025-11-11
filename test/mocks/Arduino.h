@@ -8,10 +8,16 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-// Simple String class mock (no std::string dependency)
+// Forward declare std::string for conversion
+#ifdef __cplusplus
+#include <string>
+#endif
+
+// Simple String class mock (with std::string compatibility)
 class String {
 public:
     String() : data(nullptr), len(0), capacity(0) {}
+
     String(const char* str) : data(nullptr), len(0), capacity(0) {
         if (str) {
             len = strlen(str);
@@ -20,6 +26,7 @@ public:
             strcpy(data, str);
         }
     }
+
     String(const String& other) : data(nullptr), len(0), capacity(0) {
         if (other.data) {
             len = other.len;
@@ -28,6 +35,25 @@ public:
             strcpy(data, other.data);
         }
     }
+
+#ifdef __cplusplus
+    // Constructor from std::string
+    String(const std::string& str) : data(nullptr), len(0), capacity(0) {
+        if (!str.empty()) {
+            len = str.length();
+            capacity = len + 1;
+            data = (char*)malloc(capacity);
+            memcpy(data, str.c_str(), len);
+            data[len] = '\0';
+        }
+    }
+
+    // Conversion operator to std::string
+    operator std::string() const {
+        return data ? std::string(data) : std::string();
+    }
+#endif
+
     ~String() { if (data) free(data); }
 
     String& operator=(const String& other) {
@@ -71,6 +97,25 @@ public:
     bool concat(char c) {
         char buf[2] = {c, '\0'};
         return concat(buf);
+    }
+
+    // Comparison operators
+    bool operator==(const char* str) const {
+        if (!data && !str) return true;
+        if (!data || !str) return false;
+        return strcmp(data, str) == 0;
+    }
+
+    bool operator!=(const char* str) const {
+        return !(*this == str);
+    }
+
+    bool operator==(const String& other) const {
+        return (*this == other.c_str());
+    }
+
+    bool operator!=(const String& other) const {
+        return !(*this == other);
     }
 
 private:

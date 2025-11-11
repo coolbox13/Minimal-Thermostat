@@ -5,6 +5,7 @@
 
 static const char* TAG = "HISTORY";
 
+const int HistoryManager::BUFFER_SIZE;
 HistoryManager* HistoryManager::_instance = nullptr;
 
 HistoryManager* HistoryManager::getInstance() {
