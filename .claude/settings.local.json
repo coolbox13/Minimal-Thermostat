@@ -4,7 +4,9 @@
       "SlashCommand(/deploy)",
       "Bash(git pull:*)",
       "Bash(~/.platformio/penv/bin/platformio run:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
