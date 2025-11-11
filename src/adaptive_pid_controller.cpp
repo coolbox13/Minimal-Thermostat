@@ -94,46 +94,52 @@ void initializePIDController(void) {
 
 /**
  * @brief Set a new proportional gain value.
- * 
+ *
  * @param kp New proportional gain value.
  */
 void setPidKp(float kp) {
-    // Validate to ensure positive value
-    if (kp >= 0.0f) {
+    // HIGH PRIORITY FIX: Add maximum limit (Audit Fix #5)
+    // Validate range to prevent extreme gains that cause instability
+    // Max 100.0 is reasonable for HVAC applications
+    if (kp >= 0.0f && kp <= 100.0f) {
         g_pid_input.Kp = kp;
         LOG_D(TAG, "Kp updated to: %.3f", kp);
     } else {
-        LOG_W(TAG, "Invalid Kp value (%.3f) - must be non-negative", kp);
+        LOG_W(TAG, "Invalid Kp value (%.3f) - must be between 0 and 100", kp);
     }
 }
 
 /**
  * @brief Set a new integral gain value.
- * 
+ *
  * @param ki New integral gain value.
  */
 void setPidKi(float ki) {
-    // Validate to ensure positive value
-    if (ki >= 0.0f) {
+    // HIGH PRIORITY FIX: Add maximum limit (Audit Fix #5)
+    // Validate range to prevent extreme gains that cause instability
+    // Max 10.0 is reasonable for HVAC applications
+    if (ki >= 0.0f && ki <= 10.0f) {
         g_pid_input.Ki = ki;
         LOG_D(TAG, "Ki updated to: %.3f", ki);
     } else {
-        LOG_W(TAG, "Invalid Ki value (%.3f) - must be non-negative", ki);
+        LOG_W(TAG, "Invalid Ki value (%.3f) - must be between 0 and 10", ki);
     }
 }
 
 /**
  * @brief Set a new derivative gain value.
- * 
+ *
  * @param kd New derivative gain value.
  */
 void setPidKd(float kd) {
-    // Validate to ensure positive value
-    if (kd >= 0.0f) {
+    // HIGH PRIORITY FIX: Add maximum limit (Audit Fix #5)
+    // Validate range to prevent extreme gains that cause instability
+    // Max 10.0 is reasonable for HVAC applications
+    if (kd >= 0.0f && kd <= 10.0f) {
         g_pid_input.Kd = kd;
         LOG_D(TAG, "Kd updated to: %.3f", kd);
     } else {
-        LOG_W(TAG, "Invalid Kd value (%.3f) - must be non-negative", kd);
+        LOG_W(TAG, "Invalid Kd value (%.3f) - must be between 0 and 10", kd);
     }
 }
 
@@ -300,7 +306,11 @@ void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
         return;
     }
     updateIntegralErrorWithAntiWindup(input, error);
-    float derivative_error = (error - prev_error) / input->dt;
+
+    // MEDIUM PRIORITY FIX: Calculate derivative on measurement, not error (Audit Fix #7)
+    // This prevents "derivative kick" when setpoint changes
+    // Negative sign because we want to resist temperature changes
+    float derivative_error = -(input->current_temp - prev_temp) / input->dt;
     float raw_output = computePIDOutput(input, error, derivative_error);
     raw_output = clampOutput(raw_output, input->output_min, input->output_max);
     output->valve_command = raw_output;
@@ -361,7 +371,13 @@ static void adaptParameters(AdaptivePID_Input *input, AdaptivePID_Output *output
     if (input->Kp < 0.1f) input->Kp = 0.1f;
     if (input->Ki < 0.01f) input->Ki = 0.01f;
     if (input->Kd < 0.01f) input->Kd = 0.01f;
-    
+
+    // MEDIUM PRIORITY FIX: Enforce maximum values to prevent runaway adaptation (Audit Fix #6)
+    // These match the limits in the setter functions for consistency
+    if (input->Kp > 100.0f) input->Kp = 100.0f;
+    if (input->Ki > 10.0f) input->Ki = 10.0f;
+    if (input->Kd > 10.0f) input->Kd = 10.0f;
+
     // Reset counters for next adaptation cycle
     oscillation_count = 0;
     error_sum = 0.0f;

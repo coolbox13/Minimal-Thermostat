@@ -323,6 +323,15 @@ void updatePIDControl() {
     // Get current temperature from BME280
     float currentTemp = bme280.readTemperature();
 
+    // CRITICAL FIX: Validate sensor reading before processing (Audit Fix #1)
+    // Reject NaN, infinity, and values outside physically possible range
+    if (isnan(currentTemp) || isinf(currentTemp) || currentTemp < -40.0f || currentTemp > 85.0f) {
+        LOG_E(TAG_PID, "Invalid sensor reading: %.2f°C - skipping PID update", currentTemp);
+        // Skip this control cycle to prevent feeding bad data to PID
+        // Valve position remains unchanged from last valid cycle
+        return;
+    }
+
     // Get current valve position from KNX (feedback)
     float valvePosition = knxManager.getValvePosition();
 
@@ -331,9 +340,13 @@ void updatePIDControl() {
         uint32_t timeout = configManager->getManualOverrideTimeout();
         unsigned long activationTime = configManager->getManualOverrideActivationTime();
 
+        // HIGH PRIORITY FIX: Use overflow-safe elapsed time calculation (Audit Fix #4)
+        // millis() wraps around after ~49 days, but subtraction handles it correctly
+        unsigned long elapsed = millis() - activationTime; // Handles overflow correctly
+
         // If timeout is set (> 0) and has expired, disable manual override
-        if (timeout > 0 && (millis() - activationTime) / 1000 > timeout) {
-            LOG_I(TAG_PID, "Manual override timeout expired, disabling");
+        if (timeout > 0 && (elapsed / 1000) > timeout) {
+            LOG_I(TAG_PID, "Manual override timeout expired after %lu seconds, disabling", elapsed / 1000);
             configManager->setManualOverrideEnabled(false);
         }
     }
@@ -377,7 +390,9 @@ void updatePIDControl() {
         fabs(last_saved_setpoint - g_pid_input.setpoint_temp) > 0.01f) {
         pendingConfigWrite = true;
     }
-    if (pendingConfigWrite && (millis() - lastConfigWrite > configManager->getPidConfigWriteInterval())) {
+    // Audit Fix #4: Overflow-safe interval check
+    unsigned long configWriteElapsed = millis() - lastConfigWrite;
+    if (pendingConfigWrite && (configWriteElapsed > configManager->getPidConfigWriteInterval())) {
         configManager->setPidKp(g_pid_input.Kp);
         configManager->setPidKi(g_pid_input.Ki);
         configManager->setPidKd(g_pid_input.Kd);

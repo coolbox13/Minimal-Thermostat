@@ -6,12 +6,15 @@
 class BME280Sensor {
 public:
     BME280Sensor();
-    
+
     bool begin();
     float readTemperature();
     float readHumidity();
     float readPressure();
-    
+
+    // CRITICAL FIX: Add health check method (Audit Fix #3)
+    bool isHealthy();
+
 private:
     Adafruit_BME280 bme;
     bool initialized;

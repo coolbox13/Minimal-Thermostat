@@ -300,6 +300,15 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/setpoint", HTTP_POST, [](AsyncWebServerRequest *request) {
         if (request->hasParam("value", true)) {
             float setpoint = request->getParam("value", true)->value().toFloat();
+
+            // CRITICAL FIX: Validate setpoint range (Audit Fix #2)
+            // Must match ConfigManager validation (5-30°C)
+            if (isnan(setpoint) || setpoint < 5.0f || setpoint > 30.0f) {
+                request->send(400, "application/json",
+                    "{\"success\":false,\"message\":\"Setpoint must be between 5°C and 30°C\"}");
+                return;
+            }
+
             setTemperatureSetpoint(setpoint);
             request->send(200, "application/json", "{\"success\":true,\"setpoint\":" + String(setpoint) + "}");
         } else {
