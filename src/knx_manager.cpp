@@ -178,29 +178,48 @@ void KNXManager::reloadAddresses() {
 
 void KNXManager::setupAddresses() {
     bool useTestAddresses = isUsingTestAddresses();
-    
+
     LOG_I(TAG, "Using KNX %s addresses", useTestAddresses ? "TEST" : "PRODUCTION");
-    
-    // Always set up both address sets for quick switching
-    _valveAddress = _knx.GA_to_address(KNX_GA_VALVE_MAIN, KNX_GA_VALVE_MID, KNX_GA_VALVE_SUB);
-    _valveStatusAddress = _knx.GA_to_address(KNX_GA_VALVE_STATUS_MAIN, KNX_GA_VALVE_STATUS_MID, KNX_GA_VALVE_STATUS_SUB);
+
+    if (useTestAddresses) {
+        // TEST MODE: Use hardcoded test addresses from config.h
+        _valveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+        _valveStatusAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+        _testValveAddress = _valveAddress; // Same as command address in test mode
+
+        LOG_I(TAG, "TEST mode valve command: %d/%d/%d",
+             _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
+        LOG_I(TAG, "TEST mode valve feedback: %d/%d/%d (same as command)",
+             _valveStatusAddress.ga.area, _valveStatusAddress.ga.line, _valveStatusAddress.ga.member);
+    } else {
+        // PRODUCTION MODE: Use configurable addresses from user settings
+        uint8_t cmdArea = _configManager->getKnxValveCommandArea();
+        uint8_t cmdLine = _configManager->getKnxValveCommandLine();
+        uint8_t cmdMember = _configManager->getKnxValveCommandMember();
+
+        uint8_t fbArea = _configManager->getKnxValveFeedbackArea();
+        uint8_t fbLine = _configManager->getKnxValveFeedbackLine();
+        uint8_t fbMember = _configManager->getKnxValveFeedbackMember();
+
+        _valveAddress = _knx.GA_to_address(cmdArea, cmdLine, cmdMember);
+        _valveStatusAddress = _knx.GA_to_address(fbArea, fbLine, fbMember);
+        _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
+
+        LOG_I(TAG, "PRODUCTION valve command: %d/%d/%d",
+             _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
+        LOG_I(TAG, "PRODUCTION valve feedback: %d/%d/%d",
+             _valveStatusAddress.ga.area, _valveStatusAddress.ga.line, _valveStatusAddress.ga.member);
+    }
+
+    // Sensor addresses are always production (not affected by test mode toggle)
     _temperatureAddress = _knx.GA_to_address(KNX_GA_TEMPERATURE_MAIN, KNX_GA_TEMPERATURE_MID, KNX_GA_TEMPERATURE_SUB);
     _humidityAddress = _knx.GA_to_address(KNX_GA_HUMIDITY_MAIN, KNX_GA_HUMIDITY_MID, KNX_GA_HUMIDITY_SUB);
     _pressureAddress = _knx.GA_to_address(KNX_GA_PRESSURE_MAIN, KNX_GA_PRESSURE_MID, KNX_GA_PRESSURE_SUB);
 
-    // Test valve address is always set
-    _testValveAddress = _knx.GA_to_address(KNX_GA_TEST_VALVE_MAIN, KNX_GA_TEST_VALVE_MID, KNX_GA_TEST_VALVE_SUB);
-
-    // Debug print the current addresses
-    LOG_D(TAG, "KNX addresses configured:");
-    LOG_D(TAG, "Production valve command address: %d/%d/%d",
-         _valveAddress.ga.area, _valveAddress.ga.line, _valveAddress.ga.member);
-    LOG_D(TAG, "Production valve status address: %d/%d/%d",
-         _valveStatusAddress.ga.area, _valveStatusAddress.ga.line, _valveStatusAddress.ga.member);
-    LOG_D(TAG, "Test valve address: %d/%d/%d",
-         _testValveAddress.ga.area, _testValveAddress.ga.line, _testValveAddress.ga.member);
-    LOG_D(TAG, "Temperature sensor address: %d/%d/%d",
-         _temperatureAddress.ga.area, _temperatureAddress.ga.line, _temperatureAddress.ga.member);
+    LOG_D(TAG, "Sensor addresses: Temp=%d/%d/%d, Humidity=%d/%d/%d, Pressure=%d/%d/%d",
+         _temperatureAddress.ga.area, _temperatureAddress.ga.line, _temperatureAddress.ga.member,
+         _humidityAddress.ga.area, _humidityAddress.ga.line, _humidityAddress.ga.member,
+         _pressureAddress.ga.area, _pressureAddress.ga.line, _pressureAddress.ga.member);
 }
 
 void KNXManager::knxCallback(message_t const &msg, void *arg) {

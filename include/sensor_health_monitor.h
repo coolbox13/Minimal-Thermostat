@@ -89,8 +89,8 @@ private:
     float _lastGoodValue;
 
     // Circular buffer for failure rate calculation (5 minutes at 1 reading/sec)
-    static const int HISTORY_SIZE = 300;
-    bool _readingHistory[HISTORY_SIZE];
+    static const int SENSOR_HISTORY_SIZE = 300;
+    bool _readingHistory[SENSOR_HISTORY_SIZE];
     int _historyIndex;
     int _historyCount; // Number of valid entries in history
 

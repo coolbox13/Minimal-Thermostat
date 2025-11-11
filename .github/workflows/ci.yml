@@ -74,7 +74,7 @@ jobs:
         pip install platformio
 
     - name: Run unit tests
-      run: pio test --environment native --verbose
+      run: pio test -e native
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -82,7 +82,7 @@ jobs:
       with:
         name: test-results
         path: |
-          .pio/build/native/test-output.log
+          .pio/test/
         retention-days: 30
 
   lint:
@@ -106,7 +106,7 @@ jobs:
                  --suppress=missingIncludeSystem \
                  --suppress=unmatchedSuppression \
                  -I include \
-                 src/ || true
+                 src/ || echo "cppcheck found warnings (non-blocking)"
 
     - name: Check code formatting
       run: |

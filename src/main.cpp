@@ -39,6 +39,7 @@
 static const char* TAG_MAIN = "MAIN";
 static const char* TAG_SENSOR = "SENSOR";
 static const char* TAG_PID = "PID";
+static const char* TAG_MQTT = "MQTT";
 
 // Global variables
 BME280Sensor bme280;

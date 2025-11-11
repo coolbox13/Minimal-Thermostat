@@ -2,7 +2,6 @@
 #define MOCK_WIFI_H
 
 #include "Arduino.h"
-#include <string>
 
 // WiFi status codes
 typedef enum {

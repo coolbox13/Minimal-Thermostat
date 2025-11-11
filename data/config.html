@@ -91,26 +91,86 @@
                 <!-- KNX Settings Tab -->
                 <div id="knx" class="tab-content">
                     <h3>KNX Settings</h3>
+
+                    <!-- Physical Address -->
+                    <h4 style="margin-top: 20px; margin-bottom: 10px; color: #1e88e5;">Physical Address</h4>
                     <div class="form-row">
-                        <label for="knx_area">KNX Area:</label>
+                        <label for="knx_area">Area:</label>
                         <input type="number" id="knx_area" name="knx_area" min="0" max="15" class="form-input">
                         <span class="form-hint">Range: 0-15</span>
                     </div>
                     <div class="form-row">
-                        <label for="knx_line">KNX Line:</label>
+                        <label for="knx_line">Line:</label>
                         <input type="number" id="knx_line" name="knx_line" min="0" max="15" class="form-input">
                         <span class="form-hint">Range: 0-15</span>
                     </div>
                     <div class="form-row">
-                        <label for="knx_member">KNX Member:</label>
+                        <label for="knx_member">Member:</label>
                         <input type="number" id="knx_member" name="knx_member" min="0" max="255" class="form-input">
                         <span class="form-hint">Range: 0-255</span>
                     </div>
+
+                    <!-- Test Mode Toggle -->
+                    <h4 style="margin-top: 30px; margin-bottom: 10px; color: #1e88e5;">Address Mode</h4>
                     <div class="form-row checkbox-row">
                         <label for="knx_test">Use Test Addresses:</label>
                         <div class="checkbox-container">
                             <input type="checkbox" id="knx_test" name="knx_test" class="form-checkbox">
-                            <span class="form-hint">Enable test addresses instead of production</span>
+                            <span class="form-hint">Enable hardcoded test addresses for testing</span>
+                        </div>
+                    </div>
+
+                    <!-- Test Addresses Display (shown when test mode is enabled) -->
+                    <div id="test_addresses_display" style="display: none; padding: 15px; background-color: #fff3cd; border-radius: 8px; margin-top: 15px; border: 2px solid #ffc107;">
+                        <h4 style="margin-top: 0; color: #856404;">Active Test Addresses</h4>
+                        <p style="margin: 5px 0; color: #856404;"><strong>Valve Command/Feedback:</strong> <span id="test_valve_addr">10/2/2</span></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #856404; font-style: italic;">Note: In test mode, command and feedback use the same address</p>
+                    </div>
+
+                    <!-- Production Valve Addresses (shown when test mode is disabled) -->
+                    <div id="production_addresses_config" style="display: none;">
+                        <h4 style="margin-top: 30px; margin-bottom: 10px; color: #1e88e5;">Valve Control Addresses (Production)</h4>
+
+                        <!-- Valve Command Address -->
+                        <div style="padding: 15px; background-color: #e3f2fd; border-radius: 8px; margin-bottom: 20px;">
+                            <h5 style="margin-top: 0; color: #1976d2;">Valve Command Address</h5>
+                            <p style="margin: 5px 0 15px 0; font-size: 13px; color: #555;">Group address for sending valve position commands</p>
+                            <div class="form-row">
+                                <label for="knx_valve_cmd_area">Area:</label>
+                                <input type="number" id="knx_valve_cmd_area" name="knx_valve_cmd_area" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_cmd_line">Line:</label>
+                                <input type="number" id="knx_valve_cmd_line" name="knx_valve_cmd_line" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_cmd_member">Member:</label>
+                                <input type="number" id="knx_valve_cmd_member" name="knx_valve_cmd_member" min="0" max="255" class="form-input">
+                                <span class="form-hint">0-255</span>
+                            </div>
+                        </div>
+
+                        <!-- Valve Feedback Address -->
+                        <div style="padding: 15px; background-color: #e8f5e9; border-radius: 8px;">
+                            <h5 style="margin-top: 0; color: #388e3c;">Valve Feedback Address</h5>
+                            <p style="margin: 5px 0 15px 0; font-size: 13px; color: #555;">Group address for receiving actual valve position</p>
+                            <div class="form-row">
+                                <label for="knx_valve_fb_area">Area:</label>
+                                <input type="number" id="knx_valve_fb_area" name="knx_valve_fb_area" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_fb_line">Line:</label>
+                                <input type="number" id="knx_valve_fb_line" name="knx_valve_fb_line" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_fb_member">Member:</label>
+                                <input type="number" id="knx_valve_fb_member" name="knx_valve_fb_member" min="0" max="255" class="form-input">
+                                <span class="form-hint">0-255</span>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -17,7 +17,7 @@ ValveHealthMonitor::ValveHealthMonitor()
       _lastError(0.0f),
       _wasStuck(false) {
     // Initialize error history
-    for (int i = 0; i < HISTORY_SIZE; i++) {
+    for (int i = 0; i < VALVE_HISTORY_SIZE; i++) {
         _errorHistory[i] = 0.0f;
     }
 }
@@ -42,8 +42,8 @@ void ValveHealthMonitor::recordCommand(float commanded, float actual) {
 
     // Store in history
     _errorHistory[_historyIndex] = _lastError;
-    _historyIndex = (_historyIndex + 1) % HISTORY_SIZE;
-    if (_historyCount < HISTORY_SIZE) {
+    _historyIndex = (_historyIndex + 1) % VALVE_HISTORY_SIZE;
+    if (_historyCount < VALVE_HISTORY_SIZE) {
         _historyCount++;
     }
 

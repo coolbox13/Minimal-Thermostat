@@ -2,9 +2,6 @@
 #define MOCK_ESP_KNX_IP_H
 
 #include "Arduino.h"
-#include <functional>
-#include <map>
-#include <string>
 
 /**
  * Mock KNX address class
@@ -48,7 +45,22 @@ public:
 /**
  * Mock callback registration structure
  */
-typedef std::function<void(uint8_t*, uint8_t)> knx_callback_t;
+typedef void (*knx_callback_t)(uint8_t*, uint8_t);
+
+/**
+ * Simple map entry for callbacks and values
+ */
+struct CallbackEntry {
+    address_t addr;
+    knx_callback_t callback;
+    bool used;
+};
+
+struct ValueEntry {
+    address_t addr;
+    uint8_t value;
+    bool used;
+};
 
 /**
  * Mock ESP-KNX-IP class for testing
@@ -56,14 +68,24 @@ typedef std::function<void(uint8_t*, uint8_t)> knx_callback_t;
  */
 class ESPKNXIP {
 private:
+    static const int MAX_CALLBACKS = 10;
+    static const int MAX_VALUES = 20;
+
     address_t _physicalAddress;
     bool _started;
-    std::map<address_t, knx_callback_t> _callbacks;
-    std::map<address_t, uint8_t> _groupAddressValues;
+    CallbackEntry _callbacks[MAX_CALLBACKS];
+    ValueEntry _groupAddressValues[MAX_VALUES];
 
 public:
     ESPKNXIP()
-        : _started(false) {}
+        : _started(false) {
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            _callbacks[i].used = false;
+        }
+        for (int i = 0; i < MAX_VALUES; i++) {
+            _groupAddressValues[i].used = false;
+        }
+    }
 
     /**
      * Start KNX communication
@@ -90,7 +112,14 @@ public:
      * Register callback for group address
      */
     void callback_register(const char* name, address_t addr, knx_callback_t callback) {
-        _callbacks[addr] = callback;
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            if (!_callbacks[i].used) {
+                _callbacks[i].addr = addr;
+                _callbacks[i].callback = callback;
+                _callbacks[i].used = true;
+                return;
+            }
+        }
     }
 
     /**
@@ -98,7 +127,7 @@ public:
      */
     void write_1byte_int(address_t addr, uint8_t value) {
         if (!_started) return;
-        _groupAddressValues[addr] = value;
+        setGroupAddressValue(addr, value);
     }
 
     /**
@@ -107,7 +136,7 @@ public:
     void write_2byte_float(address_t addr, float value) {
         if (!_started) return;
         // Store as scaled integer for simplicity in mock
-        _groupAddressValues[addr] = (uint8_t)(value * 10.0f);
+        setGroupAddressValue(addr, (uint8_t)(value * 10.0f));
     }
 
     /**
@@ -115,7 +144,7 @@ public:
      */
     void write_2byte_int(address_t addr, int16_t value) {
         if (!_started) return;
-        _groupAddressValues[addr] = (uint8_t)value;
+        setGroupAddressValue(addr, (uint8_t)value);
     }
 
     /**
@@ -123,7 +152,7 @@ public:
      */
     void write_4byte_float(address_t addr, float value) {
         if (!_started) return;
-        _groupAddressValues[addr] = (uint8_t)value;
+        setGroupAddressValue(addr, (uint8_t)value);
     }
 
     /**
@@ -139,8 +168,11 @@ public:
      * Simulate receiving a KNX telegram
      */
     void simulateTelegram(address_t addr, uint8_t* data, uint8_t len) {
-        if (_callbacks.count(addr)) {
-            _callbacks[addr](data, len);
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            if (_callbacks[i].used && _callbacks[i].addr == addr) {
+                _callbacks[i].callback(data, len);
+                return;
+            }
         }
     }
 
@@ -148,8 +180,10 @@ public:
      * Get value sent to a group address
      */
     uint8_t getMockGroupAddressValue(address_t addr) {
-        if (_groupAddressValues.count(addr)) {
-            return _groupAddressValues[addr];
+        for (int i = 0; i < MAX_VALUES; i++) {
+            if (_groupAddressValues[i].used && _groupAddressValues[i].addr == addr) {
+                return _groupAddressValues[i].value;
+            }
         }
         return 0;
     }
@@ -158,14 +192,24 @@ public:
      * Check if group address was written to
      */
     bool wasMockGroupAddressWritten(address_t addr) {
-        return _groupAddressValues.count(addr) > 0;
+        for (int i = 0; i < MAX_VALUES; i++) {
+            if (_groupAddressValues[i].used && _groupAddressValues[i].addr == addr) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
      * Check if callback is registered
      */
     bool isMockCallbackRegistered(address_t addr) {
-        return _callbacks.count(addr) > 0;
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            if (_callbacks[i].used && _callbacks[i].addr == addr) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -180,8 +224,35 @@ public:
      */
     void resetMock() {
         _started = false;
-        _callbacks.clear();
-        _groupAddressValues.clear();
+        for (int i = 0; i < MAX_CALLBACKS; i++) {
+            _callbacks[i].used = false;
+        }
+        for (int i = 0; i < MAX_VALUES; i++) {
+            _groupAddressValues[i].used = false;
+        }
+    }
+
+private:
+    /**
+     * Helper to set or update group address value
+     */
+    void setGroupAddressValue(address_t addr, uint8_t value) {
+        // Check if address already exists
+        for (int i = 0; i < MAX_VALUES; i++) {
+            if (_groupAddressValues[i].used && _groupAddressValues[i].addr == addr) {
+                _groupAddressValues[i].value = value;
+                return;
+            }
+        }
+        // Add new address
+        for (int i = 0; i < MAX_VALUES; i++) {
+            if (!_groupAddressValues[i].used) {
+                _groupAddressValues[i].addr = addr;
+                _groupAddressValues[i].value = value;
+                _groupAddressValues[i].used = true;
+                return;
+            }
+        }
     }
 };
 

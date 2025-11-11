@@ -161,6 +161,56 @@ void ConfigManager::setUseTestAddresses(bool useTest) {
     _preferences.putBool("knx_test", useTest);
 }
 
+// KNX Valve Command Address (Production Mode)
+uint8_t ConfigManager::getKnxValveCommandArea() {
+    return _preferences.getUChar("knx_vcmd_a", KNX_GA_VALVE_MAIN);
+}
+
+void ConfigManager::setKnxValveCommandArea(uint8_t area) {
+    _preferences.putUChar("knx_vcmd_a", area);
+}
+
+uint8_t ConfigManager::getKnxValveCommandLine() {
+    return _preferences.getUChar("knx_vcmd_l", KNX_GA_VALVE_MID);
+}
+
+void ConfigManager::setKnxValveCommandLine(uint8_t line) {
+    _preferences.putUChar("knx_vcmd_l", line);
+}
+
+uint8_t ConfigManager::getKnxValveCommandMember() {
+    return _preferences.getUChar("knx_vcmd_m", KNX_GA_VALVE_SUB);
+}
+
+void ConfigManager::setKnxValveCommandMember(uint8_t member) {
+    _preferences.putUChar("knx_vcmd_m", member);
+}
+
+// KNX Valve Feedback Address (Production Mode)
+uint8_t ConfigManager::getKnxValveFeedbackArea() {
+    return _preferences.getUChar("knx_vfb_a", KNX_GA_VALVE_STATUS_MAIN);
+}
+
+void ConfigManager::setKnxValveFeedbackArea(uint8_t area) {
+    _preferences.putUChar("knx_vfb_a", area);
+}
+
+uint8_t ConfigManager::getKnxValveFeedbackLine() {
+    return _preferences.getUChar("knx_vfb_l", KNX_GA_VALVE_STATUS_MID);
+}
+
+void ConfigManager::setKnxValveFeedbackLine(uint8_t line) {
+    _preferences.putUChar("knx_vfb_l", line);
+}
+
+uint8_t ConfigManager::getKnxValveFeedbackMember() {
+    return _preferences.getUChar("knx_vfb_m", KNX_GA_VALVE_STATUS_SUB);
+}
+
+void ConfigManager::setKnxValveFeedbackMember(uint8_t member) {
+    _preferences.putUChar("knx_vfb_m", member);
+}
+
 // PID Controller settings
 float ConfigManager::getPidKp() {
     return roundToPrecision(_preferences.getFloat("pid_kp", DEFAULT_KP), 2);
@@ -333,7 +383,15 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["knx"]["line"] = getKnxLine();
     doc["knx"]["member"] = getKnxMember();
     doc["knx"]["use_test"] = getUseTestAddresses();
-    
+
+    // Valve addresses (production mode)
+    doc["knx"]["valve_command"]["area"] = getKnxValveCommandArea();
+    doc["knx"]["valve_command"]["line"] = getKnxValveCommandLine();
+    doc["knx"]["valve_command"]["member"] = getKnxValveCommandMember();
+    doc["knx"]["valve_feedback"]["area"] = getKnxValveFeedbackArea();
+    doc["knx"]["valve_feedback"]["line"] = getKnxValveFeedbackLine();
+    doc["knx"]["valve_feedback"]["member"] = getKnxValveFeedbackMember();
+
     // Add BME280 settings as hardcoded defaults for now
     doc["bme280"]["address"] = "0x76";  // Default BME280 address
     doc["bme280"]["sda_pin"] = 21;      // Default SDA pin
@@ -491,6 +549,69 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
     if (doc["knx"].containsKey("use_test")) {
         setUseTestAddresses(doc["knx"]["use_test"].as<bool>());
     }
+
+    // Valve command address
+    if (doc["knx"].containsKey("valve_command")) {
+        if (doc["knx"]["valve_command"].containsKey("area")) {
+            uint8_t area = doc["knx"]["valve_command"]["area"].as<uint8_t>();
+            if (area > 15) {
+                errorMessage = "Valve command area must be 0-15";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxValveCommandArea(area);
+        }
+        if (doc["knx"]["valve_command"].containsKey("line")) {
+            uint8_t line = doc["knx"]["valve_command"]["line"].as<uint8_t>();
+            if (line > 15) {
+                errorMessage = "Valve command line must be 0-15";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxValveCommandLine(line);
+        }
+        if (doc["knx"]["valve_command"].containsKey("member")) {
+            uint8_t member = doc["knx"]["valve_command"]["member"].as<uint8_t>();
+            if (member > 255) {
+                errorMessage = "Valve command member must be 0-255";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxValveCommandMember(member);
+        }
+    }
+
+    // Valve feedback address
+    if (doc["knx"].containsKey("valve_feedback")) {
+        if (doc["knx"]["valve_feedback"].containsKey("area")) {
+            uint8_t area = doc["knx"]["valve_feedback"]["area"].as<uint8_t>();
+            if (area > 15) {
+                errorMessage = "Valve feedback area must be 0-15";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxValveFeedbackArea(area);
+        }
+        if (doc["knx"]["valve_feedback"].containsKey("line")) {
+            uint8_t line = doc["knx"]["valve_feedback"]["line"].as<uint8_t>();
+            if (line > 15) {
+                errorMessage = "Valve feedback line must be 0-15";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxValveFeedbackLine(line);
+        }
+        if (doc["knx"]["valve_feedback"].containsKey("member")) {
+            uint8_t member = doc["knx"]["valve_feedback"]["member"].as<uint8_t>();
+            if (member > 255) {
+                errorMessage = "Valve feedback member must be 0-255";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setKnxValveFeedbackMember(member);
+        }
+    }
+
     return true;
 }
 bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& errorMessage) {

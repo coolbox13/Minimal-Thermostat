@@ -1,6 +1,7 @@
 #ifndef MOCK_PREFERENCES_H
 #define MOCK_PREFERENCES_H
 
+#include <stdint.h>
 #include <map>
 #include <string>
 
@@ -188,6 +189,11 @@ public:
                ulongValues.count(k) || floatValues.count(k) || doubleValues.count(k) ||
                stringValues.count(k) || boolValues.count(k) ||
                ucharValues.count(k) || ushortValues.count(k);
+    }
+
+    // Alias for hasKey (ESP32 Preferences API compatibility)
+    bool isKey(const char* key) const {
+        return hasKey(key);
     }
 };
 
