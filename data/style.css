@@ -82,6 +82,43 @@ h1 {
 
 input[type="range"] {
     width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-track {
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1e88e5;
+    cursor: pointer;
+}
+
+input[type="range"]::-moz-range-track {
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1e88e5;
+    cursor: pointer;
+    border: none;
 }
 
 button {
@@ -298,45 +335,19 @@ select:focus {
         margin: 10px 0;
     }
 
-    /* Larger slider for easier touch control */
+    /* Larger slider thumb for easier touch control on mobile */
     input[type="range"] {
         height: 40px;
-        -webkit-appearance: none;
-        appearance: none;
-    }
-
-    /* Slider track for WebKit (Safari, Chrome on iOS) */
-    input[type="range"]::-webkit-slider-track {
-        height: 8px;
-        border-radius: 4px;
-        background: #ddd;
     }
 
     input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: #1e88e5;
-        cursor: pointer;
-        margin-top: -8px; /* Center thumb on track */
-    }
-
-    /* Slider track for Firefox */
-    input[type="range"]::-moz-range-track {
-        height: 8px;
-        border-radius: 4px;
-        background: #ddd;
+        width: 28px;
+        height: 28px;
     }
 
     input[type="range"]::-moz-range-thumb {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: #1e88e5;
-        cursor: pointer;
-        border: none;
+        width: 28px;
+        height: 28px;
     }
 
     .status {
