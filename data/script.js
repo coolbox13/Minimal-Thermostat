@@ -302,10 +302,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('historyChart');
         if (!ctx) return;
 
-        // Convert timestamps to time labels (HH:MM format)
+        // Convert timestamps to time labels (HH:MM format in 24-hour notation)
+        // Note: timestamps from backend are Unix time in seconds, JavaScript Date expects milliseconds
         const labels = data.timestamps.map(ts => {
-            const date = new Date(ts);
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const date = new Date(ts * 1000);
+            return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false });
         });
 
         // Destroy existing chart if it exists

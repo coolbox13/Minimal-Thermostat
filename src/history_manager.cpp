@@ -1,4 +1,5 @@
 #include "history_manager.h"
+#include "ntp_manager.h"
 #include "logger.h"
 #include <ArduinoJson.h>
 
@@ -18,7 +19,11 @@ HistoryManager::HistoryManager() : _head(0), _count(0) {
 }
 
 void HistoryManager::addDataPoint(float temperature, float humidity, float pressure, uint8_t valvePosition) {
-    _buffer[_head].timestamp = millis();
+    // Use actual time if available, otherwise fall back to millis
+    NTPManager& ntpManager = NTPManager::getInstance();
+    time_t currentTime = ntpManager.getCurrentTime();
+    _buffer[_head].timestamp = (currentTime > 0) ? currentTime : (millis() / 1000);
+
     _buffer[_head].temperature = temperature;
     _buffer[_head].humidity = humidity;
     _buffer[_head].pressure = pressure;

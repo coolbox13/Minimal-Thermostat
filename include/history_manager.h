@@ -3,12 +3,13 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <time.h>
 
 /**
  * @brief Data point for storing sensor readings and valve position
  */
 struct HistoryDataPoint {
-    unsigned long timestamp;  // Milliseconds since boot
+    time_t timestamp;  // Unix timestamp (seconds since epoch) or millis/1000 as fallback
     float temperature;
     float humidity;
     float pressure;

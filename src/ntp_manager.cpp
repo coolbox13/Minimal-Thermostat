@@ -82,11 +82,13 @@ bool NTPManager::isTimeSet() const {
 }
 
 time_t NTPManager::getCurrentTime() const {
-    struct tm timeinfo;
-    if (!getLocalTime(&timeinfo)) {
-        return 0;
+    // Return UTC Unix timestamp (seconds since epoch)
+    // time() returns UTC timestamp regardless of timezone settings
+    time_t now = time(nullptr);
+    if (now < 0) {
+        return 0;  // Time not set
     }
-    return mktime(&timeinfo);
+    return now;
 }
 
 String NTPManager::getFormattedTime(const char* format) const {
