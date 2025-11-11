@@ -6,20 +6,61 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 
 ## Features
 
-- **Advanced Climate Control**: Adaptive PID-based temperature regulation with self-tuning capability
+- **Advanced Climate Control**: 
+  - Adaptive PID-based temperature regulation with self-tuning capability
+  - Manual override functionality with timeout support
+  - Sensor validation to prevent invalid readings from affecting control
+  - Write coalescing for flash wear reduction (PID parameters saved max once per 5 minutes)
+  
 - **Multi-Protocol Support**: 
   - Native KNX integration for building automation
   - MQTT connectivity for home automation systems
   - Web interface for direct control and configuration
-- **Sensor Integration**: BME280 temperature/humidity/pressure monitoring
+  - Webhook integration for IFTTT, Zapier, and custom automation
+  
+- **Sensor Integration**: 
+  - BME280 temperature/humidity/pressure monitoring
+  - 24-hour historical data storage (circular buffer, 5-minute intervals)
+  - Real-time sensor readings with configurable update intervals
+  
 - **Robust Connectivity**: 
-  - WiFi with advanced reconnection system
-  - Fallback mechanisms and configuration portal
-  - 45-minute watchdog timer for automatic recovery
-- **Home Assistant Integration**: Full climate entity support with auto-discovery
-- **OTA Updates**: Remote firmware upgrades via web interface
-- **Persistent Configuration**: Settings stored in non-volatile memory
-- **Flexible Operation Modes**: on or off...
+  - Advanced WiFi connection manager with event-driven architecture
+  - Automatic reconnection with configurable attempts
+  - Internet connectivity testing (ping-based)
+  - WiFi signal strength monitoring
+  - Configuration portal when connection fails
+  - Dual watchdog system:
+    - 45-minute system watchdog for automatic recovery
+    - 30-minute WiFi watchdog for connection monitoring
+  
+- **Home Assistant Integration**: 
+  - Full climate entity support with auto-discovery via MQTT
+  - Automatic device registration
+  - Supports on/off and heating modes
+  - Temperature setpoint adjustment
+  
+- **Web Interface (PWA)**: 
+  - Progressive Web App with offline support
+  - Multiple pages: Dashboard, Status, Configuration, Event Logs
+  - Real-time data visualization
+  - Historical data graphing (24-hour view)
+  - Mobile-responsive design
+  
+- **Event Logging & Monitoring**: 
+  - Persistent event log storage in SPIFFS (100 entries)
+  - MQTT log publishing for remote monitoring
+  - Filterable logs by level and tag
+  - Web-based log viewer
+  
+- **OTA Updates**: 
+  - Remote firmware upgrades via web interface
+  - Safe update process with rollback capability
+  
+- **Persistent Configuration**: 
+  - Settings stored in non-volatile memory (Preferences API)
+  - Configuration manager with web interface
+  - PID parameters persistence
+  - WiFi credentials storage
 
 ## Architecture
 
@@ -264,11 +305,40 @@ After uploading, the thermostat creates a WiFi access point named "ESP32-Thermos
 
 ## Web Interface
 
-The thermostat provides a responsive web interface for:
-- Monitoring current temperature, humidity, pressure, and valve position
-- Adjusting temperature setpoint
-- Configuring system settings
-- Updating firmware
+The thermostat provides a comprehensive Progressive Web App (PWA) with multiple pages:
+
+### Dashboard (`/`)
+- Real-time monitoring of temperature, humidity, pressure, and valve position
+- Temperature setpoint adjustment
+- Manual valve override control
+- PID parameter display and adjustment
+- Historical data graph (24-hour view)
+
+### Status Page (`/status`)
+- System status overview
+- WiFi connection information
+- Memory and flash usage statistics
+- Sensor health status
+
+### Configuration Page (`/config`)
+- WiFi credentials configuration
+- KNX physical and group addresses (test/production toggle)
+- MQTT broker settings
+- PID parameters configuration
+- System settings (intervals, timeouts)
+
+### Event Logs Page (`/logs`)
+- View persistent event logs
+- Filter by log level (INFO, WARNING, ERROR)
+- Filter by tag/category
+- Export logs functionality
+- Real-time log updates
+
+### Features
+- **Progressive Web App**: Installable on mobile devices, works offline
+- **Responsive Design**: Optimized for desktop, tablet, and mobile
+- **Real-time Updates**: WebSocket-like updates for live data
+- **Dark Theme**: Modern, easy-on-the-eyes interface
 
 ![Web Interface](https://raw.githubusercontent.com/username/ESP32-KNX-Thermostat/main/docs/images/web_interface.png)
 
@@ -306,36 +376,62 @@ Example Home Assistant configuration:
 
 ```
 ESP32-KNX-Thermostat/
-├── data/                        # Web interface files
+├── data/                        # Web interface files (SPIFFS)
 │   ├── index.html               # Main dashboard
-│   ├── style.css                # Styling 
-│   └── script.js                # Dashboard functionality
+│   ├── status.html              # Status page
+│   ├── config.html              # Configuration page
+│   ├── logs.html                # Event logs viewer
+│   ├── style.css                # Shared styling
+│   ├── script.js                # Dashboard functionality
+│   ├── status.js                # Status page scripts
+│   ├── config.js                # Configuration page scripts
+│   └── manifest.json            # PWA manifest
 ├── include/                     # Header files
 │   ├── adaptive_pid_controller.h # PID controller interface
 │   ├── bme280_sensor.h          # Temperature sensor interface
-│   ├── config.h                 # Configuration settings
+│   ├── config.h                 # Configuration constants
 │   ├── config_manager.h         # Configuration manager
+│   ├── event_log.h              # Persistent event logging
+│   ├── history_manager.h        # Historical data storage
 │   ├── home_assistant.h         # HA integration
 │   ├── knx_manager.h            # KNX protocol manager
 │   ├── logger.h                 # Logging system
 │   ├── mqtt_manager.h           # MQTT protocol manager
 │   ├── ota_manager.h            # OTA update manager
+│   ├── persistence_manager.h    # Persistent storage abstraction
 │   ├── utils.h                  # Utility functions
-│   └── valve_control.h          # Valve control interface
+│   ├── valve_control.h          # Valve control interface
+│   ├── watchdog_manager.h       # Watchdog system
+│   ├── web_server.h             # Web server manager
+│   ├── webhook_manager.h        # Webhook integration
+│   ├── wifi_connection.h        # WiFi connection manager
+│   └── wifi_connection_events.h # WiFi event system
 ├── src/                         # Implementation files
 │   ├── adaptive_pid_controller.cpp
 │   ├── bme280_sensor.cpp
 │   ├── config_manager.cpp
+│   ├── event_log.cpp
+│   ├── history_manager.cpp
 │   ├── home_assistant.cpp
 │   ├── knx_manager.cpp
 │   ├── logger.cpp
 │   ├── main.cpp                 # Main application
 │   ├── mqtt_manager.cpp
 │   ├── ota_manager.cpp
+│   ├── persistence_manager.cpp
 │   ├── utils.cpp
 │   ├── valve_control.cpp
-│   └── web_server.cpp
-└── platformio.ini               # PlatformIO configuration
+│   ├── watchdog_manager.cpp
+│   ├── web_server.cpp
+│   ├── webhook_manager.cpp
+│   └── wifi_connection.cpp
+├── test/                        # Unit tests
+│   └── test_utils/
+│       └── test_precision.cpp
+├── docs/                        # Documentation
+├── partitions_custom.csv        # Custom partition table
+├── platformio.ini               # PlatformIO configuration
+└── README.md                    # This file
 ```
 
 ## Development
@@ -362,9 +458,13 @@ The web interface uses standard HTML, CSS and JavaScript:
 ### WiFi Connection Issues
 
 The system includes several recovery mechanisms:
-- Automatic reconnection attempts
-- Configuration portal when connection fails
-- Watchdog timer for automatic reboot
+- **Automatic Reconnection**: Up to 10 reconnection attempts with configurable timeouts
+- **Configuration Portal**: Automatically starts when connection fails
+- **Watchdog System**: 
+  - System watchdog (45 minutes) for automatic reboot on system hang
+  - WiFi watchdog (30 minutes) for connection monitoring
+- **Internet Connectivity Testing**: Periodic ping tests to verify internet access
+- **Signal Strength Monitoring**: Tracks WiFi signal quality over time
 
 Check the serial console for diagnostic messages:
 ```
@@ -373,6 +473,37 @@ Check the serial console for diagnostic messages:
 ...
 [WIFI] Multiple reconnection attempts failed. Starting config portal...
 ```
+
+### Event Logging
+
+The system maintains a persistent event log stored in SPIFFS:
+- Access logs via web interface at `/logs`
+- View logs via MQTT topic `esp32_thermostat/logs`
+- Logs are automatically filtered (only WARNING and ERROR stored by default)
+- Maximum 100 log entries (circular buffer)
+
+### Sensor Issues
+
+- Invalid sensor readings (NaN, infinity, out of range) are automatically rejected
+- PID control skips cycles with invalid readings to prevent system instability
+- Check event logs for sensor error messages
+
+### Memory Management
+
+The system logs memory usage at startup:
+- RAM usage statistics
+- Flash/OTA partition usage
+- SPIFFS usage
+- Warnings when usage exceeds 90% or 95%
+
+### Historical Data
+
+The system maintains a 24-hour rolling history of sensor readings:
+- Stores temperature, humidity, pressure, and valve position
+- One data point every 5 minutes (288 points total)
+- Accessible via web interface dashboard graph
+- API endpoint: `/api/history` (returns JSON)
+- Circular buffer automatically overwrites oldest data
 
 ## Hardware-Encoded Settings Table
 
@@ -413,6 +544,7 @@ Check the serial console for diagnostic messages:
 |Output|esp32_thermostat/mode/state|Current thermostat mode|
 |Output|esp32_thermostat/temperature/setpoint|Current temperature setpoint|
 |Output|esp32_thermostat/action|Current action (heating/idle)|
+|Output|esp32_thermostat/logs|Event log entries (JSON format)|
 
 ### KNX Bus
 
@@ -457,8 +589,8 @@ Check the serial console for diagnostic messages:
     
 5. **Robustness**:
     
-    - Log important events to persistent storage
-    - Implement sensor failure detection and fallback
+    - ✅ Log important events to persistent storage (IMPLEMENTED)
+    - ✅ Implement sensor failure detection and fallback (IMPLEMENTED - invalid readings rejected)
     - Add energy-saving mode
     - Consider adding a battery backup option
 
