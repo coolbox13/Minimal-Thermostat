@@ -89,8 +89,8 @@ private:
     static ValveHealthMonitor* _instance;
 
     // Error history (last 100 commands)
-    static const int HISTORY_SIZE = 100;
-    float _errorHistory[HISTORY_SIZE];
+    static const int VALVE_HISTORY_SIZE = 100;
+    float _errorHistory[VALVE_HISTORY_SIZE];
     int _historyIndex;
     int _historyCount;
 

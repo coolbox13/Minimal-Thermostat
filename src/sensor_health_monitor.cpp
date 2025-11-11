@@ -16,7 +16,7 @@ SensorHealthMonitor::SensorHealthMonitor()
       _historyCount(0),
       _wasUnhealthy(false) {
     // Initialize history buffer
-    for (int i = 0; i < HISTORY_SIZE; i++) {
+    for (int i = 0; i < SENSOR_HISTORY_SIZE; i++) {
         _readingHistory[i] = true; // Start optimistic
     }
 }
@@ -37,8 +37,8 @@ void SensorHealthMonitor::recordReading(bool isValid, float value) {
 
     // Update circular buffer for failure rate
     _readingHistory[_historyIndex] = isValid;
-    _historyIndex = (_historyIndex + 1) % HISTORY_SIZE;
-    if (_historyCount < HISTORY_SIZE) {
+    _historyIndex = (_historyIndex + 1) % SENSOR_HISTORY_SIZE;
+    if (_historyCount < SENSOR_HISTORY_SIZE) {
         _historyCount++;
     }
 
