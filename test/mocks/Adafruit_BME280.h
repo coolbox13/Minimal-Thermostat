@@ -2,7 +2,11 @@
 #define MOCK_ADAFRUIT_BME280_H
 
 #include <stdint.h>
-#include <cmath>
+#include <math.h>
+
+#ifndef NAN
+#define NAN (__builtin_nanf(""))
+#endif
 
 /**
  * Mock implementation of Adafruit BME280 sensor library for testing

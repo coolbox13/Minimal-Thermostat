@@ -6,7 +6,8 @@
       "Bash(~/.platformio/penv/bin/platformio run:*)",
       "Bash(git add:*)",
       "Bash(git checkout:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(~/.platformio/penv/bin/platformio test:*)"
     ],
     "deny": [],
     "ask": []

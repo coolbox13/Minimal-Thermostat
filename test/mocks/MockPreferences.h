@@ -1,6 +1,7 @@
 #ifndef MOCK_PREFERENCES_H
 #define MOCK_PREFERENCES_H
 
+#include <stdint.h>
 #include <map>
 #include <string>
 
