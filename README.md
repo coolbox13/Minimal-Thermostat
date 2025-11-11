@@ -376,7 +376,6 @@ The thermostat provides a comprehensive Progressive Web App (PWA) with multiple 
 - **Real-time Updates**: WebSocket-like updates for live data
 - **Dark Theme**: Modern, easy-on-the-eyes interface
 
-![Web Interface](https://raw.githubusercontent.com/username/ESP32-KNX-Thermostat/main/docs/images/web_interface.png)
 
 ## KNX Integration
 
