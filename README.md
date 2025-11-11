@@ -1,6 +1,9 @@
 # ESP32-KNX-Thermostat
 
 [![CI/CD Pipeline](https://github.com/coolbox13/Minimal-Thermostat/actions/workflows/ci.yml/badge.svg)](https://github.com/coolbox13/Minimal-Thermostat/actions/workflows/ci.yml)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32-orange.svg)](https://platformio.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Last Commit](https://img.shields.io/github/last-commit/coolbox13/Minimal-Thermostat)](https://github.com/coolbox13/Minimal-Thermostat/commits/main)
 
 A modular smart thermostat system built on ESP32 that integrates with KNX building automation networks, providing advanced climate control with multiple connectivity options.
 
