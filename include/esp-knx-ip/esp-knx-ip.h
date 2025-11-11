@@ -35,7 +35,7 @@
 #include "Arduino.h"
 #include <Preferences.h>
 #include <WiFi.h>
-#include <WiFiUdP.h>
+#include <WiFiUDP.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "DPT.h"

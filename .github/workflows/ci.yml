@@ -106,7 +106,7 @@ jobs:
                  --suppress=missingIncludeSystem \
                  --suppress=unmatchedSuppression \
                  -I include \
-                 src/ ||
+                 src/ || echo "cppcheck found warnings (non-blocking)"
 
     - name: Check code formatting
       run: |
