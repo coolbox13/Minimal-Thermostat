@@ -1,4 +1,5 @@
 #include "config_manager.h"
+#include "config.h"
 #include "logger.h"
 
 // Static tag for logging
