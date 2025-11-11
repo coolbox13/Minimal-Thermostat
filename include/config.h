@@ -21,6 +21,12 @@
 #define KNX_GA_TEST_VALVE_MID 2
 #define KNX_GA_TEST_VALVE_SUB 2
 
+// KNX Valve status/feedback address - Used to read actual valve position from the bus
+// By default, same as command address (if valve doesn't have separate feedback)
+#define KNX_GA_VALVE_STATUS_MAIN 1
+#define KNX_GA_VALVE_STATUS_MID 1
+#define KNX_GA_VALVE_STATUS_SUB 2
+
 // KNX Group Addresses for BME280 sensor data
 #define KNX_GA_TEMPERATURE_MAIN 0
 #define KNX_GA_TEMPERATURE_MID 0

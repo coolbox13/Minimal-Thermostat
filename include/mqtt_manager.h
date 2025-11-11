@@ -26,7 +26,13 @@ public:
     
     // Publish sensor data to MQTT
     void publishSensorData(float temperature, float humidity, float pressure);
-    
+
+    // Publish PID parameters to MQTT (for Home Assistant)
+    void updatePIDParameters(float kp, float ki, float kd);
+
+    // Publish diagnostic data to MQTT (for Home Assistant)
+    void updateDiagnostics(int wifiRSSI, unsigned long uptime);
+
     // Set valve position (from KNX)
     void setValvePosition(int position);
     

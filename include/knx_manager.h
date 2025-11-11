@@ -74,7 +74,8 @@ private:
     void processQueue();
     
     // KNX group addresses
-    address_t _valveAddress;
+    address_t _valveAddress;           // Command address for valve control
+    address_t _valveStatusAddress;     // Status/feedback address to read actual valve position
     address_t _temperatureAddress;
     address_t _humidityAddress;
     address_t _pressureAddress;

@@ -202,6 +202,14 @@ void initializeKNXAndMQTT() {
         LOG_I(TAG_MAIN, "KNX address configuration changed, reloading addresses");
         knxManager.reloadAddresses();
     });
+
+    // HA MQTT FIX: Publish initial PID parameters after MQTT connection
+    // This ensures PID sensors don't show "Unknown" in Home Assistant
+    float kp = configManager->getPidKp();
+    float ki = configManager->getPidKi();
+    float kd = configManager->getPidKd();
+    mqttManager.updatePIDParameters(kp, ki, kd);
+    LOG_D(TAG_MQTT, "Published initial PID parameters: Kp=%.3f, Ki=%.3f, Kd=%.3f", kp, ki, kd);
 }
 void initializePID() {
     initializePIDController();
@@ -311,7 +319,7 @@ void loop() {
     static unsigned long lastConnectivityCheck = 0;
     if (millis() - lastConnectivityCheck > configManager->getConnectivityCheckInterval()) {
         lastConnectivityCheck = millis();
-        
+
         WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
         if (wifiManager.getState() == WiFiConnectionState::CONNECTED) {
             if (wifiManager.testInternetConnectivity()) {
@@ -320,6 +328,16 @@ void loop() {
                 LOG_W(TAG_WIFI, "Internet connectivity test failed despite WiFi connection");
             }
         }
+    }
+
+    // HA MQTT FIX: Update diagnostics every 60 seconds for Home Assistant
+    static unsigned long lastDiagnosticsUpdate = 0;
+    if (millis() - lastDiagnosticsUpdate > 60000) {
+        int rssi = WiFi.RSSI();
+        unsigned long uptime = millis() / 1000;
+        mqttManager.updateDiagnostics(rssi, uptime);
+        lastDiagnosticsUpdate = millis();
+        LOG_D(TAG_MQTT, "Published diagnostics: RSSI=%d dBm, Uptime=%lu s", rssi, uptime);
     }
 }
 
@@ -433,6 +451,9 @@ void updatePIDControl() {
         lastConfigWrite = millis();
         pendingConfigWrite = false;
         LOG_I(TAG_PID, "PID parameters written to flash storage");
+
+        // HA MQTT FIX: Publish PID parameters to Home Assistant after saving
+        mqttManager.updatePIDParameters(g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
     }
 }
 

@@ -50,10 +50,28 @@ void MQTTManager::setKNXManager(KNXManager* knxManager) {
 
 void MQTTManager::publishSensorData(float temperature, float humidity, float pressure) {
     if (!_mqttClient.connected()) return;
-    
+
     // Update Home Assistant with all sensor values
     if (_homeAssistant) {
         _homeAssistant->updateStates(temperature, humidity, pressure, _valvePosition);
+    }
+}
+
+void MQTTManager::updatePIDParameters(float kp, float ki, float kd) {
+    if (!_mqttClient.connected()) return;
+
+    // Update Home Assistant with PID parameters
+    if (_homeAssistant) {
+        _homeAssistant->updatePIDParameters(kp, ki, kd);
+    }
+}
+
+void MQTTManager::updateDiagnostics(int wifiRSSI, unsigned long uptime) {
+    if (!_mqttClient.connected()) return;
+
+    // Update Home Assistant with diagnostic data
+    if (_homeAssistant) {
+        _homeAssistant->updateDiagnostics(wifiRSSI, uptime);
     }
 }
 
@@ -173,6 +191,12 @@ void MQTTManager::reconnect() {
             // Update availability
             if (_homeAssistant) {
                 _homeAssistant->updateAvailability(true);
+
+                // HA MQTT FIX: Publish initial diagnostic state immediately after connection
+                // This ensures sensors don't show "Unknown" in Home Assistant
+                int rssi = WiFi.RSSI();
+                unsigned long uptime = millis() / 1000;
+                _homeAssistant->updateDiagnostics(rssi, uptime);
             }
         } else {
             Serial.print("MQTT connection failed, rc=");
