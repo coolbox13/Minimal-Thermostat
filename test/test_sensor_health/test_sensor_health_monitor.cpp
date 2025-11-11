@@ -20,8 +20,9 @@
 // ===== Test Fixtures =====
 
 void setUp(void) {
-    // Get fresh instance for each test
+    // Reset state to ensure clean slate for each test
     SensorHealthMonitor* monitor = SensorHealthMonitor::getInstance();
+    monitor->reset();
     monitor->begin();
 }
 

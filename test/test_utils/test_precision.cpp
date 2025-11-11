@@ -50,7 +50,7 @@ void test_roundToPrecision_three_decimals() {
 // Test negative numbers
 void test_roundToPrecision_negative_numbers() {
     TEST_ASSERT_EQUAL_FLOAT(-5.0, ConfigManager::roundToPrecision(-5.4, 0));
-    TEST_ASSERT_EQUAL_FLOAT(-5.0, ConfigManager::roundToPrecision(-5.5, 0));  // Note: rounds to even
+    TEST_ASSERT_EQUAL_FLOAT(-6.0, ConfigManager::roundToPrecision(-5.5, 0));  // Round away from zero (symmetric with 5.5->6.0)
     TEST_ASSERT_EQUAL_FLOAT(-22.1, ConfigManager::roundToPrecision(-22.05, 1));
     TEST_ASSERT_EQUAL_FLOAT(-2.01, ConfigManager::roundToPrecision(-2.005, 2));
 }

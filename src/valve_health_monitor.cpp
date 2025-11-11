@@ -151,3 +151,19 @@ bool ValveHealthMonitor::hasRecovered() {
 
     return false;
 }
+
+void ValveHealthMonitor::reset() {
+    _historyIndex = 0;
+    _historyCount = 0;
+    _stuckCount = 0;
+    _consecutiveStuckCount = 0;
+    _lastCommandedPosition = 0.0f;
+    _lastActualPosition = 0.0f;
+    _lastError = 0.0f;
+    _wasStuck = false;
+
+    // Reset error history to zero
+    for (int i = 0; i < VALVE_HISTORY_SIZE; i++) {
+        _errorHistory[i] = 0.0f;
+    }
+}

@@ -69,16 +69,19 @@ void HistoryManager::getHistoryJson(JsonDocument& doc, int maxPoints) {
     }
 
     int pointsAdded = 0;
-    for (int i = 0; i < numPoints && pointsAdded < numPoints; i += skip) {
+    for (int i = 0; i < numPoints; i += skip) {
         int idx = (startIdx + i) % BUFFER_SIZE;
-        if (idx < _count || _count == BUFFER_SIZE) {
-            timestamps.add(_buffer[idx].timestamp);
-            temperatures.add(_buffer[idx].temperature);
-            humidities.add(_buffer[idx].humidity);
-            pressures.add(_buffer[idx].pressure);
-            valvePositions.add(_buffer[idx].valvePosition);
-            pointsAdded++;
+        // When buffer is not full, only include valid indices
+        // When buffer is full, all indices are valid
+        if (_count < BUFFER_SIZE && idx >= _count) {
+            continue;  // Skip invalid indices
         }
+        timestamps.add(_buffer[idx].timestamp);
+        temperatures.add(_buffer[idx].temperature);
+        humidities.add(_buffer[idx].humidity);
+        pressures.add(_buffer[idx].pressure);
+        valvePositions.add(_buffer[idx].valvePosition);
+        pointsAdded++;
     }
 
     doc["count"] = pointsAdded;

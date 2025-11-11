@@ -246,8 +246,8 @@ void test_export_to_json(void) {
     StaticJsonDocument<2048> doc;
     config->getJson(doc);
 
-    // Verify exported values
-    TEST_ASSERT_EQUAL_STRING("TestNet", doc["network"]["wifi"]["ssid"]);
+    // Verify exported values (match actual JSON structure from getJson)
+    TEST_ASSERT_EQUAL_STRING("TestNet", doc["network"]["wifi_ssid"]);
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 3.0f, doc["pid"]["kp"]);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 21.0f, doc["pid"]["setpoint"]);
     TEST_ASSERT_EQUAL_INT(8883, doc["mqtt"]["port"]);
@@ -260,10 +260,10 @@ void test_import_from_json_valid(void) {
     ConfigManager* config = ConfigManager::getInstance();
     config->begin();
 
-    // Create JSON configuration
+    // Create JSON configuration (match actual JSON structure expected by setFromJson)
     StaticJsonDocument<2048> doc;
-    doc["network"]["wifi"]["ssid"] = "ImportedNet";
-    doc["network"]["wifi"]["password"] = "ImportedPass";
+    doc["network"]["wifi_ssid"] = "ImportedNet";
+    doc["network"]["wifi_pass"] = "ImportedPass";
     doc["mqtt"]["server"] = "imported.mqtt.com";
     doc["mqtt"]["port"] = 1884;
     doc["knx"]["area"] = 5;

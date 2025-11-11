@@ -19,7 +19,9 @@
 // ===== Test Fixtures =====
 
 void setUp(void) {
+    // Reset state to ensure clean slate for each test
     ValveHealthMonitor* monitor = ValveHealthMonitor::getInstance();
+    monitor->reset();
     monitor->begin();
 }
 

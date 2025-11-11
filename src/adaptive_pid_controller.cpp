@@ -239,7 +239,7 @@ static void updateTimers(float dt) {
     adaptation_timer += dt;
 }
 static bool isWithinDeadband(float error, float deadband) {
-    return (error > -deadband && error < deadband);
+    return (error >= -deadband && error <= deadband);  // Inclusive boundaries
 }
 static void updateIntegralErrorWithAntiWindup(AdaptivePID_Input *input, float error) {
     integral_error += error * input->dt;
@@ -293,6 +293,16 @@ static void trackPerformanceMetrics(AdaptivePID_Input *input, float error) {
  * @param output Pointer to the PID output structure.
  */
 void AdaptivePID_Update(AdaptivePID_Input *input, AdaptivePID_Output *output) {
+    // Validate inputs - handle NaN and Infinity
+    if (isnan(input->current_temp) || isinf(input->current_temp)) {
+        // On invalid temperature, maintain previous valve position
+        output->valve_command = input->valve_feedback;
+        output->error = 0.0f;
+        output->integral_error = integral_error;
+        output->derivative_error = 0.0f;
+        return;
+    }
+
     float error = input->setpoint_temp - input->current_temp;
     bool setpointChanged = handleSetpointChange(input->setpoint_temp);
     if (!setpointChanged) {
