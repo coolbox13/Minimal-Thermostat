@@ -592,3 +592,217 @@ void validateValveEffectiveness() {
 1. #9 first (most value, moderate effort)
 2. #10 second (if applicable to valve type)
 3. #8 last (only if architecture changes)
+
+
+
+Added the feedback from Home Assitant audit:
+
+
+Based on my audit of the Home Assistant MQTT integration, I've identified the root cause of why some sensors show "Unknown". Here's my comprehensive analysis:
+
+  HOME ASSISTANT MQTT INTEGRATION AUDIT REPORT
+
+  Current Status
+
+  Working Sensors (5/10):
+  - ✅ Temperature: 20.3°C
+  - ✅ Humidity: 53%
+  - ✅ Pressure: 1,013 hPa
+  - ✅ Valve Position: 0%
+  - ✅ Heating Status: Not running
+
+  Not Working Sensors (5/10):
+  - ❌ PID Kp: Unknown
+  - ❌ PID Ki: Unknown
+  - ❌ PID Kd: Unknown
+  - ❌ Uptime: Unknown
+  - ❌ WiFi Signal: Unknown
+
+  ---
+  ROOT CAUSE ANALYSIS
+
+  1. Discovery vs State Updates
+
+  The code has two distinct phases:
+
+  Phase 1: Discovery (Registration) - home_assistant.cpp:35-274
+  - ✅ ALL sensors are properly registered via MQTT discovery
+  - ✅ Discovery configs published to topics like homeassistant/sensor/esp32_thermostat_pid_kp/config
+  - ✅ All 10 entities are visible in Home Assistant
+
+  Phase 2: State Updates - home_assistant.cpp:277-344
+  - ❌ CRITICAL ISSUE: Not all sensors receive regular state updates
+  - Only updateStates() is called regularly from main loop
+  - updatePIDParameters() and updateDiagnostics() are NEVER called
+
+  2. Code Flow Analysis
+
+  What's being called regularly:
+
+  From main.cpp:298-346 and mqtt_manager.cpp:51-58:
+
+  updateSensorReadings()
+    └─> mqttManager.publishSensorData(temp, humidity, pressure)
+        └─> homeAssistant->updateStates(temp, humidity, pressure, valvePosition)
+
+  This only updates 5 sensors: temperature, humidity, pressure, valve position, heating status.
+
+  What's NOT being called:
+
+  - updatePIDParameters(Kp, Ki, Kd) - src/home_assistant.cpp:310-322
+  - updateDiagnostics(wifiRSSI, uptime) - src/home_assistant.cpp:325-333
+
+  These functions exist but are orphaned - no code path calls them!
+
+  3. Home Assistant MQTT Requirements
+
+  According to HA documentation, sensors need:
+
+  1. ✅ Discovery config (one-time) - DONE
+  2. ✅ State topic defined - DONE (e.g., esp32_thermostat/pid/kp)
+  3. ❌ Regular state updates published - MISSING for 5 sensors
+  4. ✅ Availability topic - DONE (all sensors share esp32_thermostat/status)
+
+  Key Finding: Home Assistant shows "Unknown" when:
+  - Sensor is discovered (registered) ✅
+  - But no state message has ever been published to its state_topic ❌
+
+  ---
+  DETAILED FINDINGS
+
+  Discovery Configuration (Lines 186-273)
+
+  All sensors are correctly configured with:
+  - ✅ device_class (e.g., "signal_strength", "duration")
+  - ✅ state_topic (where ESP32 should publish values)
+  - ✅ unit_of_measurement (dBm, s, etc.)
+  - ✅ unique_id for entity registry
+  - ✅ availability_topic for online/offline status
+
+  Example for WiFi Signal:
+  {
+    "name": "WiFi Signal",
+    "device_class": "signal_strength",
+    "state_topic": "esp32_thermostat/wifi/rssi",
+    "unit_of_measurement": "dBm",
+    "unique_id": "esp32_thermostat_wifi_rssi"
+  }
+
+  State Update Functions
+
+  1. updateStates() - Lines 277-307 ✅ WORKING
+  - Called from: mqtt_manager.cpp:56
+  - Frequency: Every 30 seconds (sensor update interval)
+  - Publishes: temperature, humidity, pressure, valve position, heating status
+
+  2. updatePIDParameters() - Lines 310-322 ❌ NEVER CALLED
+  - Expected to publish: PID Kp, Ki, Kd values
+  - Topics: esp32_thermostat/pid/kp, /ki, /kd
+  - Issue: No caller in main.cpp or mqtt_manager.cpp
+
+  3. updateDiagnostics() - Lines 325-333 ❌ NEVER CALLED
+  - Expected to publish: WiFi RSSI, uptime
+  - Topics: esp32_thermostat/wifi/rssi, esp32_thermostat/uptime
+  - Issue: No caller in main.cpp or mqtt_manager.cpp
+
+  ---
+  BIDIRECTIONAL COMMUNICATION CHECK
+
+  ESP32 → Home Assistant (State Updates)
+
+  - ✅ Working for 5 sensors
+  - ❌ Missing for 5 sensors (not called)
+
+  Home Assistant → ESP32 (Commands)
+
+  Checked mqtt_manager.cpp:93-151:
+
+  ✅ Temperature Setpoint (Line 129-142):
+  - Topic: esp32_thermostat/temperature/set
+  - Action: Calls setTemperatureSetpoint()
+  - Status: Properly subscribed (line 170)
+
+  ✅ Valve Position Command (Line 107-126):
+  - Topics: MQTT_TOPIC_VALVE_COMMAND, esp32_thermostat/valve/set
+  - Action: Updates valve via KNXManager
+  - Status: Properly subscribed (lines 168-169)
+
+  ✅ System Restart (Line 144-150):
+  - Topic: esp32_thermostat/restart
+  - Status: Properly subscribed (line 171)
+
+  Finding: Bidirectional communication is properly implemented for climate control.
+
+  ---
+  COMPARISON WITH HA BEST PRACTICES
+
+  ✅ Following Best Practices:
+
+  1. Using MQTT discovery protocol correctly
+  2. Proper device registration with identifiers
+  3. Availability topic for online/offline status
+  4. Retained messages for discovery configs
+  5. Appropriate device_class for sensor types
+  6. Unique IDs for entity registry
+
+  ⚠️ Missing Best Practices:
+
+  1. State updates on change: PID parameters should publish when changed
+  2. Periodic diagnostics: WiFi/uptime should update regularly (every 60s recommended)
+  3. Initial state publish: After discovery, should immediately publish current values
+
+  Home Assistant Expectations:
+
+  According to HA MQTT sensor documentation:
+  - Sensors need at least one state message after discovery to show a value
+  - State updates should be:
+    - On change for parameters that change infrequently (PID values)
+    - Periodic for diagnostics (WiFi RSSI every 60s, uptime every 60s)
+    - Real-time for sensor readings (temperature every 30s) ✅
+
+  ---
+  RECOMMENDATIONS
+
+  1. Add Regular Diagnostic Updates (High Priority)
+
+  Add to main loop in main.cpp:
+  // Update diagnostics every 60 seconds
+  static unsigned long lastDiagnosticsUpdate = 0;
+  if (millis() - lastDiagnosticsUpdate > 60000) {
+      int rssi = WiFi.RSSI();
+      unsigned long uptime = millis() / 1000;
+      mqttManager.updateDiagnostics(rssi, uptime);
+      lastDiagnosticsUpdate = millis();
+  }
+
+  2. Publish PID Parameters on Change (High Priority)
+
+  In main.cpp:416-436 where PID params are saved:
+  if (pendingConfigWrite && configWriteElapsed > ...) {
+      // ... existing code ...
+      // Add MQTT update after saving
+      mqttManager.updatePIDParameters(g_pid_input.Kp, g_pid_input.Ki, g_pid_input.Kd);
+  }
+
+  3. Add MQTTManager Methods (Required)
+
+  In mqtt_manager.h and mqtt_manager.cpp:
+  void updatePIDParameters(float kp, float ki, float kd);
+  void updateDiagnostics(int wifiRSSI, unsigned long uptime);
+
+  4. Publish Initial State After Discovery (Medium Priority)
+
+  After _homeAssistant->begin() in mqtt_manager.cpp:35, publish current values immediately.
+
+  ---
+  SUMMARY
+
+  The issue is not with Home Assistant or the discovery protocol. The ESP32 firmware correctly registers all sensors, but forgets to send state updates for half of them. The missing sensors (PID params, WiFi signal, uptime) are "orphaned" - their
+  update functions exist but are never called from the main loop.
+
+  Fix Strategy:
+  1. Call updateDiagnostics() every 60 seconds from main loop
+  2. Call updatePIDParameters() when PID values change
+  3. Publish initial values immediately after MQTT connection
+
+  This is a simple integration issue - the plumbing exists, it's just not connected to the water supply.
