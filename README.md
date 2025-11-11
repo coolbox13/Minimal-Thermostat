@@ -11,61 +11,84 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 
 ## Features
 
-- **Advanced Climate Control**: 
+- **Advanced Climate Control**:
   - Adaptive PID-based temperature regulation with self-tuning capability
   - Manual override functionality with timeout support
   - Sensor validation to prevent invalid readings from affecting control
   - Write coalescing for flash wear reduction (PID parameters saved max once per 5 minutes)
-  
-- **Multi-Protocol Support**: 
+  - Configurable PID deadband and adaptation intervals
+
+- **Component Health Monitoring**:
+  - **Sensor Health Monitoring**: Tracks consecutive failures, calculates failure rates, automatic recovery detection
+  - **Valve Health Monitoring**: Validates commanded vs. actual position, detects stuck valves, error history tracking
+  - Real-time health status visible in web UI with color-coded indicators
+  - Alert thresholds: 3 failures = warning, 10+ failures = critical
+
+- **Multi-Protocol Support**:
   - Native KNX integration for building automation
   - MQTT connectivity for home automation systems
   - Web interface for direct control and configuration
   - Webhook integration for IFTTT, Zapier, and custom automation
-  
-- **Sensor Integration**: 
+
+- **Sensor Integration**:
   - BME280 temperature/humidity/pressure monitoring
-  - 24-hour historical data storage (circular buffer, 5-minute intervals)
+  - 24-hour historical data storage (circular buffer, 5-minute intervals, 288 data points)
   - Real-time sensor readings with configurable update intervals
-  
-- **Robust Connectivity**: 
+  - NTP time synchronization for accurate timestamps
+
+- **Time Synchronization**:
+  - NTP-based time synchronization with configurable server
+  - Timezone and daylight saving time support
+  - Real timestamps instead of uptime-based timing
+  - Configurable via web interface
+
+- **Robust Connectivity**:
   - Advanced WiFi connection manager with event-driven architecture
-  - Automatic reconnection with configurable attempts
+  - Automatic reconnection with configurable attempts (default: 10)
   - Internet connectivity testing (ping-based)
-  - WiFi signal strength monitoring
+  - WiFi signal strength monitoring and reporting
   - Configuration portal when connection fails
-  - Dual watchdog system:
-    - 45-minute system watchdog for automatic recovery
-    - 30-minute WiFi watchdog for connection monitoring
-  
-- **Home Assistant Integration**: 
+  - Dual watchdog system (both configurable):
+    - System watchdog for automatic recovery (default: 45 minutes)
+    - WiFi watchdog for connection monitoring (default: 30 minutes)
+
+- **Home Assistant Integration**:
   - Full climate entity support with auto-discovery via MQTT
-  - Automatic device registration
+  - Automatic device registration with 10 entities
   - Supports on/off and heating modes
   - Temperature setpoint adjustment
-  
-- **Web Interface (PWA)**: 
+  - PID parameter sensors (Kp, Ki, Kd)
+  - Diagnostic sensors (WiFi signal, uptime)
+  - Valve position and heating status sensors
+
+- **Web Interface (PWA)**:
   - Progressive Web App with offline support
   - Multiple pages: Dashboard, Status, Configuration, Event Logs
   - Real-time data visualization
   - Historical data graphing (24-hour view)
-  - Mobile-responsive design
-  
-- **Event Logging & Monitoring**: 
+  - Mobile-responsive design with app icons
+  - Component health indicators with live status updates
+
+- **Event Logging & Monitoring**:
   - Persistent event log storage in SPIFFS (100 entries)
   - MQTT log publishing for remote monitoring
   - Filterable logs by level and tag
-  - Web-based log viewer
-  
-- **OTA Updates**: 
+  - Web-based log viewer with export functionality
+  - Log clearing via web interface
+
+- **OTA Updates**:
   - Remote firmware upgrades via web interface
   - Safe update process with rollback capability
-  
-- **Persistent Configuration**: 
+
+- **Configuration Management**:
   - Settings stored in non-volatile memory (Preferences API)
   - Configuration manager with web interface
-  - PID parameters persistence
+  - **Configuration export/import** (download/upload JSON)
+  - **Factory reset** functionality
+  - Remote reboot capability
+  - All PID parameters persistence
   - WiFi credentials storage
+  - Timing intervals configurable via web UI
 
 ## Architecture
 
@@ -321,16 +344,24 @@ The thermostat provides a comprehensive Progressive Web App (PWA) with multiple 
 
 ### Status Page (`/status`)
 - System status overview
-- WiFi connection information
+- WiFi connection information (RSSI, IP, signal quality)
 - Memory and flash usage statistics
-- Sensor health status
+- **Component Health section** with sensor and valve health monitoring
+- Real-time health indicators (green/yellow/red status)
+- Chip information and diagnostics
 
 ### Configuration Page (`/config`)
 - WiFi credentials configuration
 - KNX physical and group addresses (test/production toggle)
-- MQTT broker settings
-- PID parameters configuration
-- System settings (intervals, timeouts)
+- MQTT broker settings (server, port)
+- PID parameters configuration (Kp, Ki, Kd, deadband, adaptation interval)
+- **NTP time synchronization** (server, timezone, DST offset)
+- **System timing intervals** (sensor update, PID update, connectivity check)
+- **Watchdog timeouts** (system watchdog, WiFi watchdog)
+- **Webhook configuration** (URL, enable/disable, temperature thresholds)
+- **Manual override settings** (timeout duration)
+- Configuration export/import
+- Factory reset option
 
 ### Event Logs Page (`/logs`)
 - View persistent event logs
@@ -357,24 +388,53 @@ The thermostat uses standard KNX datapoints:
 
 ### KNX Addressing
 
-Both test and production addresses are supported:
-- Temperature Sensor: 0/0/4
-- Humidity Sensor: 0/0/5
-- Pressure Sensor: 0/0/6
-- Valve Control: 1/1/1 (production) or 10/2/2 (test)
+Both test and production addresses are supported with configurable valve feedback:
+- **Temperature Sensor**: 0/0/4 (output)
+- **Humidity Sensor**: 0/0/5 (output)
+- **Pressure Sensor**: 0/0/6 (output)
+- **Valve Control**: 1/1/1 (production) or 10/2/2 (test) - command output
+- **Valve Status**: 1/1/2 (production) - feedback input for closed-loop control
+
+The valve status address enables bidirectional communication, allowing the thermostat to:
+- Read actual valve position from feedback
+- Detect stuck valves (commanded vs. actual mismatch)
+- Enable closed-loop valve position control
 
 ## Home Assistant Integration
 
-The device automatically registers with Home Assistant via MQTT discovery:
-- Creates a climate entity for temperature control
-- Provides sensors for temperature, humidity, pressure, and valve position
-- Supports on/off and heating modes
-- Allows temperature setpoint adjustment
+The device automatically registers with Home Assistant via MQTT discovery, creating **10 entities**:
+
+**Climate Entity:**
+- Thermostat control with on/off and heating modes
+- Temperature setpoint adjustment (15-30°C)
+- Current temperature display
+- Heating action status
+
+**Sensor Entities:**
+- Temperature sensor (°C)
+- Humidity sensor (%)
+- Pressure sensor (hPa)
+- Valve position (%)
+- PID Kp parameter
+- PID Ki parameter
+- PID Kd parameter
+- WiFi signal strength (dBm)
+- System uptime (seconds)
+
+**Binary Sensor:**
+- Heating status (ON/OFF)
+
+All entities include:
+- Device information and unique IDs
+- Availability tracking (online/offline status)
+- State classes for proper history tracking
+- Appropriate icons and units
 
 Example Home Assistant configuration:
 ```yaml
 # Configuration is automatic via MQTT discovery
 # No manual YAML configuration required!
+# All 10 entities appear automatically after MQTT connection
 ```
 
 ## Project Structure
@@ -402,10 +462,13 @@ ESP32-KNX-Thermostat/
 │   ├── knx_manager.h            # KNX protocol manager
 │   ├── logger.h                 # Logging system
 │   ├── mqtt_manager.h           # MQTT protocol manager
+│   ├── ntp_manager.h            # NTP time synchronization
 │   ├── ota_manager.h            # OTA update manager
 │   ├── persistence_manager.h    # Persistent storage abstraction
+│   ├── sensor_health_monitor.h  # Sensor health monitoring
 │   ├── utils.h                  # Utility functions
 │   ├── valve_control.h          # Valve control interface
+│   ├── valve_health_monitor.h   # Valve health monitoring
 │   ├── watchdog_manager.h       # Watchdog system
 │   ├── web_server.h             # Web server manager
 │   ├── webhook_manager.h        # Webhook integration
@@ -422,10 +485,13 @@ ESP32-KNX-Thermostat/
 │   ├── logger.cpp
 │   ├── main.cpp                 # Main application
 │   ├── mqtt_manager.cpp
+│   ├── ntp_manager.cpp
 │   ├── ota_manager.cpp
 │   ├── persistence_manager.cpp
+│   ├── sensor_health_monitor.cpp
 │   ├── utils.cpp
 │   ├── valve_control.cpp
+│   ├── valve_health_monitor.cpp
 │   ├── watchdog_manager.cpp
 │   ├── web_server.cpp
 │   ├── webhook_manager.cpp
@@ -458,18 +524,55 @@ The web interface uses standard HTML, CSS and JavaScript:
 2. Add new API endpoints in `web_server.cpp`
 3. Upload the file system image to update the interface
 
+## REST API Endpoints
+
+The thermostat provides a comprehensive REST API for programmatic control:
+
+### Sensor Data
+- `GET /api/sensor-data` - Current temperature, humidity, pressure readings
+- `GET /api/history` - 24-hour historical data (288 data points)
+
+### System Status
+- `GET /api/status` - Complete system status (memory, WiFi, sensors, PID)
+- `GET /api/sensor-health` - Sensor health monitoring status
+- `GET /api/valve-health` - Valve health monitoring status
+
+### Control
+- `POST /api/setpoint` - Set temperature setpoint (5-30°C)
+- `POST /api/manual-override` - Enable/disable manual valve override
+- `GET /api/manual-override` - Get manual override status
+
+### Configuration
+- `GET /api/config` - Get all configuration settings
+- `POST /api/config` - Update configuration settings
+- `GET /api/config/export` - Export configuration as JSON file
+- `POST /api/config/import` - Import configuration from JSON file
+
+### System Management
+- `POST /api/reboot` - Trigger system restart
+- `POST /api/factory-reset` - Reset all settings to defaults
+
+### Event Logs
+- `GET /api/logs` - Retrieve persistent event logs
+- `POST /api/logs/clear` - Clear all event logs
+
+### Webhooks
+- `POST /api/webhook/test` - Test webhook connectivity
+
+All API endpoints return JSON responses with appropriate HTTP status codes.
+
 ## Troubleshooting
 
 ### WiFi Connection Issues
 
 The system includes several recovery mechanisms:
-- **Automatic Reconnection**: Up to 10 reconnection attempts with configurable timeouts
+- **Automatic Reconnection**: Configurable reconnection attempts (default: 10) with configurable timeout
 - **Configuration Portal**: Automatically starts when connection fails
-- **Watchdog System**: 
-  - System watchdog (45 minutes) for automatic reboot on system hang
-  - WiFi watchdog (30 minutes) for connection monitoring
-- **Internet Connectivity Testing**: Periodic ping tests to verify internet access
-- **Signal Strength Monitoring**: Tracks WiFi signal quality over time
+- **Watchdog System** (both configurable via web interface):
+  - System watchdog (default: 45 minutes) for automatic reboot on system hang
+  - WiFi watchdog (default: 30 minutes) for connection monitoring
+- **Internet Connectivity Testing**: Periodic ping tests to verify internet access (configurable interval)
+- **Signal Strength Monitoring**: Tracks WiFi signal quality and publishes to MQTT/HA
 
 Check the serial console for diagnostic messages:
 ```
@@ -491,7 +594,26 @@ The system maintains a persistent event log stored in SPIFFS:
 
 - Invalid sensor readings (NaN, infinity, out of range) are automatically rejected
 - PID control skips cycles with invalid readings to prevent system instability
+- **Sensor Health Monitoring** tracks consecutive failures with automatic alerting:
+  - 3 consecutive failures → Warning logged to EventLog
+  - 10+ consecutive failures → Critical error logged
+  - Failure rate >50% over 5 minutes → Sensor marked unhealthy
 - Check event logs for sensor error messages
+- View real-time sensor health status on Status page (`/status`)
+- Access programmatic health data via `/api/sensor-health`
+
+### Valve Health Monitoring
+
+- **Valve Health Monitoring** validates commanded vs. actual valve position:
+  - Compares commanded position with feedback from valve status address (1/1/2)
+  - Tracks position error history (100 samples)
+  - Warning threshold: >10% position deviation
+  - Critical threshold: >20% position deviation (stuck valve)
+  - 5+ consecutive critical errors → Valve marked as stuck/non-responsive
+- Check event logs for valve error messages
+- View real-time valve health status on Status page (`/status`)
+- Access programmatic health data via `/api/valve-health`
+- Ensure valve status address (1/1/2) is correctly configured for feedback
 
 ### Memory Management
 
@@ -510,26 +632,39 @@ The system maintains a 24-hour rolling history of sensor readings:
 - API endpoint: `/api/history` (returns JSON)
 - Circular buffer automatically overwrites oldest data
 
-## Hardware-Encoded Settings Table
+## Configuration Settings Table
 
-|Setting|Current Change Method|Recommended Change Method|
+|Setting|Change Method|Storage|
 |---|---|---|
-|WiFi credentials|Web interface, WiFiManager|Keep current|
-|KNX physical address|KNX web interface|Keep current|
-|KNX group addresses|KNX web interface|Add to web config|
-|MQTT server & port|Web interface|Keep current|
-|PID parameters (Kp, Ki, Kd)|Web interface|Keep current|
-|Temperature setpoint|Web, MQTT, KNX|Keep current|
-|Valve position|Web, MQTT, KNX|Keep current|
-|BME280 I²C address|Hardcoded (0x76)|Add to web config|
-|I²C pins (SDA/SCL)|Hardcoded (21/22)|Add to web config|
-|Debug level|Hardcoded|Add to web config|
-|MQTT topics|Hardcoded|Add to web config|
-|KNX test addresses|Hardcoded|Add to web config|
-|Watchdog timeout|Hardcoded (45 min)|Add to web config|
-|WIFI reconnect attempts|Hardcoded (10)|Add to web config|
-|Sensor update interval|Hardcoded (30s)|Add to web config|
-|PID update interval|Hardcoded (10s)|Add to web config|
+|WiFi credentials|Web interface, WiFiManager|Preferences (persistent)|
+|KNX physical address|Web interface|Preferences (persistent)|
+|KNX group addresses|Web interface (test/production toggle)|Preferences (persistent)|
+|KNX valve status address|Compile-time (config.h)|Hardcoded|
+|MQTT server & port|Web interface|Preferences (persistent)|
+|PID parameters (Kp, Ki, Kd)|Web interface|Preferences (persistent)|
+|PID deadband|Web interface|Preferences (persistent)|
+|PID adaptation interval|Web interface|Preferences (persistent)|
+|Temperature setpoint|Web, MQTT, KNX|Preferences (persistent)|
+|Valve position|Web, MQTT, KNX|Runtime only|
+|Manual override timeout|Web interface|Preferences (persistent)|
+|**NTP server**|**Web interface**|**Preferences (persistent)**|
+|**Timezone offset**|**Web interface**|**Preferences (persistent)**|
+|**Daylight saving offset**|**Web interface**|**Preferences (persistent)**|
+|**Sensor update interval**|**Web interface**|**Preferences (persistent)**|
+|**PID update interval**|**Web interface**|**Preferences (persistent)**|
+|**Connectivity check interval**|**Web interface**|**Preferences (persistent)**|
+|**System watchdog timeout**|**Web interface**|**Preferences (persistent)**|
+|**WiFi watchdog timeout**|**Web interface**|**Preferences (persistent)**|
+|**WiFi reconnect attempts**|**Web interface**|**Preferences (persistent)**|
+|**WiFi connection timeout**|**Web interface**|**Preferences (persistent)**|
+|**Webhook URL**|**Web interface**|**Preferences (persistent)**|
+|**Webhook temperature thresholds**|**Web interface**|**Preferences (persistent)**|
+|BME280 I²C address|Hardcoded (0x76)|Compile-time|
+|I²C pins (SDA/SCL)|Hardcoded (21/22)|Compile-time|
+|Debug level|Hardcoded|Compile-time|
+|MQTT base topics|Hardcoded|Compile-time|
+
+**Note**: Settings marked in **bold** are fully configurable via web interface and were previously incorrectly documented as hardcoded.
 
 ## Bus Communication Table
 
@@ -541,7 +676,7 @@ The system maintains a 24-hour rolling history of sensor readings:
 |Input|esp32_thermostat/temperature/set|Set temperature setpoint|
 |Input|esp32_thermostat/valve/set|Set valve position directly|
 |Input|esp32_thermostat/restart|Trigger device restart|
-|Output|esp32_thermostat/status|Device online status|
+|Output|esp32_thermostat/status|Device online status (availability)|
 |Output|esp32_thermostat/temperature|Current temperature|
 |Output|esp32_thermostat/humidity|Current humidity|
 |Output|esp32_thermostat/pressure|Current pressure|
@@ -549,96 +684,107 @@ The system maintains a 24-hour rolling history of sensor readings:
 |Output|esp32_thermostat/mode/state|Current thermostat mode|
 |Output|esp32_thermostat/temperature/setpoint|Current temperature setpoint|
 |Output|esp32_thermostat/action|Current action (heating/idle)|
+|Output|**esp32_thermostat/pid/kp**|**PID Kp parameter**|
+|Output|**esp32_thermostat/pid/ki**|**PID Ki parameter**|
+|Output|**esp32_thermostat/pid/kd**|**PID Kd parameter**|
+|Output|**esp32_thermostat/wifi/rssi**|**WiFi signal strength (dBm)**|
+|Output|**esp32_thermostat/uptime**|**System uptime (seconds)**|
+|Output|**esp32_thermostat/heating/state**|**Heating status (ON/OFF)**|
 |Output|esp32_thermostat/logs|Event log entries (JSON format)|
+
+**Note**: Topics in **bold** were added for Home Assistant integration and diagnostic monitoring.
 
 ### KNX Bus
 
-|Direction|Group Address|Purpose|
-|---|---|---|
-|Input|10/2/2 (test)|Valve control input|
-|Input|1/1/1 (production)|Valve control input|
-|Output|0/0/4|Temperature sensor value|
-|Output|0/0/5|Humidity sensor value|
-|Output|0/0/6|Pressure sensor value|
-|Output|10/2/2|Valve position output (test address)|
-|Output|1/1/1|Valve position output (production address)|
+|Direction|Group Address|Purpose|DPT|
+|---|---|---|---|
+|Input|10/2/2 (test)|Valve control command input|5.001|
+|Input|1/1/1 (production)|Valve control command input|5.001|
+|**Input**|**1/1/2 (production)**|**Valve status feedback input**|**5.001**|
+|Output|0/0/4|Temperature sensor value|9.001|
+|Output|0/0/5|Humidity sensor value|9.007|
+|Output|0/0/6|Pressure sensor value|9.006|
+|Output|10/2/2 (test)|Valve position command output|5.001|
+|Output|1/1/1 (production)|Valve position command output|5.001|
 
-## Recommendations
+**Note**: The valve status address (1/1/2) enables bidirectional communication for closed-loop valve control and health monitoring.
 
-1. **Hardcoded Settings**: Add configuration options in the web interface for all hardcoded settings, particularly:
-    
+## Recommendations for Future Development
+
+1. **Remaining Hardcoded Settings**: Add configuration options in the web interface for:
     - I²C address and pins for BME280
-    - MQTT topics structure
-    - KNX group addresses
-    - Timing parameters (watchdog, intervals)
-    
-2. **Communication Protocol**:
-    
-    - Implement bidirectional feedback for the valve position in KNX
+    - MQTT base topic structure
+    - KNX valve status address (currently compile-time only)
+
+2. **Communication Protocol Enhancements**:
     - Add proper KNX datapoint types for thermostat mode (DPT 20.102)
-    - Enable temperature setpoint control via KNX (currently only implemented in MQTT)
-    
+    - Enable temperature setpoint control via KNX (currently only MQTT/Web)
+
 3. **Security Improvements**:
-    
     - Add MQTT username/password to web configuration
     - Implement secure storage for credentials
     - Add authentication for the web interface
     - Consider TLS for MQTT connections
-    
+
 4. **User Experience**:
-    
-    - Create a settings export/import feature
-    - Implement profiles for different operating modes
-    - Add factory reset option
-    - Improve mobile responsiveness of the web interface
-    
-5. **Robustness**:
-    
-    - ✅ Log important events to persistent storage (IMPLEMENTED)
-    - ✅ Implement sensor failure detection and fallback (IMPLEMENTED - invalid readings rejected)
-    - Add energy-saving mode
-    - Consider adding a battery backup option
+    - Implement profiles for different operating modes (comfort, eco, away)
+    - Enhance mobile responsiveness of configuration page
+    - Add scheduling/automation support
+
+5. **Advanced Features**:
+    - Add energy-saving mode with reduced PID update frequency
+    - Consider battery backup option for critical settings
+    - Implement valve position learning/calibration
+    - Add frost protection mode
 
 ## Home Assistant Integration Table
 
-|Direction|Entity Type|Entity ID|Purpose|Data Type|
-|---|---|---|---|---|
-|Input|climate|esp32_thermostat_thermostat|Set mode, temperature|modes, temperature|
-|Output|climate|esp32_thermostat_thermostat|Thermostat status|temperature, setpoint, mode, action|
-|Output|sensor|esp32_thermostat_temperature|Current temperature|°C|
-|Output|sensor|esp32_thermostat_humidity|Current humidity|%|
-|Output|sensor|esp32_thermostat_pressure|Current pressure|hPa|
-|Output|sensor|esp32_thermostat_valve_position|Valve position|%|
-|Output|sensor|availability|Device online status|online/offline|
+|Direction|Entity Type|Entity ID|Purpose|Data Type|State Class|
+|---|---|---|---|---|---|
+|Input/Output|climate|esp32_thermostat_thermostat|Thermostat control|temperature, setpoint, mode, action|N/A|
+|Output|sensor|esp32_thermostat_temperature|Current temperature|°C|measurement|
+|Output|sensor|esp32_thermostat_humidity|Current humidity|%|measurement|
+|Output|sensor|esp32_thermostat_pressure|Current pressure|hPa|measurement|
+|Output|sensor|esp32_thermostat_valve_position|Valve position|%|measurement|
+|Output|**sensor**|**esp32_thermostat_pid_kp**|**PID Kp parameter**|**numeric**|**N/A**|
+|Output|**sensor**|**esp32_thermostat_pid_ki**|**PID Ki parameter**|**numeric**|**N/A**|
+|Output|**sensor**|**esp32_thermostat_pid_kd**|**PID Kd parameter**|**numeric**|**N/A**|
+|Output|**sensor**|**esp32_thermostat_wifi_signal**|**WiFi signal strength**|**dBm**|**measurement**|
+|Output|**sensor**|**esp32_thermostat_uptime**|**System uptime**|**seconds**|**total_increasing**|
+|Output|**binary_sensor**|**esp32_thermostat_heating**|**Heating status**|**ON/OFF**|**N/A**|
+
+**Total Entities**: 11 (1 climate, 9 sensors, 1 binary sensor)
+
+All entities include:
+- Availability topic for online/offline tracking
+- Device information and unique identifiers
+- Appropriate icons and device classes
 
 ## Recommendations for Home Assistant Integration
 
-1. **Additional Entities to Implement**:
-    
+1. **Additional Entities** (not yet implemented):
     - **Energy sensor**: Add power consumption tracking for energy dashboards
     - **Thermostat mode sensor**: More detailed operating modes (comfort, away, night)
-    - **Diagnostic entities**: WiFi signal strength, uptime, last error
-    - **Maintenance sensor**: BME280 sensor health status
-    
-2. **Entity Customization**:
-    
-    - Add device class and state class attributes for proper categorization
-    - Implement unit_of_measurement consistently
-    - Add min/max attributes for numerical sensors
-    
-3. **Advanced Integration**:
-    
+    - **Component health sensors**: Expose sensor/valve health status from health monitors
+
+2. **Enhanced Integration**:
     - Create a dashboard template that can be easily imported
     - Add energy management entities for consumption tracking
-    - Implement proper device class for climate entity for better automation compatibility
-    - Add service calls for advanced functions like PID parameter tuning
-    
-4. **Additional Features**:
-    
-    - Weekly schedule programming via Home Assistant
+    - Add service calls for advanced functions like PID parameter tuning from HA
+
+3. **Advanced Automation Features**:
+    - Weekly schedule programming via Home Assistant automations
     - Presence detection integration for smarter heating
     - Enable multiple temperature presets (comfort, eco, away)
     - Implement temperature offset calibration capability
+
+**Already Implemented** ✅:
+- WiFi signal strength sensor
+- Uptime sensor
+- PID parameter sensors (Kp, Ki, Kd)
+- Device class and state class attributes
+- Proper unit of measurement
+- Availability tracking
 
 ## Contributing
 
