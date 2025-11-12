@@ -177,6 +177,7 @@ function loadConfiguration() {
             // Timing settings
             if (data.timing) {
                 document.getElementById('sensor_update_interval').value = data.timing.sensor_update_interval || 30000;
+                document.getElementById('history_update_interval').value = data.timing.history_update_interval || 30000;
                 document.getElementById('pid_update_interval').value = data.timing.pid_update_interval || 10000;
                 document.getElementById('connectivity_check_interval').value = data.timing.connectivity_check_interval || 300000;
                 document.getElementById('pid_config_write_interval').value = data.timing.pid_config_write_interval || 300000;
@@ -192,6 +193,15 @@ function loadConfiguration() {
                 document.getElementById('webhook_url').value = data.webhook.url || '';
                 document.getElementById('webhook_temp_low').value = formatNumberWithPrecision(data.webhook.temp_low_threshold || 15.0, 1);
                 document.getElementById('webhook_temp_high').value = formatNumberWithPrecision(data.webhook.temp_high_threshold || 30.0, 1);
+            }
+
+            // Preset settings
+            if (data.presets) {
+                document.getElementById('preset_eco').value = formatNumberWithPrecision(data.presets.eco || 18.0, 1);
+                document.getElementById('preset_comfort').value = formatNumberWithPrecision(data.presets.comfort || 22.0, 1);
+                document.getElementById('preset_away').value = formatNumberWithPrecision(data.presets.away || 16.0, 1);
+                document.getElementById('preset_sleep').value = formatNumberWithPrecision(data.presets.sleep || 19.0, 1);
+                document.getElementById('preset_boost').value = formatNumberWithPrecision(data.presets.boost || 24.0, 1);
             }
         })
         .catch(error => {
@@ -274,6 +284,14 @@ function saveConfiguration(e) {
             url: formData.get('webhook_url'),
             temp_low_threshold: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('webhook_temp_low')), 1)),
             temp_high_threshold: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('webhook_temp_high')), 1))
+        },
+        presets: {
+            current: 'none',  // Keep current preset unchanged
+            eco: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_eco')), 1)),
+            comfort: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_comfort')), 1)),
+            away: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_away')), 1)),
+            sleep: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_sleep')), 1)),
+            boost: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_boost')), 1))
         }
     };
     

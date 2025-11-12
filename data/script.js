@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshButton = document.getElementById('refresh-data');
     const statusElement = document.getElementById('status');
 
+    // Preset elements
+    const presetSelector = document.getElementById('preset-selector');
+    const presetTempDisplay = document.getElementById('preset-temp');
+
     // Manual override elements
     const overrideSlider = document.getElementById('override-slider');
     const overrideValue = document.getElementById('override-value');
@@ -22,6 +26,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Manual override state
     let manualOverrideEnabled = false;
+
+    // Preset configuration cache
+    let presetConfig = {
+        current: 'none',
+        eco: 18.0,
+        comfort: 22.0,
+        away: 16.0,
+        sleep: 19.0,
+        boost: 24.0
+    };
 
     // Safe update function for elements
     function updateElement(element, value) {
@@ -35,6 +49,99 @@ document.addEventListener('DOMContentLoaded', function() {
         setpointSlider.addEventListener('input', function() {
             if (setpointValue) {
                 setpointValue.textContent = `${setpointSlider.value}°C`;
+            }
+        });
+    }
+
+    // Load preset configuration
+    function loadPresetConfig() {
+        fetch('/api/config')
+            .then(response => response.json())
+            .then(data => {
+                if (data.presets) {
+                    presetConfig.current = data.presets.current || 'none';
+                    presetConfig.eco = data.presets.eco || 18.0;
+                    presetConfig.comfort = data.presets.comfort || 22.0;
+                    presetConfig.away = data.presets.away || 16.0;
+                    presetConfig.sleep = data.presets.sleep || 19.0;
+                    presetConfig.boost = data.presets.boost || 24.0;
+
+                    // Update UI
+                    if (presetSelector) {
+                        presetSelector.value = presetConfig.current;
+                    }
+                    updatePresetDisplay();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading preset config:', error);
+            });
+    }
+
+    // Update preset temperature display
+    function updatePresetDisplay() {
+        if (!presetTempDisplay) return;
+
+        const selectedPreset = presetSelector ? presetSelector.value : 'none';
+        if (selectedPreset === 'none') {
+            presetTempDisplay.textContent = '--';
+        } else {
+            const temp = presetConfig[selectedPreset];
+            presetTempDisplay.textContent = temp ? `${temp.toFixed(1)}°C` : '--';
+        }
+    }
+
+    // Handle preset selection
+    if (presetSelector) {
+        presetSelector.addEventListener('change', function() {
+            const selectedPreset = presetSelector.value;
+            updatePresetDisplay();
+
+            if (selectedPreset !== 'none') {
+                const temp = presetConfig[selectedPreset];
+                if (temp !== undefined) {
+                    // Update slider and apply setpoint
+                    if (setpointSlider) {
+                        setpointSlider.value = temp;
+                    }
+                    if (setpointValue) {
+                        setpointValue.textContent = `${temp.toFixed(1)}°C`;
+                    }
+
+                    // Automatically set the temperature
+                    if (statusElement) {
+                        statusElement.textContent = `Applying ${selectedPreset} preset (${temp.toFixed(1)}°C)...`;
+                    }
+
+                    fetch('/api/setpoint', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: `value=${temp}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (statusElement) {
+                                statusElement.textContent = `${selectedPreset.charAt(0).toUpperCase() + selectedPreset.slice(1)} preset applied: ${data.setpoint}°C`;
+                            }
+                            setTimeout(() => {
+                                fetchSensorData();
+                            }, 500);
+                        } else {
+                            if (statusElement) {
+                                statusElement.textContent = `Error: ${data.message}`;
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error setting preset:', error);
+                        if (statusElement) {
+                            statusElement.textContent = `Error: ${error.message}`;
+                        }
+                    });
+                }
             }
         });
     }
@@ -277,6 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch data on page load
     fetchSensorData();
     updateOverrideStatus();
+    loadPresetConfig();
 
     // Fetch data every 30 seconds
     setInterval(fetchSensorData, 30000);
@@ -286,25 +394,69 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Temperature History Graph
     let historyChart = null;
+    let historyData = null;
+    let selectedTimeRange = 1; // Default to 1 hour
 
     function fetchHistoryData() {
-        fetch('/api/history?maxPoints=100')
+        // Fetch all available data
+        fetch('/api/history?maxPoints=0')
             .then(response => response.json())
             .then(data => {
-                updateHistoryChart(data);
+                historyData = data;
+                updateHistoryChart();
             })
             .catch(error => {
                 console.error('Error fetching history data:', error);
             });
     }
 
-    function updateHistoryChart(data) {
+    function filterDataByTimeRange(data, hours) {
+        if (!data || !data.timestamps || data.timestamps.length === 0) {
+            return data;
+        }
+
+        const now = Date.now() / 1000; // Current time in seconds
+        const cutoffTime = now - (hours * 3600); // Hours ago in seconds
+
+        // Find indices within the time range
+        const indices = [];
+        for (let i = 0; i < data.timestamps.length; i++) {
+            if (data.timestamps[i] >= cutoffTime) {
+                indices.push(i);
+            }
+        }
+
+        // If no data in range, return empty arrays
+        if (indices.length === 0) {
+            return {
+                timestamps: [],
+                temperatures: [],
+                humidities: [],
+                pressures: [],
+                valvePositions: []
+            };
+        }
+
+        // Filter all arrays
+        return {
+            timestamps: indices.map(i => data.timestamps[i]),
+            temperatures: indices.map(i => data.temperatures[i]),
+            humidities: indices.map(i => data.humidities[i]),
+            pressures: indices.map(i => data.pressures[i]),
+            valvePositions: indices.map(i => data.valvePositions[i])
+        };
+    }
+
+    function updateHistoryChart() {
         const ctx = document.getElementById('historyChart');
-        if (!ctx) return;
+        if (!ctx || !historyData) return;
+
+        // Filter data based on selected time range
+        const filteredData = filterDataByTimeRange(historyData, selectedTimeRange);
 
         // Convert timestamps to time labels (HH:MM format in 24-hour notation)
         // Note: timestamps from backend are Unix time in seconds, JavaScript Date expects milliseconds
-        const labels = data.timestamps.map(ts => {
+        const labels = filteredData.timestamps.map(ts => {
             const date = new Date(ts * 1000);
             return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', hour12: false });
         });
@@ -322,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [
                     {
                         label: 'Temperature (°C)',
-                        data: data.temperatures,
+                        data: filteredData.temperatures,
                         borderColor: 'rgb(255, 99, 132)',
                         backgroundColor: 'rgba(255, 99, 132, 0.1)',
                         yAxisID: 'y',
@@ -330,7 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     {
                         label: 'Humidity (%)',
-                        data: data.humidities,
+                        data: filteredData.humidities,
                         borderColor: 'rgb(54, 162, 235)',
                         backgroundColor: 'rgba(54, 162, 235, 0.1)',
                         yAxisID: 'y1',
@@ -338,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     {
                         label: 'Valve Position (%)',
-                        data: data.valvePositions,
+                        data: filteredData.valvePositions,
                         borderColor: 'rgb(75, 192, 192)',
                         backgroundColor: 'rgba(75, 192, 192, 0.1)',
                         yAxisID: 'y1',
@@ -400,6 +552,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (refreshHistoryButton) {
         refreshHistoryButton.addEventListener('click', fetchHistoryData);
     }
+
+    // Time range buttons
+    const timeRangeButtons = document.querySelectorAll('.time-range-btn');
+    timeRangeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            timeRangeButtons.forEach(btn => btn.classList.remove('active'));
+
+            // Add active class to clicked button
+            this.classList.add('active');
+
+            // Update selected time range
+            selectedTimeRange = parseInt(this.getAttribute('data-range'));
+
+            // Re-render chart with new time range
+            updateHistoryChart();
+        });
+    });
 
     // Load history on page load
     fetchHistoryData();

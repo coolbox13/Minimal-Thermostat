@@ -54,6 +54,18 @@
                 <div class="card">
                     <h2 class="card-title">Controls</h2>
                     <div class="control-row">
+                        <span class="control-label">Preset Mode</span>
+                        <select id="preset-selector" class="preset-selector">
+                            <option value="none">None (Manual)</option>
+                            <option value="eco">Eco</option>
+                            <option value="comfort">Comfort</option>
+                            <option value="away">Away</option>
+                            <option value="sleep">Sleep</option>
+                            <option value="boost">Boost</option>
+                        </select>
+                        <span id="preset-temp" class="value-display">--</span>
+                    </div>
+                    <div class="control-row">
                         <span class="control-label">Temperature Setpoint</span>
                         <div class="slider-container">
                             <input type="range" id="setpoint-slider" min="15" max="30" step="0.5" value="22">
@@ -110,6 +122,13 @@
         <!-- Temperature History Graph -->
         <div class="card">
             <h2 class="card-title">Temperature History</h2>
+            <div style="margin-bottom: 15px; text-align: center;">
+                <span style="margin-right: 10px; color: #7f8c8d; font-weight: bold;">Time Range:</span>
+                <button class="time-range-btn active" data-range="1">1 Hour</button>
+                <button class="time-range-btn" data-range="4">4 Hours</button>
+                <button class="time-range-btn" data-range="12">12 Hours</button>
+                <button class="time-range-btn" data-range="24">24 Hours</button>
+            </div>
             <canvas id="historyChart" style="max-height: 400px;"></canvas>
             <div style="margin-top: 10px; text-align: center;">
                 <button id="refresh-history" style="display: inline-block; width: auto; min-width: 150px;">Refresh Graph</button>

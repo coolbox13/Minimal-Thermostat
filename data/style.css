@@ -432,4 +432,59 @@ select:focus {
     .reading-label {
         font-size: 14px;
     }
+
+    .time-range-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 44px;
+    }
+}
+
+/* Preset Selector Styles */
+.preset-selector {
+    flex-grow: 1;
+    margin: 0 15px;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.preset-selector:focus {
+    outline: none;
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.2);
+}
+
+/* Time Range Buttons */
+.time-range-btn {
+    background-color: #ecf0f1;
+    color: #2c3e50;
+    border: 1px solid #bdc3c7;
+    padding: 8px 16px;
+    margin: 0 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: normal;
+    min-height: 36px;
+    transition: all 0.2s;
+}
+
+.time-range-btn:hover {
+    background-color: #d5dbdb;
+    border-color: #95a5a6;
+}
+
+.time-range-btn.active {
+    background-color: #1e88e5;
+    color: white;
+    border-color: #1e88e5;
+}
+
+.time-range-btn:active {
+    transform: scale(0.98);
 }

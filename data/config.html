@@ -36,6 +36,7 @@
                 <button class="tab-button" data-tab="knx">KNX</button>
                 <button class="tab-button" data-tab="bme280">BME280</button>
                 <button class="tab-button" data-tab="pid">PID Control</button>
+                <button class="tab-button" data-tab="presets">Presets</button>
                 <button class="tab-button" data-tab="timing">Timing</button>
                 <button class="tab-button" data-tab="webhook">Webhooks</button>
             </div>
@@ -238,6 +239,44 @@
                     </div>
                 </div>
 
+                <!-- Preset Settings Tab -->
+                <div id="presets" class="tab-content">
+                    <h3>Preset Temperature Settings</h3>
+                    <p style="margin-bottom: 20px; color: #7f8c8d;">
+                        Configure the temperature for each preset mode. These presets can be quickly selected from the dashboard for different scenarios.
+                    </p>
+
+                    <div class="form-row">
+                        <label for="preset_eco">Eco Temperature:</label>
+                        <input type="number" id="preset_eco" name="preset_eco" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Energy-saving temperature (typically 16-18°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_comfort">Comfort Temperature:</label>
+                        <input type="number" id="preset_comfort" name="preset_comfort" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Standard comfortable temperature (typically 20-22°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_away">Away Temperature:</label>
+                        <input type="number" id="preset_away" name="preset_away" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Temperature when nobody is home (typically 14-16°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_sleep">Sleep Temperature:</label>
+                        <input type="number" id="preset_sleep" name="preset_sleep" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Nighttime sleeping temperature (typically 18-19°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_boost">Boost Temperature:</label>
+                        <input type="number" id="preset_boost" name="preset_boost" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Maximum heating temperature (typically 23-25°C)</span>
+                    </div>
+                </div>
+
                 <!-- Timing Settings Tab -->
                 <div id="timing" class="tab-content">
                     <h3>Timing Settings</h3>
@@ -246,6 +285,11 @@
                         <label for="sensor_update_interval">Sensor Update Interval:</label>
                         <input type="number" id="sensor_update_interval" name="sensor_update_interval" step="1000" min="1000" max="300000" class="form-input">
                         <span class="form-hint">Milliseconds (1000-300000, default: 30000 = 30s)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="history_update_interval">Graph Data Interval:</label>
+                        <input type="number" id="history_update_interval" name="history_update_interval" step="1000" min="1000" max="300000" class="form-input">
+                        <span class="form-hint">Milliseconds (1000-300000, default: 30000 = 30s, buffer stores 24h)</span>
                     </div>
                     <div class="form-row">
                         <label for="pid_update_interval">PID Update Interval:</label>
