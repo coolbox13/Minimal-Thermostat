@@ -318,6 +318,9 @@ public:
     uint32_t getSensorUpdateInterval();
     void setSensorUpdateInterval(uint32_t interval);
 
+    uint32_t getHistoryUpdateInterval();
+    void setHistoryUpdateInterval(uint32_t interval);
+
     uint32_t getPidUpdateInterval();
     void setPidUpdateInterval(uint32_t interval);
 
@@ -344,6 +347,33 @@ public:
 
     float getPidAdaptationInterval();
     void setPidAdaptationInterval(float interval);
+
+    // Preset mode settings
+    /**
+     * @brief Get the current active preset mode
+     * @return Current preset name (none, eco, comfort, away, sleep, boost)
+     */
+    String getCurrentPreset();
+
+    /**
+     * @brief Set the current active preset mode
+     * @param preset Preset name (none, eco, comfort, away, sleep, boost)
+     */
+    void setCurrentPreset(const String& preset);
+
+    /**
+     * @brief Get the temperature setpoint for a specific preset
+     * @param preset Preset name (eco, comfort, away, sleep, boost)
+     * @return Temperature in °C for the preset
+     */
+    float getPresetTemperature(const String& preset);
+
+    /**
+     * @brief Set the temperature setpoint for a specific preset
+     * @param preset Preset name (eco, comfort, away, sleep, boost)
+     * @param temperature Temperature in °C (5-30°C, rounded to 1 decimal)
+     */
+    void setPresetTemperature(const String& preset, float temperature);
 
     // Manual valve override settings
     /**
@@ -494,6 +524,7 @@ private:
 
     // Default timing values (matching config.h constants)
     static constexpr uint32_t DEFAULT_SENSOR_UPDATE_INTERVAL_MS = 30000;
+    static constexpr uint32_t DEFAULT_HISTORY_UPDATE_INTERVAL_MS = 300000;  // 5 minutes for 24-hour history
     static constexpr uint32_t DEFAULT_PID_UPDATE_INTERVAL_MS = 10000;
     static constexpr uint32_t DEFAULT_CONNECTIVITY_CHECK_INTERVAL_MS = 300000;
     static constexpr uint32_t DEFAULT_PID_CONFIG_WRITE_INTERVAL_MS = 300000;
@@ -508,6 +539,13 @@ private:
     static constexpr float DEFAULT_WEBHOOK_TEMP_LOW_THRESHOLD = 15.0f;
     static constexpr float DEFAULT_WEBHOOK_TEMP_HIGH_THRESHOLD = 30.0f;
 
+    // Default preset temperatures
+    static constexpr float DEFAULT_PRESET_ECO = 18.0f;
+    static constexpr float DEFAULT_PRESET_COMFORT = 22.0f;
+    static constexpr float DEFAULT_PRESET_AWAY = 16.0f;
+    static constexpr float DEFAULT_PRESET_SLEEP = 19.0f;
+    static constexpr float DEFAULT_PRESET_BOOST = 24.0f;
+
     // Validation helper functions
     bool validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyMQTTSettings(const JsonDocument& doc, String& errorMessage);
@@ -517,6 +555,7 @@ private:
     bool validateAndApplyManualOverrideSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage);
     bool validateAndApplyWebhookSettings(const JsonDocument& doc, String& errorMessage);
+    bool validateAndApplyPresetSettings(const JsonDocument& doc, String& errorMessage);
 
 public:
         /**

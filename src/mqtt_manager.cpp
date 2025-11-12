@@ -148,17 +148,48 @@ void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length
         float setpoint = atof(message);
         Serial.print("Setting temperature setpoint to: ");
         Serial.println(setpoint);
-        
+
         // Update PID controller setpoint
         extern void setTemperatureSetpoint(float);
         setTemperatureSetpoint(setpoint);
-        
+
         // Publish the new setpoint back to MQTT
         char setpointStr[8];
         dtostrf(setpoint, 1, 1, setpointStr);
         _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
     }
-    
+
+    // Handle preset mode
+    if (strcmp(topic, "esp32_thermostat/preset/set") == 0) {
+        String preset = String(message);
+        Serial.print("Setting preset mode to: ");
+        Serial.println(preset);
+
+        // Get the temperature for this preset
+        extern ConfigManager* configManager;
+        if (configManager) {
+            float presetTemp = configManager->getPresetTemperature(preset);
+            configManager->setCurrentPreset(preset);
+
+            // Update the setpoint to match the preset temperature
+            extern void setTemperatureSetpoint(float);
+            setTemperatureSetpoint(presetTemp);
+
+            // Publish the preset state back to MQTT
+            if (_homeAssistant) {
+                _homeAssistant->updatePresetMode(preset.c_str());
+            }
+
+            // Also publish the new setpoint
+            char setpointStr[8];
+            dtostrf(presetTemp, 1, 1, setpointStr);
+            _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+
+            Serial.print("Preset applied with temperature: ");
+            Serial.println(presetTemp);
+        }
+    }
+
     // Handle system restart command
     if (strcmp(topic, "esp32_thermostat/restart") == 0) {
         Serial.println("Restart command received via MQTT");
