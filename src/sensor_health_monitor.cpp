@@ -124,3 +124,19 @@ bool SensorHealthMonitor::hasRecovered() {
 
     return false;
 }
+
+void SensorHealthMonitor::reset() {
+    _consecutiveFailures = 0;
+    _totalReadings = 0;
+    _failedReadings = 0;
+    _lastGoodReadingTime = 0;
+    _lastGoodValue = NAN;
+    _historyIndex = 0;
+    _historyCount = 0;
+    _wasUnhealthy = false;
+
+    // Reset history buffer to all successful
+    for (int i = 0; i < SENSOR_HISTORY_SIZE; i++) {
+        _readingHistory[i] = true;
+    }
+}

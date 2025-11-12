@@ -8,19 +8,21 @@
 /**
  * Mock implementation of ESP32 Preferences class for testing
  * Stores data in memory instead of NVS flash
+ * Uses static storage so all instances share the same data (like real Preferences)
  */
 class MockPreferences {
 private:
-    std::map<std::string, int> intValues;
-    std::map<std::string, unsigned int> uintValues;
-    std::map<std::string, long> longValues;
-    std::map<std::string, unsigned long> ulongValues;
-    std::map<std::string, float> floatValues;
-    std::map<std::string, double> doubleValues;
-    std::map<std::string, std::string> stringValues;
-    std::map<std::string, bool> boolValues;
-    std::map<std::string, uint8_t> ucharValues;
-    std::map<std::string, uint16_t> ushortValues;
+    // Static storage shared across all instances (simulates NVS flash)
+    static std::map<std::string, int> intValues;
+    static std::map<std::string, unsigned int> uintValues;
+    static std::map<std::string, long> longValues;
+    static std::map<std::string, unsigned long> ulongValues;
+    static std::map<std::string, float> floatValues;
+    static std::map<std::string, double> doubleValues;
+    static std::map<std::string, std::string> stringValues;
+    static std::map<std::string, bool> boolValues;
+    static std::map<std::string, uint8_t> ucharValues;
+    static std::map<std::string, uint16_t> ushortValues;
 
     bool isOpen;
     std::string namespaceName;

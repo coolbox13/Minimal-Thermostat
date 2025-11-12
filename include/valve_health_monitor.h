@@ -84,6 +84,12 @@ public:
      */
     bool hasRecovered();
 
+    /**
+     * @brief Reset all valve health monitoring state
+     * Used primarily for testing to ensure clean state between tests
+     */
+    void reset();
+
 private:
     ValveHealthMonitor();
     static ValveHealthMonitor* _instance;

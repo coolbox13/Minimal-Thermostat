@@ -78,6 +78,12 @@ public:
      */
     bool hasRecovered();
 
+    /**
+     * @brief Reset all sensor health monitoring state
+     * Used primarily for testing to ensure clean state between tests
+     */
+    void reset();
+
 private:
     SensorHealthMonitor();
     static SensorHealthMonitor* _instance;
