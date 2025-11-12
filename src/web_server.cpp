@@ -13,6 +13,7 @@
 #include "ntp_manager.h"
 #include "sensor_health_monitor.h"
 #include "valve_health_monitor.h"
+#include "serial_monitor.h"
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -32,15 +33,19 @@ void WebServerManager::setKnxAddressChangedCallback(KnxAddressChangedCallback ca
 
 void WebServerManager::begin(AsyncWebServer* server) {
     _server = server;
-    
+
     // Print persistence values during bootup
     PersistenceManager::getInstance()->printStoredValues();
-    
+
+    // Initialize serial monitor WebSocket
+    SerialMonitor::getInstance().begin(_server);
+    Serial.println("Serial monitor WebSocket initialized");
+
     // Enable CORS
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
-    
+
     // Initialize SPIFFS with format_if_failed=true
     if(!SPIFFS.begin(true)) {
         Serial.println("ERROR: Failed to mount SPIFFS");
