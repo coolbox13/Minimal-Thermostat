@@ -93,7 +93,7 @@ WatchdogManager watchdogManager;
 // 9. performInitialSetup() - Depends on all above (WiFi status, sensors, watchdog)
 
 void initializeLogger() {
-    Logger::getInstance().setLogLevel(LOG_INFO);
+    Logger::getInstance().setLogLevel(LOG_DEBUG);  // Increased to DEBUG for WiFi diagnostics
     LOG_I(TAG_MAIN, "ESP32 KNX Thermostat - With Adaptive PID Controller");
 
     // Initialize EventLog for persistent logging
