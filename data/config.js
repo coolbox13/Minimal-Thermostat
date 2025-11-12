@@ -193,6 +193,15 @@ function loadConfiguration() {
                 document.getElementById('webhook_temp_low').value = formatNumberWithPrecision(data.webhook.temp_low_threshold || 15.0, 1);
                 document.getElementById('webhook_temp_high').value = formatNumberWithPrecision(data.webhook.temp_high_threshold || 30.0, 1);
             }
+
+            // Preset settings
+            if (data.presets) {
+                document.getElementById('preset_eco').value = formatNumberWithPrecision(data.presets.eco || 18.0, 1);
+                document.getElementById('preset_comfort').value = formatNumberWithPrecision(data.presets.comfort || 22.0, 1);
+                document.getElementById('preset_away').value = formatNumberWithPrecision(data.presets.away || 16.0, 1);
+                document.getElementById('preset_sleep').value = formatNumberWithPrecision(data.presets.sleep || 19.0, 1);
+                document.getElementById('preset_boost').value = formatNumberWithPrecision(data.presets.boost || 24.0, 1);
+            }
         })
         .catch(error => {
             console.error('Error loading configuration:', error);
@@ -274,6 +283,14 @@ function saveConfiguration(e) {
             url: formData.get('webhook_url'),
             temp_low_threshold: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('webhook_temp_low')), 1)),
             temp_high_threshold: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('webhook_temp_high')), 1))
+        },
+        presets: {
+            current: 'none',  // Keep current preset unchanged
+            eco: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_eco')), 1)),
+            comfort: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_comfort')), 1)),
+            away: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_away')), 1)),
+            sleep: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_sleep')), 1)),
+            boost: parseFloat(formatNumberWithPrecision(parseFloat(formData.get('preset_boost')), 1))
         }
     };
     
