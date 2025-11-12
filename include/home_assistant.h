@@ -26,6 +26,9 @@ public:
     // Update thermostat mode
     void updateMode(const char* mode);
 
+    // Update preset mode
+    void updatePresetMode(const char* preset);
+
     // Update PID parameters
     void updatePIDParameters(float kp, float ki, float kd);
 

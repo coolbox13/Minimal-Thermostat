@@ -310,9 +310,17 @@ void loop() {
     
     // Update sensor readings and publish status
     static unsigned long lastSensorUpdate = 0;
+    static unsigned long lastHistoryUpdate = 0;
     if (millis() - lastSensorUpdate > configManager->getSensorUpdateInterval()) {
         updateSensorReadings();
         lastSensorUpdate = millis();
+
+        // Only add to history at the configured history interval
+        if (millis() - lastHistoryUpdate > configManager->getHistoryUpdateInterval()) {
+            HistoryManager* historyManager = HistoryManager::getInstance();
+            historyManager->addDataPoint(temperature, humidity, pressure, knxManager.getValvePosition());
+            lastHistoryUpdate = millis();
+        }
     }
 
     // Update PID controller at specified interval
@@ -359,9 +367,8 @@ void updateSensorReadings() {
     LOG_D(TAG_SENSOR, "Pressure: %.2f hPa", pressure);
     LOG_D(TAG_SENSOR, "Valve position: %d %%", knxManager.getValvePosition());
 
-    // Add data point to history for graphing
-    HistoryManager* historyManager = HistoryManager::getInstance();
-    historyManager->addDataPoint(temperature, humidity, pressure, knxManager.getValvePosition());
+    // Note: History data point is added in loop() at the configured history_update_interval
+    // not here, to allow different sampling rates for sensors vs history
 
     // Send sensor data to KNX
     knxManager.sendSensorData(temperature, humidity, pressure);

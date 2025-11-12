@@ -129,6 +129,9 @@ void HomeAssistant::registerEntities() {
     climatePayload += "\"modes\":[\"off\",\"heat\"],";
     climatePayload += "\"mode_command_topic\":\"esp32_thermostat/mode/set\",";
     climatePayload += "\"mode_state_topic\":\"esp32_thermostat/mode/state\",";
+    climatePayload += "\"preset_modes\":[\"none\",\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
+    climatePayload += "\"preset_mode_command_topic\":\"esp32_thermostat/preset/set\",";
+    climatePayload += "\"preset_mode_state_topic\":\"esp32_thermostat/preset/state\",";
     climatePayload += "\"temperature_command_topic\":\"esp32_thermostat/temperature/set\",";
     climatePayload += "\"temperature_state_topic\":\"esp32_thermostat/temperature/setpoint\",";
     climatePayload += "\"current_temperature_topic\":\"esp32_thermostat/temperature\",";
@@ -149,6 +152,7 @@ void HomeAssistant::registerEntities() {
     // Subscribe to the thermostat control topics
     _mqttClient.subscribe("esp32_thermostat/mode/set");
     _mqttClient.subscribe("esp32_thermostat/temperature/set");
+    _mqttClient.subscribe("esp32_thermostat/preset/set");
     Serial.println("Subscribed to thermostat control topics");
 
     // Publish initial states
@@ -371,4 +375,9 @@ void HomeAssistant::updateSetpointTemperature(float setpoint) {
 // NEW: Update the thermostat mode
 void HomeAssistant::updateMode(const char* mode) {
     _mqttClient.publish("esp32_thermostat/mode/state", mode, true);
+}
+
+// NEW: Update the preset mode
+void HomeAssistant::updatePresetMode(const char* preset) {
+    _mqttClient.publish("esp32_thermostat/preset/state", preset, true);
 }

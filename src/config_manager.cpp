@@ -244,6 +244,12 @@ uint32_t ConfigManager::getSensorUpdateInterval() {
 void ConfigManager::setSensorUpdateInterval(uint32_t interval) {
     _preferences.putUInt("sens_upd_int", interval);
 }
+uint32_t ConfigManager::getHistoryUpdateInterval() {
+    return _preferences.getUInt("hist_upd_int", DEFAULT_HISTORY_UPDATE_INTERVAL_MS);
+}
+void ConfigManager::setHistoryUpdateInterval(uint32_t interval) {
+    _preferences.putUInt("hist_upd_int", interval);
+}
 uint32_t ConfigManager::getPidUpdateInterval() {
     return _preferences.getUInt("pid_upd_int", DEFAULT_PID_UPDATE_INTERVAL_MS);
 }
@@ -297,6 +303,44 @@ float ConfigManager::getPidAdaptationInterval() {
 }
 void ConfigManager::setPidAdaptationInterval(float interval) {
     _preferences.putFloat("pid_adapt", roundToPrecision(interval, 1));
+}
+
+// Preset mode settings
+String ConfigManager::getCurrentPreset() {
+    return _preferences.getString("preset_cur", "none");
+}
+
+void ConfigManager::setCurrentPreset(const String& preset) {
+    _preferences.putString("preset_cur", preset);
+}
+
+float ConfigManager::getPresetTemperature(const String& preset) {
+    String key = "preset_" + preset;
+
+    // Return default temperatures for each preset
+    if (preset == "eco") {
+        return roundToPrecision(_preferences.getFloat(key.c_str(), DEFAULT_PRESET_ECO), 1);
+    } else if (preset == "comfort") {
+        return roundToPrecision(_preferences.getFloat(key.c_str(), DEFAULT_PRESET_COMFORT), 1);
+    } else if (preset == "away") {
+        return roundToPrecision(_preferences.getFloat(key.c_str(), DEFAULT_PRESET_AWAY), 1);
+    } else if (preset == "sleep") {
+        return roundToPrecision(_preferences.getFloat(key.c_str(), DEFAULT_PRESET_SLEEP), 1);
+    } else if (preset == "boost") {
+        return roundToPrecision(_preferences.getFloat(key.c_str(), DEFAULT_PRESET_BOOST), 1);
+    }
+
+    // For "none" or unknown presets, return current setpoint
+    return getSetpoint();
+}
+
+void ConfigManager::setPresetTemperature(const String& preset, float temperature) {
+    // Only allow setting for known presets (not "none")
+    if (preset == "eco" || preset == "comfort" || preset == "away" ||
+        preset == "sleep" || preset == "boost") {
+        String key = "preset_" + preset;
+        _preferences.putFloat(key.c_str(), roundToPrecision(temperature, 1));
+    }
 }
 
 // Manual valve override settings
@@ -406,6 +450,14 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["pid"]["deadband"] = getPidDeadband();
     doc["pid"]["adaptation_interval"] = getPidAdaptationInterval();
 
+    // Add preset configuration
+    doc["presets"]["current"] = getCurrentPreset();
+    doc["presets"]["eco"] = getPresetTemperature("eco");
+    doc["presets"]["comfort"] = getPresetTemperature("comfort");
+    doc["presets"]["away"] = getPresetTemperature("away");
+    doc["presets"]["sleep"] = getPresetTemperature("sleep");
+    doc["presets"]["boost"] = getPresetTemperature("boost");
+
     // Add manual override parameters
     doc["manual_override"]["enabled"] = getManualOverrideEnabled();
     doc["manual_override"]["position"] = getManualOverridePosition();
@@ -413,6 +465,7 @@ void ConfigManager::getJson(JsonDocument& doc) {
 
     // Add timing parameters
     doc["timing"]["sensor_update_interval"] = getSensorUpdateInterval();
+    doc["timing"]["history_update_interval"] = getHistoryUpdateInterval();
     doc["timing"]["pid_update_interval"] = getPidUpdateInterval();
     doc["timing"]["connectivity_check_interval"] = getConnectivityCheckInterval();
     doc["timing"]["pid_config_write_interval"] = getPidConfigWriteInterval();
@@ -765,6 +818,15 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setSensorUpdateInterval(interval);
     }
+    if (doc["timing"].containsKey("history_update_interval")) {
+        uint32_t interval = doc["timing"]["history_update_interval"].as<uint32_t>();
+        if (interval < 30000 || interval > 3600000) {
+            errorMessage = "History update interval must be between 30000ms (30s) and 3600000ms (1hr)";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setHistoryUpdateInterval(interval);
+    }
     if (doc["timing"].containsKey("pid_update_interval")) {
         uint32_t interval = doc["timing"]["pid_update_interval"].as<uint32_t>();
         if (interval < 1000 || interval > 60000) {
@@ -891,7 +953,43 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
     if (!validateAndApplyManualOverrideSettings(doc, errorMessage)) return false;
     if (!validateAndApplyTimingSettings(doc, errorMessage)) return false;
     if (!validateAndApplyWebhookSettings(doc, errorMessage)) return false;
+    if (!validateAndApplyPresetSettings(doc, errorMessage)) return false;
     LOG_I(TAG, "Configuration imported successfully");
+    return true;
+}
+
+bool ConfigManager::validateAndApplyPresetSettings(const JsonDocument& doc, String& errorMessage) {
+    if (!doc.containsKey("presets")) {
+        return true;  // Presets section is optional
+    }
+
+    // Validate and apply current preset
+    if (doc["presets"].containsKey("current")) {
+        String preset = doc["presets"]["current"].as<String>();
+        if (preset != "none" && preset != "eco" && preset != "comfort" &&
+            preset != "away" && preset != "sleep" && preset != "boost") {
+            errorMessage = "Invalid preset mode: must be none, eco, comfort, away, sleep, or boost";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+        setCurrentPreset(preset);
+    }
+
+    // Validate and apply preset temperatures
+    const char* presets[] = {"eco", "comfort", "away", "sleep", "boost"};
+    for (const char* preset : presets) {
+        if (doc["presets"].containsKey(preset)) {
+            float temp = doc["presets"][preset].as<float>();
+            if (temp < 5.0f || temp > 30.0f) {
+                errorMessage = String("Preset temperature for ") + preset + " must be between 5°C and 30°C";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+            setPresetTemperature(preset, temp);
+            LOG_D(TAG, "Set preset %s to %.1f°C", preset, temp);
+        }
+    }
+
     return true;
 }
 
