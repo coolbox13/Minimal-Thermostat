@@ -177,6 +177,7 @@ function loadConfiguration() {
             // Timing settings
             if (data.timing) {
                 document.getElementById('sensor_update_interval').value = data.timing.sensor_update_interval || 30000;
+                document.getElementById('history_update_interval').value = data.timing.history_update_interval || 30000;
                 document.getElementById('pid_update_interval').value = data.timing.pid_update_interval || 10000;
                 document.getElementById('connectivity_check_interval').value = data.timing.connectivity_check_interval || 300000;
                 document.getElementById('pid_config_write_interval').value = data.timing.pid_config_write_interval || 300000;

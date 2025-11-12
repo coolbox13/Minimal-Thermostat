@@ -524,7 +524,7 @@ private:
 
     // Default timing values (matching config.h constants)
     static constexpr uint32_t DEFAULT_SENSOR_UPDATE_INTERVAL_MS = 30000;
-    static constexpr uint32_t DEFAULT_HISTORY_UPDATE_INTERVAL_MS = 300000;  // 5 minutes for 24-hour history
+    static constexpr uint32_t DEFAULT_HISTORY_UPDATE_INTERVAL_MS = 30000;  // 30 seconds (configurable via web UI)
     static constexpr uint32_t DEFAULT_PID_UPDATE_INTERVAL_MS = 10000;
     static constexpr uint32_t DEFAULT_CONNECTIVITY_CHECK_INTERVAL_MS = 300000;
     static constexpr uint32_t DEFAULT_PID_CONFIG_WRITE_INTERVAL_MS = 300000;
