@@ -128,6 +128,8 @@ function loadConfiguration() {
             if (data.mqtt) {
                 document.getElementById('mqtt_server').value = data.mqtt.server || '';
                 document.getElementById('mqtt_port').value = data.mqtt.port || 1883;
+                document.getElementById('mqtt_username').value = data.mqtt.username || '';
+                // Don't set password for security reasons
             }
             
             // KNX settings
@@ -236,7 +238,9 @@ function saveConfiguration(e) {
         },
         mqtt: {
             server: formData.get('mqtt_server'),
-            port: parseInt(formData.get('mqtt_port'))
+            port: parseInt(formData.get('mqtt_port')),
+            username: formData.get('mqtt_username') || '',
+            password: formData.get('mqtt_password') || ''
         },
         knx: {
             area: parseInt(formData.get('knx_area')),

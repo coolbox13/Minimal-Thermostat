@@ -87,6 +87,16 @@
                         <input type="number" id="mqtt_port" name="mqtt_port" min="1" max="65535" class="form-input">
                         <span class="form-hint">Default: 1883</span>
                     </div>
+                    <div class="form-row">
+                        <label for="mqtt_username">MQTT Username:</label>
+                        <input type="text" id="mqtt_username" name="mqtt_username" class="form-input" placeholder="Leave empty for no authentication">
+                        <span class="form-hint">Optional: MQTT broker username</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="mqtt_password">MQTT Password:</label>
+                        <input type="password" id="mqtt_password" name="mqtt_password" class="form-input" placeholder="Leave empty for no authentication">
+                        <span class="form-hint">Optional: MQTT broker password (leave empty to keep current password)</span>
+                    </div>
                 </div>
                 
                 <!-- KNX Settings Tab -->

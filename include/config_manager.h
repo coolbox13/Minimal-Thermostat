@@ -144,6 +144,30 @@ public:
      */
     void setMqttPort(uint16_t port);
 
+    /**
+     * @brief Get the MQTT username
+     * @return MQTT username (empty string if not set)
+     */
+    String getMqttUsername();
+
+    /**
+     * @brief Set the MQTT username
+     * @param username MQTT username (empty string for no authentication)
+     */
+    void setMqttUsername(const String& username);
+
+    /**
+     * @brief Get the MQTT password
+     * @return MQTT password (empty string if not set)
+     */
+    String getMqttPassword();
+
+    /**
+     * @brief Set the MQTT password
+     * @param password MQTT password (empty string for no authentication)
+     */
+    void setMqttPassword(const String& password);
+
     // KNX settings
     /**
      * @brief Get the KNX area address component

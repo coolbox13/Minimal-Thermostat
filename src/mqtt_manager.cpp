@@ -1,6 +1,7 @@
 #include "mqtt_manager.h"
 #include "knx_manager.h"
 #include "config.h"
+#include "config_manager.h"
 
 // Initialize static instance pointer
 MQTTManager* MQTTManager::_instance = nullptr;
@@ -210,7 +211,16 @@ void MQTTManager::reconnect() {
         String clientId = "ESP32Thermostat-";
         clientId += String(random(0xffff), HEX);
         
-        if (_mqttClient.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD)) {
+        // Get MQTT credentials from ConfigManager
+        ConfigManager* configManager = ConfigManager::getInstance();
+        String mqttUser = configManager->getMqttUsername();
+        String mqttPass = configManager->getMqttPassword();
+        
+        // Use credentials if provided, otherwise use empty strings (no auth)
+        const char* username = (mqttUser.length() > 0) ? mqttUser.c_str() : nullptr;
+        const char* password = (mqttPass.length() > 0) ? mqttPass.c_str() : nullptr;
+        
+        if (_mqttClient.connect(clientId.c_str(), username, password)) {
             Serial.println("MQTT connected");
             
             // Subscribe to topics
