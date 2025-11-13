@@ -2,6 +2,11 @@
 #include "knx_manager.h"
 #include "config.h"
 #include "config_manager.h"
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 // Initialize static instance pointer
 MQTTManager* MQTTManager::_instance = nullptr;

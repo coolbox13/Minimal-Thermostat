@@ -6,6 +6,7 @@
  */
 
 #include "esp-knx-ip.h"
+#include "serial_redirect.h"  // Redirect Serial to web monitor
 #include <WiFi.h>
 #include <Preferences.h>
 #include <esp_log.h>

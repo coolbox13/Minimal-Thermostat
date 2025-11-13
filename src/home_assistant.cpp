@@ -1,5 +1,11 @@
 #include "home_assistant.h"
 #include "config.h"
+#include "config_manager.h"
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 // Define discovery topic prefix according to Home Assistant standard
 #define HA_DISCOVERY_PREFIX "homeassistant"

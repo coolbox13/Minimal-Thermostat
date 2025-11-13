@@ -2,6 +2,11 @@
 #include "watchdog_manager.h"
 #include "config_manager.h"
 #include <ArduinoJson.h>
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 // Try to include ESP32Ping if available
 #if __has_include(<ESP32Ping.h>)

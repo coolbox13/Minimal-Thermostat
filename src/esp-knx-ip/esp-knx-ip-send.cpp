@@ -9,6 +9,11 @@
  #include <esp_log.h>
  #include "config.h"
  #include "utils.h"
+ #include "serial_monitor.h"
+ #include "serial_redirect.h"
+
+ // Redirect Serial to CapturedSerial for web monitor
+ #define Serial CapturedSerial
 
  // Change these debug macros to use ESP_LOGD directly with conditional compilation
  #define DEBUG_TAG "KNXIP"

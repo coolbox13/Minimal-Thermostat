@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "bme280_sensor.h"
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 BME280Sensor::BME280Sensor() : initialized(false) {
 }

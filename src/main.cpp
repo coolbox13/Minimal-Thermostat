@@ -1,9 +1,17 @@
 #include <Arduino.h>
+
+// Save the real Serial pointer BEFORE any redefinition
+#include "serial_capture_config.h"
+
 #include <Wire.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <esp_task_wdt.h>
+
+// NOW include serial_redirect.h which does the #define
+// After all library includes that might reference Serial
+#include "serial_redirect.h"
 #include "logger.h"
 #include "esp-knx-ip/esp-knx-ip.h"
 #include "bme280_sensor.h"
@@ -23,6 +31,10 @@
 #include "ntp_manager.h"
 #include "sensor_health_monitor.h"
 #include "valve_health_monitor.h"
+#include "serial_monitor.h"
+
+// NOTE: Serial is now redefined to CapturedSerial via serial_redirect.h
+// All Serial.print() calls will go through TeeSerial
 
 /**
  * LOGGING TAG NAMING STANDARD:
@@ -95,6 +107,13 @@ WatchdogManager watchdogManager;
 void initializeLogger() {
     Logger::getInstance().setLogLevel(LOG_DEBUG);  // Increased to DEBUG for WiFi diagnostics
     LOG_I(TAG_MAIN, "ESP32 KNX Thermostat - With Adaptive PID Controller");
+
+    // TEST: Multiple consecutive Serial.println to verify TeeSerial buffering
+    Serial.println("=== SERIAL MONITOR TEST START ===");
+    Serial.println("Line 1: This is a test");
+    Serial.println("Line 2: Multiple lines");
+    Serial.println("Line 3: Should all appear");
+    Serial.println("=== SERIAL MONITOR TEST END ===");
 
     // Initialize EventLog for persistent logging
     EventLog::getInstance().begin();
@@ -278,7 +297,10 @@ void performInitialSetup() {
 
 // In setup function
 void setup() {
-    Serial.begin(115200);
+    // Initialize serial capture BEFORE anything else
+    // This redirects all Serial output to both hardware serial and web monitor
+    initSerialCapture();
+
     initializeLogger();
     initializeConfig();
     initializeWatchdog();
@@ -298,13 +320,20 @@ void loop() {
   
     // Replace old WiFi check with WiFiConnectionManager loop
     WiFiConnectionManager::getInstance().loop();
-    
+
+    // Clean up disconnected WebSocket clients
+    static unsigned long lastWsCleanup = 0;
+    if (millis() - lastWsCleanup > 1000) {
+        SerialMonitor::getInstance().cleanupClients();
+        lastWsCleanup = millis();
+    }
+
     // Handle KNX communications
     knxManager.loop();
-    
+
     // Monitor and decode KNX debug messages if enabled
     monitorKnxDebugMessages();
-    
+
     // Handle MQTT communications
     mqttManager.loop();
     

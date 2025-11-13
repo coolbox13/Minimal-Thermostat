@@ -1,5 +1,9 @@
 // src/web_server.cpp - Fixed version
 #include "web_server.h"
+
+// IMPORTANT: Must include serial_redirect.h early to redirect Serial
+#include "serial_redirect.h"
+
 #include "SPIFFS.h"
 #include <Update.h>
 #include "bme280_sensor.h"
@@ -40,6 +44,13 @@ void WebServerManager::begin(AsyncWebServer* server) {
     // Initialize serial monitor WebSocket
     SerialMonitor::getInstance().begin(_server);
     Serial.println("Serial monitor WebSocket initialized");
+
+    // TEST: Send test messages directly to SerialMonitor after WebSocket is ready
+    delay(100);  // Give WebSocket time to fully initialize
+    SerialMonitor::getInstance().println("TEST 1: Direct call to SerialMonitor::println()");
+    Serial.println("TEST 2: Through Serial (redirected to CapturedSerial)");
+    SerialMonitor::getInstance().println("TEST 3: Another direct call");
+    Serial.println("TEST 4: Another Serial call");
 
     // Enable CORS
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");

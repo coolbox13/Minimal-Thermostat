@@ -1,4 +1,9 @@
 #include "ota_manager.h"
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 OTAManager::OTAManager() {
 }
