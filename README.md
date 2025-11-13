@@ -26,7 +26,7 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 
 - **Multi-Protocol Support**:
   - Native KNX integration for building automation
-  - MQTT connectivity for home automation systems
+  - MQTT connectivity for home automation systems with username/password authentication
   - Web interface for direct control and configuration
   - Webhook integration for IFTTT, Zapier, and custom automation
 
@@ -63,11 +63,12 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 
 - **Web Interface (PWA)**:
   - Progressive Web App with offline support
-  - Multiple pages: Dashboard, Status, Configuration, Event Logs
+  - Multiple pages: Dashboard, Status, Configuration, Event Logs, Serial Monitor
   - Real-time data visualization
   - Historical data graphing (24-hour view)
   - Mobile-responsive design with app icons
   - Component health indicators with live status updates
+  - **Web-based Serial Monitor** with WebSocket streaming
 
 - **Event Logging & Monitoring**:
   - Persistent event log storage in SPIFFS (100 entries)
@@ -353,7 +354,7 @@ The thermostat provides a comprehensive Progressive Web App (PWA) with multiple 
 ### Configuration Page (`/config`)
 - WiFi credentials configuration
 - KNX physical and group addresses (test/production toggle)
-- MQTT broker settings (server, port)
+- MQTT broker settings (server, port, username, password)
 - PID parameters configuration (Kp, Ki, Kd, deadband, adaptation interval)
 - **NTP time synchronization** (server, timezone, DST offset)
 - **System timing intervals** (sensor update, PID update, connectivity check)
@@ -370,10 +371,19 @@ The thermostat provides a comprehensive Progressive Web App (PWA) with multiple 
 - Export logs functionality
 - Real-time log updates
 
+### Serial Monitor Page (`/serial`)
+- **Web-based Serial Console** - Complete replacement for hardware serial monitor
+- **Real-time Streaming** - All serial output via WebSocket (ws://device-ip/ws/serial)
+- **Comprehensive Capture** - Captures both raw Serial.print() and Logger output
+- **History Buffer** - Shows last 20 lines on connection
+- **Live Updates** - Real-time streaming of all system logs and debug output
+- **No Hardware Required** - Monitor system remotely without USB connection
+- **Auto-reconnect** - Maintains connection and handles disconnections gracefully
+
 ### Features
 - **Progressive Web App**: Installable on mobile devices, works offline
 - **Responsive Design**: Optimized for desktop, tablet, and mobile
-- **Real-time Updates**: WebSocket-like updates for live data
+- **Real-time Updates**: WebSocket-based updates for live data
 - **Dark Theme**: Modern, easy-on-the-eyes interface
 
 
@@ -445,6 +455,7 @@ ESP32-KNX-Thermostat/
 │   ├── status.html              # Status page
 │   ├── config.html              # Configuration page
 │   ├── logs.html                # Event logs viewer
+│   ├── serial.html              # Serial monitor page
 │   ├── style.css                # Shared styling
 │   ├── script.js                # Dashboard functionality
 │   ├── status.js                # Status page scripts
@@ -465,6 +476,9 @@ ESP32-KNX-Thermostat/
 │   ├── ota_manager.h            # OTA update manager
 │   ├── persistence_manager.h    # Persistent storage abstraction
 │   ├── sensor_health_monitor.h  # Sensor health monitoring
+│   ├── serial_capture_config.h  # Serial pointer capture (before redefinition)
+│   ├── serial_monitor.h         # Web serial monitor
+│   ├── serial_redirect.h        # Serial redirection macro
 │   ├── utils.h                  # Utility functions
 │   ├── valve_control.h          # Valve control interface
 │   ├── valve_health_monitor.h   # Valve health monitoring
@@ -488,6 +502,7 @@ ESP32-KNX-Thermostat/
 │   ├── ota_manager.cpp
 │   ├── persistence_manager.cpp
 │   ├── sensor_health_monitor.cpp
+│   ├── serial_monitor.cpp       # Web serial monitor implementation
 │   ├── utils.cpp
 │   ├── valve_control.cpp
 │   ├── valve_health_monitor.cpp
@@ -640,6 +655,7 @@ The system maintains a 24-hour rolling history of sensor readings:
 |KNX group addresses|Web interface (test/production toggle)|Preferences (persistent)|
 |KNX valve status address|Compile-time (config.h)|Hardcoded|
 |MQTT server & port|Web interface|Preferences (persistent)|
+|**MQTT username & password**|**Web interface**|**Preferences (persistent)**|
 |PID parameters (Kp, Ki, Kd)|Web interface|Preferences (persistent)|
 |PID deadband|Web interface|Preferences (persistent)|
 |PID adaptation interval|Web interface|Preferences (persistent)|
@@ -720,7 +736,7 @@ The system maintains a 24-hour rolling history of sensor readings:
     - Enable temperature setpoint control via KNX (currently only MQTT/Web)
 
 3. **Security Improvements**:
-    - Add MQTT username/password to web configuration
+    - ~~Add MQTT username/password to web configuration~~ ✅ **Implemented**
     - Implement secure storage for credentials
     - Add authentication for the web interface
     - Consider TLS for MQTT connections

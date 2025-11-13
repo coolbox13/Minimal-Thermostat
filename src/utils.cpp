@@ -3,6 +3,9 @@
 #include <stdarg.h>
 #include <esp_log.h>
 
+// NOTE: Cannot redirect Serial here because monitorKnxDebugMessages() needs Serial.readStringUntil()
+// which TeeSerial doesn't implement (only write methods are implemented)
+
 String decodeKnxCommandType(uint8_t ct) {
   switch (ct) {
     case KNX_CT_READ:

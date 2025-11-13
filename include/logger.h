@@ -3,6 +3,12 @@
 
 #include <Arduino.h>
 
+// Forward declare access to real hardware serial (not redirected)
+extern HardwareSerial* _realSerialForLogger;
+
+// Forward declaration for web monitor capture (avoids circular dependency)
+extern void captureLogToWebMonitor(const char* msg);
+
 enum LogLevel {
     LOG_NONE = 0,   // No logging
     LOG_ERROR,      // Critical errors
@@ -35,59 +41,48 @@ public:
 
         // Get current timestamp
         unsigned long timestamp = millis();
-        
-        // Print timestamp and log level
-        Serial.print(timestamp);
-        Serial.print(" | ");
-        
-        // Print log level
+
+        // Use direct hardware serial access to bypass web monitor capture
+        if (!_realSerialForLogger) return;
+
+        // Get log level string
+        const char* levelStr;
         switch (level) {
-            case LOG_ERROR:
-                Serial.print("ERROR");
-                break;
-            case LOG_WARNING:
-                Serial.print("WARN ");
-                break;
-            case LOG_INFO:
-                Serial.print("INFO ");
-                break;
-            case LOG_DEBUG:
-                Serial.print("DEBUG");
-                break;
-            case LOG_VERBOSE:
-                Serial.print("VERB ");
-                break;
-            default:
-                Serial.print("?????");
-                break;
+            case LOG_ERROR:   levelStr = "ERROR"; break;
+            case LOG_WARNING: levelStr = "WARN "; break;
+            case LOG_INFO:    levelStr = "INFO "; break;
+            case LOG_DEBUG:   levelStr = "DEBUG"; break;
+            case LOG_VERBOSE: levelStr = "VERB "; break;
+            default:          levelStr = "?????"; break;
         }
-        
-        // Print tag
-        Serial.print(" | ");
-        Serial.print(tag);
-        Serial.print(" | ");
-        
-        // Print formatted message
+
+        // Format the message content
         va_list args;
         va_start(args, format);
-        char buffer[256];
-        vsnprintf(buffer, sizeof(buffer), format, args);
+        char msgBuffer[256];
+        vsnprintf(msgBuffer, sizeof(msgBuffer), format, args);
         va_end(args);
-        
-        Serial.println(buffer);
 
-        // Send to web serial monitor if available
-        #if __has_include("serial_monitor.h")
-        extern void sendToSerialMonitor(const char*);
-        char webBuffer[512];
-        snprintf(webBuffer, sizeof(webBuffer), "%lu | %s | %s | %s",
-                 timestamp, getLevelString(level), tag, buffer);
-        sendToSerialMonitor(webBuffer);
-        #endif
+        // Build complete log line for web monitor
+        char fullLine[512];
+        snprintf(fullLine, sizeof(fullLine), "%lu | %s | %s | %s",
+                 timestamp, levelStr, tag, msgBuffer);
+
+        // Write to hardware serial (bypasses web monitor)
+        _realSerialForLogger->print(timestamp);
+        _realSerialForLogger->print(" | ");
+        _realSerialForLogger->print(levelStr);
+        _realSerialForLogger->print(" | ");
+        _realSerialForLogger->print(tag);
+        _realSerialForLogger->print(" | ");
+        _realSerialForLogger->println(msgBuffer);
+
+        // ALSO send to web monitor
+        captureLogToWebMonitor(fullLine);
 
         // If we have a log callback registered, call it
         if (_logCallback) {
-            _logCallback(level, tag, buffer, timestamp);
+            _logCallback(level, tag, msgBuffer, timestamp);
         }
     }
 

@@ -253,6 +253,14 @@ float ConfigManager::getSetpoint() {
     return roundToPrecision(_preferences.getFloat("setpoint", DEFAULT_SETPOINT), 1);
 }
 
+bool ConfigManager::getThermostatEnabled() {
+    return _preferences.getBool("therm_enabled", true);  // Default to enabled
+}
+
+void ConfigManager::setThermostatEnabled(bool enabled) {
+    _preferences.putBool("therm_enabled", enabled);
+}
+
 // Timing parameters
 uint32_t ConfigManager::getSensorUpdateInterval() {
     return _preferences.getUInt("sens_upd_int", DEFAULT_SENSOR_UPDATE_INTERVAL_MS);

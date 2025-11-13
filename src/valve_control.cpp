@@ -1,4 +1,9 @@
 #include "valve_control.h"
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 // Constructor
 ValveControl::ValveControl(PubSubClient& mqttClient, ESPKNXIP& knx)

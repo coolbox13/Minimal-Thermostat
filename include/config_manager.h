@@ -338,6 +338,18 @@ public:
      */
     void setSetpoint(float setpoint);
 
+    /**
+     * @brief Get thermostat enabled state (for HA mode on/off)
+     * @return true if thermostat is enabled (heating), false if disabled (off)
+     */
+    bool getThermostatEnabled();
+
+    /**
+     * @brief Set thermostat enabled state (for HA mode on/off)
+     * @param enabled true to enable heating (mode=heat), false to disable (mode=off)
+     */
+    void setThermostatEnabled(bool enabled);
+
     // Timing parameters
     uint32_t getSensorUpdateInterval();
     void setSensorUpdateInterval(uint32_t interval);

@@ -1,4 +1,9 @@
 #include "persistence_manager.h"
+#include "serial_monitor.h"  // For TeeSerial definition
+#include "serial_redirect.h"  // For CapturedSerial extern
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 PersistenceManager* PersistenceManager::_instance = nullptr;
 

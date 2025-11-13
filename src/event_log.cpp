@@ -1,4 +1,9 @@
 #include "event_log.h"
+#include "serial_monitor.h"
+#include "serial_redirect.h"
+
+// Redirect Serial to CapturedSerial for web monitor
+#define Serial CapturedSerial
 
 EventLog::EventLog()
     : _mqttLoggingEnabled(false)
