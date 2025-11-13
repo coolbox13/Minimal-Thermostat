@@ -90,7 +90,16 @@ void MQTTManager::setValvePosition(int position) {
             
             // Publish to valve position topic
             _mqttClient.publish("esp32_thermostat/valve/position", valveStr);
-            
+
+            // Update action state immediately when valve position changes
+            if (_valvePosition > 0) {
+                _mqttClient.publish("esp32_thermostat/action", "heating", true);
+                Serial.println("Action: heating");
+            } else {
+                _mqttClient.publish("esp32_thermostat/action", "idle", true);
+                Serial.println("Action: idle");
+            }
+
             Serial.print("Published valve position to MQTT: ");
             Serial.println(_valvePosition);
         }
@@ -187,6 +196,33 @@ void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length
 
             Serial.print("Preset applied with temperature: ");
             Serial.println(presetTemp);
+        }
+    }
+
+    // Handle mode command (heat/off)
+    if (strcmp(topic, "esp32_thermostat/mode/set") == 0) {
+        String mode = String(message);
+        Serial.print("Setting mode to: ");
+        Serial.println(mode);
+
+        extern ConfigManager* configManager;
+        if (configManager) {
+            bool enabled = (mode == "heat");
+            configManager->setThermostatEnabled(enabled);
+
+            Serial.print("Thermostat ");
+            Serial.println(enabled ? "enabled (heat mode)" : "disabled (off mode)");
+
+            // If disabling, set valve to 0
+            if (!enabled && _knxManager) {
+                _knxManager->setValvePosition(0);
+                Serial.println("Valve set to 0% (off mode)");
+            }
+
+            // Publish mode state confirmation
+            if (_homeAssistant) {
+                _homeAssistant->updateMode(mode.c_str());
+            }
         }
     }
 

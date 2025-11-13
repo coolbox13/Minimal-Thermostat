@@ -163,6 +163,22 @@ void HomeAssistant::registerEntities() {
     dtostrf(PID_SETPOINT, 1, 1, setpointStr);
     _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
 
+    // Publish initial preset state
+    extern ConfigManager* configManager;
+    if (configManager) {
+        String currentPreset = configManager->getCurrentPreset();
+        _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
+        Serial.print("Published initial preset state: ");
+        Serial.println(currentPreset);
+    } else {
+        _mqttClient.publish("esp32_thermostat/preset/state", "none", true);
+        Serial.println("Published initial preset state: none");
+    }
+
+    // Publish initial action state (idle at startup)
+    _mqttClient.publish("esp32_thermostat/action", "idle", true);
+    Serial.println("Published initial action state: idle");
+
     // Add restart command option
     _mqttClient.subscribe("esp32_thermostat/restart");
 
