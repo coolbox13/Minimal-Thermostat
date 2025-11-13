@@ -52,7 +52,7 @@ private:
     static constexpr int PING_TIMEOUT = 1000;            // 1 second timeout
     static constexpr int QUALITY_THRESHOLD_GOOD = -60;
     static constexpr int QUALITY_THRESHOLD_FAIR = -70;
-    static constexpr unsigned long SIGNAL_CHECK_INTERVAL = 60000; // Check signal every minute
+    static constexpr unsigned long SIGNAL_CHECK_INTERVAL = 30000; // Check signal every 30 seconds (increased for diagnostics)
 
 public:
     /**

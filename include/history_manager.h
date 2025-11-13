@@ -57,7 +57,7 @@ private:
     HistoryManager();
     static HistoryManager* _instance;
 
-    static const int BUFFER_SIZE = 288;  // 24 hours * 12 readings/hour (5min intervals)
+    static const int BUFFER_SIZE = 2880;  // 24 hours * 120 readings/hour (30sec intervals max)
     HistoryDataPoint _buffer[BUFFER_SIZE];
     int _head;       // Next write position
     int _count;      // Number of valid entries

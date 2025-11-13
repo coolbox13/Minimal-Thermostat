@@ -128,6 +128,22 @@ void ConfigManager::setMqttPort(uint16_t port) {
     _preferences.putUShort("mqtt_port", port);
 }
 
+String ConfigManager::getMqttUsername() {
+    return _preferences.getString("mqtt_user", "");
+}
+
+void ConfigManager::setMqttUsername(const String& username) {
+    _preferences.putString("mqtt_user", username);
+}
+
+String ConfigManager::getMqttPassword() {
+    return _preferences.getString("mqtt_pass", "");
+}
+
+void ConfigManager::setMqttPassword(const String& password) {
+    _preferences.putString("mqtt_pass", password);
+}
+
 // KNX settings
 uint8_t ConfigManager::getKnxArea() {
     return _preferences.getUChar("knx_area", DEFAULT_KNX_AREA);
@@ -430,6 +446,8 @@ void ConfigManager::getJson(JsonDocument& doc) {
     
     doc["mqtt"]["server"] = getMqttServer();
     doc["mqtt"]["port"] = getMqttPort();
+    doc["mqtt"]["username"] = getMqttUsername();
+    doc["mqtt"]["password"] = "**********"; // Don't expose password in JSON
     
     doc["knx"]["area"] = getKnxArea();
     doc["knx"]["line"] = getKnxLine();
@@ -574,6 +592,34 @@ bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String
         }
         setMqttPort(port);
     }
+    
+    if (doc["mqtt"].containsKey("username")) {
+        String username = doc["mqtt"]["username"].as<String>();
+        if (username.length() <= 64) {
+            setMqttUsername(username);
+            LOG_D(TAG, "MQTT username set");
+        } else {
+            errorMessage = "MQTT username too long (max 64 characters)";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+    
+    if (doc["mqtt"].containsKey("password")) {
+        String password = doc["mqtt"]["password"].as<String>();
+        if (password.length() > 0 && password != "**********") {
+            if (password.length() <= 64) {
+                setMqttPassword(password);
+                LOG_D(TAG, "MQTT password set");
+            } else {
+                errorMessage = "MQTT password too long (max 64 characters)";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+        }
+        // If password is empty or masked, don't change it (keep current)
+    }
+    
     return true;
 }
 bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String& errorMessage) {

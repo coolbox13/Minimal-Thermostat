@@ -718,7 +718,10 @@ void WiFiConnectionManager::checkAndLogSignalStrength() {
 void WiFiConnectionManager::handleConnectionStatus() {
     // Check if WiFi is still connected
     if (_state == WiFiConnectionState::CONNECTED && WiFi.status() != WL_CONNECTED) {
-        LOG_W(TAG, "WiFi connection lost, updating state");
+        int wifiStatus = WiFi.status();
+        LOG_W(TAG, "WiFi connection lost, WiFi.status()=%d", wifiStatus);
+        LOG_D(TAG, "Last RSSI before disconnect: %d dBm, uptime: %lu ms",
+              WiFi.RSSI(), millis() - _lastConnectedTime);
         setState(WiFiConnectionState::CONNECTION_LOST);
         triggerEvent(WiFiEventType::CONNECTION_LOST, "WiFi connection lost unexpectedly");
     }

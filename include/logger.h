@@ -75,7 +75,16 @@ public:
         va_end(args);
         
         Serial.println(buffer);
-        
+
+        // Send to web serial monitor if available
+        #if __has_include("serial_monitor.h")
+        extern void sendToSerialMonitor(const char*);
+        char webBuffer[512];
+        snprintf(webBuffer, sizeof(webBuffer), "%lu | %s | %s | %s",
+                 timestamp, getLevelString(level), tag, buffer);
+        sendToSerialMonitor(webBuffer);
+        #endif
+
         // If we have a log callback registered, call it
         if (_logCallback) {
             _logCallback(level, tag, buffer, timestamp);
@@ -138,7 +147,19 @@ public:
     void setLogCallback(LogCallback callback) {
         _logCallback = callback;
     }
-    
+
+    // Helper to get level string
+    const char* getLevelString(LogLevel level) {
+        switch (level) {
+            case LOG_ERROR: return "ERROR";
+            case LOG_WARNING: return "WARN ";
+            case LOG_INFO: return "INFO ";
+            case LOG_DEBUG: return "DEBUG";
+            case LOG_VERBOSE: return "VERB ";
+            default: return "?????";
+        }
+    }
+
 private:
     // Private constructor for singleton
     Logger() : _logLevel(LOG_INFO), _logCallback(nullptr) {}
