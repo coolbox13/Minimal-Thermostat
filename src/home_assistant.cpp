@@ -127,82 +127,20 @@ void HomeAssistant::registerEntities() {
     Serial.print("Published valve position config: ");
     Serial.println(valvePosSuccess ? "Success" : "FAILED");
 
-    // ========================================================================
-    // CRITICAL: Publish ALL climate state topics BEFORE discovery config
-    // This ensures Home Assistant finds retained messages when it subscribes
-    // ========================================================================
-
-    Serial.println("\n=== Publishing Climate State Topics (BEFORE Discovery) ===");
-
-    // 1. Publish mode state
-    bool modeSuccess = _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
-    Serial.print("  [1/4] Mode state: heat - ");
-    Serial.println(modeSuccess ? "OK" : "FAILED");
-
-    // 2. Publish initial setpoint from PID config
+    // Publish climate state topics BEFORE discovery config
+    // This ensures HA finds retained messages when it subscribes
     char setpointStr[8];
     dtostrf(PID_SETPOINT, 1, 1, setpointStr);
-    bool setpointSuccess = _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
-    Serial.print("  [2/4] Setpoint: ");
-    Serial.print(setpointStr);
-    Serial.print("°C - ");
-    Serial.println(setpointSuccess ? "OK" : "FAILED");
 
-    // 3. Publish initial preset state with validation
     extern ConfigManager* configManager;
-    String currentPreset = "none";  // Default fallback
+    String currentPreset = (configManager) ? configManager->getCurrentPreset() : "none";
 
-    if (configManager) {
-        currentPreset = configManager->getCurrentPreset();
-        Serial.print("  [3/4] Preset from ConfigManager: '");
-        Serial.print(currentPreset);
-        Serial.println("'");
+    _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
+    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+    _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
+    _mqttClient.publish("esp32_thermostat/action", "idle", true);
 
-        // Validate preset is in the allowed list
-        const char* validPresets[] = {"none", "eco", "comfort", "away", "sleep", "boost"};
-        bool isValid = false;
-        for (int i = 0; i < 6; i++) {
-            if (currentPreset.equals(validPresets[i])) {
-                isValid = true;
-                break;
-            }
-        }
-
-        if (!isValid) {
-            Serial.print("        WARNING: Invalid preset '");
-            Serial.print(currentPreset);
-            Serial.println("' - resetting to 'none'");
-            currentPreset = "none";
-            configManager->setCurrentPreset("none");
-        }
-    } else {
-        Serial.println("  [3/4] WARNING: ConfigManager is NULL - using default 'none'");
-    }
-
-    bool presetSuccess = _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
-    Serial.print("        Preset state: '");
-    Serial.print(currentPreset);
-    Serial.print("' - ");
-    Serial.println(presetSuccess ? "OK" : "FAILED");
-
-    // 4. Publish initial action state (idle at startup)
-    bool actionSuccess = _mqttClient.publish("esp32_thermostat/action", "idle", true);
-    Serial.print("  [4/4] Action state: idle - ");
-    Serial.println(actionSuccess ? "OK" : "FAILED");
-
-    // Wait for MQTT broker to process and store retained messages
-    delay(250);
-    Serial.println("  Waiting for broker to process retained messages...");
-
-    Serial.println("=== All State Topics Published Successfully ===\n");
-
-    // ========================================================================
-    // NOW publish the climate discovery config
-    // Home Assistant will immediately subscribe and find the retained states
-    // ========================================================================
-
-    Serial.println("=== Publishing Climate Discovery Config ===");
-
+    // Climate entity discovery
     String climateTopic = String(HA_DISCOVERY_PREFIX) + "/climate/" + _nodeId + "/thermostat/config";
     String climatePayload = "{";
     climatePayload += "\"name\":\"KNX Thermostat\",";
@@ -225,39 +163,15 @@ void HomeAssistant::registerEntities() {
     climatePayload += "\"device\":" + deviceInfo;
     climatePayload += "}";
 
-    Serial.print("  Discovery payload size: ");
-    Serial.print(climatePayload.length());
-    Serial.println(" bytes");
-
     bool climateSuccess = _mqttClient.publish(climateTopic.c_str(), climatePayload.c_str(), true);
-    Serial.print("  Published to: ");
-    Serial.println(climateTopic);
-    Serial.print("  Result: ");
-    Serial.println(climateSuccess ? "SUCCESS" : "FAILED");
-
-    if (!climateSuccess) {
-        Serial.println("  ERROR: Climate discovery publish failed!");
-        Serial.println("  Check MQTT buffer size and broker connection");
-    }
-
-    Serial.println("=== Climate Discovery Complete ===\n");
+    Serial.print("Published climate config: ");
+    Serial.println(climateSuccess ? "Success" : "FAILED");
 
     // Subscribe to the thermostat control topics
     _mqttClient.subscribe("esp32_thermostat/mode/set");
     _mqttClient.subscribe("esp32_thermostat/temperature/set");
     _mqttClient.subscribe("esp32_thermostat/preset/set");
     Serial.println("Subscribed to thermostat control topics");
-
-    // Re-publish states one more time to ensure HA picks them up
-    // (Some sources suggest this helps with initialization)
-    delay(100);
-    Serial.println("\n=== Re-publishing States After Discovery ===");
-    _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
-    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
-    _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
-    _mqttClient.publish("esp32_thermostat/action", "idle", true);
-    Serial.println("  All states re-published");
-    Serial.println("=== Climate Entity Initialization Complete ===\n");
 
     // Add restart command option
     _mqttClient.subscribe("esp32_thermostat/restart");
