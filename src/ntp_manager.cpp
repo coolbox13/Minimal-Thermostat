@@ -56,14 +56,14 @@ bool NTPManager::syncTime(unsigned long timeout) {
     // Wait for time to be set (with timeout)
     unsigned long startTime = millis();
     struct tm timeinfo;
-    
+
     while (!getLocalTime(&timeinfo)) {
         if (millis() - startTime > timeout) {
             LOG_E(TAG, "NTP time sync failed: timeout after %lu ms", timeout);
             _timeSet = false;
             return false;
         }
-        delay(100);
+        yield();  // Non-blocking yield instead of delay
     }
 
     _timeSet = true;

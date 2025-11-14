@@ -152,13 +152,15 @@ void initializeWiFi() {
     
     WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
     wifiManager.registerEventCallback([&wifiManager, &ntpManager](const WiFiConnectionEvent& event) {
-        LOG_I(TAG_WIFI, "WiFi event: %s - %s",
-              wifiManager.getEventTypeName(event.type),
-              event.message.c_str());
+        // Note: Connection details are already logged by WiFiConnectionManager::setState()
+        // Only log the event type for non-CONNECTED events to avoid duplicate logging
+        if (event.type != WiFiEventType::CONNECTED) {
+            LOG_I(TAG_WIFI, "WiFi event: %s - %s",
+                  wifiManager.getEventTypeName(event.type),
+                  event.message.c_str());
+        }
+
         if (event.type == WiFiEventType::CONNECTED) {
-            LOG_I(TAG_WIFI, "Connected to: %s", event.ssid.c_str());
-            LOG_I(TAG_WIFI, "IP address: %s", event.networkInfo.ip.toString().c_str());
-            
             // Sync time with NTP server after WiFi connection
             LOG_I(TAG_WIFI, "Synchronizing time with NTP server...");
             if (ntpManager.syncTime(NTP_SYNC_TIMEOUT_MS)) {
@@ -172,18 +174,9 @@ void initializeWiFi() {
     bool wifiConnected = wifiManager.begin(configManager->getWifiConnectTimeout(), true);
     if (!wifiConnected) {
         LOG_W(TAG_WIFI, "WiFi connection failed or timed out during setup");
-    } else {
-        // If WiFi is already connected, sync time immediately
-        if (WiFi.status() == WL_CONNECTED) {
-            LOG_I(TAG_WIFI, "WiFi already connected, syncing time...");
-            if (ntpManager.syncTime(NTP_SYNC_TIMEOUT_MS)) {
-                String timeStr = ntpManager.getFormattedTime();
-                LOG_I(TAG_WIFI, "Time synchronized: %s", timeStr.c_str());
-            } else {
-                LOG_W(TAG_WIFI, "NTP time synchronization failed");
-            }
-        }
     }
+    // Note: NTP sync is handled by the CONNECTED event callback above
+    // No need to sync again here to avoid duplicate sync attempts
 }
 void initializeWebServer() {
     WebServerManager* webServerManager = WebServerManager::getInstance();
@@ -291,8 +284,9 @@ void performInitialSetup() {
     if (WiFi.status() == WL_CONNECTED) {
         lastConnectedTime = millis();
     }
+    // Note: WiFiConnectionManager.begin() already called in initializeWiFi()
+    // Only set watchdog manager here - no need to call begin() again
     WiFiConnectionManager::getInstance().setWatchdogManager(&watchdogManager);
-    WiFiConnectionManager::getInstance().begin();
 }
 
 // In setup function
