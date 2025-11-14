@@ -31,7 +31,7 @@ void MQTTManager::begin() {
     // Set server and callback
     _mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
     _mqttClient.setCallback(mqttCallback);
-    _mqttClient.setBufferSize(1024);  // Increased buffer size for discovery messages
+    _mqttClient.setBufferSize(1536);  // Increased buffer size for discovery messages (climate payload is ~992 bytes)
     
     // Try to connect
     reconnect();

@@ -91,47 +91,47 @@ public:
         if (LOG_ERROR > _logLevel) return;
         va_list args;
         va_start(args, format);
-        char buffer[256];
+        char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
         log(LOG_ERROR, tag, buffer);
     }
-    
+
     void warning(const char* tag, const char* format, ...) {
         if (LOG_WARNING > _logLevel) return;
         va_list args;
         va_start(args, format);
-        char buffer[256];
+        char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
         log(LOG_WARNING, tag, buffer);
     }
-    
+
     void info(const char* tag, const char* format, ...) {
         if (LOG_INFO > _logLevel) return;
         va_list args;
         va_start(args, format);
-        char buffer[256];
+        char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
         log(LOG_INFO, tag, buffer);
     }
-    
+
     void debug(const char* tag, const char* format, ...) {
         if (LOG_DEBUG > _logLevel) return;
         va_list args;
         va_start(args, format);
-        char buffer[256];
+        char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
         log(LOG_DEBUG, tag, buffer);
     }
-    
+
     void verbose(const char* tag, const char* format, ...) {
         if (LOG_VERBOSE > _logLevel) return;
         va_list args;
         va_start(args, format);
-        char buffer[256];
+        char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
         log(LOG_VERBOSE, tag, buffer);

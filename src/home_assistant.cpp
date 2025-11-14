@@ -42,11 +42,15 @@ void HomeAssistant::registerEntities() {
     // Get current timestamp for debugging
     unsigned long now = millis();
     String timestamp = String(now);
-    
+
     Serial.println("Registering entities with Home Assistant at time: " + timestamp);
-    
-    // Create device info JSON string that will be reused for all entities
-    String deviceInfo = "{\"identifiers\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"model\":\"ESP32-KNX-Thermostat\",\"manufacturer\":\"DIY\",\"sw_version\":\"1.0\"}";
+
+    // Create origin info (for sensors - full keys)
+    String originInfo = "{\"name\":\"ESP32-KNX-Thermostat\",\"sw_version\":\"1.4\",\"support_url\":\"https://github.com/yourusername/ESP32-KNX-Thermostat\"}";
+
+    // Create device info JSON string using ABBREVIATED keys for climate entity
+    // Using abbreviated keys: ids, mf, mdl, sw (instead of identifiers, manufacturer, model, sw_version)
+    String deviceInfo = "{\"ids\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"mf\":\"DIY\",\"mdl\":\"ESP32-KNX-Thermostat\",\"sw\":\"1.4\"}";
     
     // Temperature sensor with enhanced attributes
     String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
@@ -60,8 +64,8 @@ void HomeAssistant::registerEntities() {
     tempPayload += "\"availability_topic\":\"esp32_thermostat/status\",";
     tempPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
     tempPayload += "\"suggested_display_precision\":1,"; // Precision for display
-    tempPayload += "\"device\":" + deviceInfo + ",";
-    tempPayload += "\"timestamp\":\"" + timestamp + "\"";
+    tempPayload += "\"origin\":" + originInfo + ",";
+    tempPayload += "\"device\":" + deviceInfo;
     tempPayload += "}";
     
     bool tempSuccess = _mqttClient.publish(tempTopic.c_str(), tempPayload.c_str(), true);
@@ -80,8 +84,8 @@ void HomeAssistant::registerEntities() {
     humPayload += "\"availability_topic\":\"esp32_thermostat/status\",";
     humPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
     humPayload += "\"suggested_display_precision\":1,"; // Precision for display
-    humPayload += "\"device\":" + deviceInfo + ",";
-    humPayload += "\"timestamp\":\"" + timestamp + "\"";
+    humPayload += "\"origin\":" + originInfo + ",";
+    humPayload += "\"device\":" + deviceInfo;
     humPayload += "}";
     
     bool humSuccess = _mqttClient.publish(humTopic.c_str(), humPayload.c_str(), true);
@@ -100,8 +104,8 @@ void HomeAssistant::registerEntities() {
     presPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     presPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
     presPayload += "\"suggested_display_precision\":1,"; // Precision for display
-    presPayload += "\"device\":" + deviceInfo + ",";
-    presPayload += "\"timestamp\":\"" + timestamp + "\"";
+    presPayload += "\"origin\":" + originInfo + ",";
+    presPayload += "\"device\":" + deviceInfo;
     presPayload += "}";
     
     bool presSuccess = _mqttClient.publish(presTopic.c_str(), presPayload.c_str(), true);
@@ -119,8 +123,8 @@ void HomeAssistant::registerEntities() {
     valuePosPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     valuePosPayload += "\"state_class\":\"measurement\",";  // Add state_class for proper history
     valuePosPayload += "\"icon\":\"mdi:valve\",";           // Add an appropriate icon
-    valuePosPayload += "\"device\":" + deviceInfo + ",";
-    valuePosPayload += "\"timestamp\":\"" + timestamp + "\"";
+    valuePosPayload += "\"origin\":" + originInfo + ",";
+    valuePosPayload += "\"device\":" + deviceInfo;
     valuePosPayload += "}";
     
     bool valvePosSuccess = _mqttClient.publish(valvePosTopic.c_str(), valuePosPayload.c_str(), true);
@@ -190,8 +194,7 @@ void HomeAssistant::registerEntities() {
     Serial.print("  [4/4] Action state: idle - ");
     Serial.println(actionSuccess ? "OK" : "FAILED");
 
-    // Wait for MQTT broker to process and store retained messages
-    delay(250);
+    // Note: No delay needed - MQTT broker will process retained messages asynchronously
     Serial.println("  Waiting for broker to process retained messages...");
 
     Serial.println("=== All State Topics Published Successfully ===\n");
@@ -203,26 +206,33 @@ void HomeAssistant::registerEntities() {
 
     Serial.println("=== Publishing Climate Discovery Config ===");
 
-    String climateTopic = String(HA_DISCOVERY_PREFIX) + "/climate/" + _nodeId + "/thermostat/config";
+    String climateTopic = String(HA_DISCOVERY_PREFIX) + "/climate/" + _nodeId + "/config";
     String climatePayload = "{";
-    climatePayload += "\"name\":\"KNX Thermostat\",";
-    climatePayload += "\"unique_id\":\"" + String(_nodeId) + "_thermostat\",";
+    climatePayload += "\"name\":\"Thermostat\",";
+    climatePayload += "\"uniq_id\":\"" + String(_nodeId) + "_climate\",";
+    climatePayload += "\"dev\":" + deviceInfo + ",";
+    // Mode control (abbreviated)
+    climatePayload += "\"mode_cmd_t\":\"" + String(_nodeId) + "/mode/set\",";
+    climatePayload += "\"mode_stat_t\":\"" + String(_nodeId) + "/mode/state\",";
     climatePayload += "\"modes\":[\"off\",\"heat\"],";
-    climatePayload += "\"mode_command_topic\":\"esp32_thermostat/mode/set\",";
-    climatePayload += "\"mode_state_topic\":\"esp32_thermostat/mode/state\",";
-    climatePayload += "\"preset_modes\":[\"none\",\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
-    climatePayload += "\"preset_mode_command_topic\":\"esp32_thermostat/preset/set\",";
-    climatePayload += "\"preset_mode_state_topic\":\"esp32_thermostat/preset/state\",";
-    climatePayload += "\"temperature_command_topic\":\"esp32_thermostat/temperature/set\",";
-    climatePayload += "\"temperature_state_topic\":\"esp32_thermostat/temperature/setpoint\",";
-    climatePayload += "\"current_temperature_topic\":\"esp32_thermostat/temperature\",";
-    climatePayload += "\"temperature_unit\":\"C\",";
-    climatePayload += "\"min_temp\":\"15\",";
-    climatePayload += "\"max_temp\":\"30\",";
-    climatePayload += "\"temp_step\":\"0.5\",";
-    climatePayload += "\"action_topic\":\"esp32_thermostat/action\",";
-    climatePayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
-    climatePayload += "\"device\":" + deviceInfo;
+    // Temperature control (abbreviated)
+    climatePayload += "\"temp_cmd_t\":\"" + String(_nodeId) + "/temperature/set\",";
+    climatePayload += "\"temp_stat_t\":\"" + String(_nodeId) + "/temperature/setpoint\",";
+    climatePayload += "\"curr_temp_t\":\"" + String(_nodeId) + "/temperature\",";
+    climatePayload += "\"min_temp\":15,";
+    climatePayload += "\"max_temp\":30,";
+    climatePayload += "\"temp_step\":0.5,";
+    climatePayload += "\"temp_unit\":\"C\",";
+    // NOTE: Preset modes removed - they cause validation errors with abbreviated keys
+    // To use presets, add manual YAML config (see docs/ha_manual_mqtt_config.yaml)
+    // Availability (abbreviated)
+    climatePayload += "\"avty_t\":\"" + _availabilityTopic + "\",";
+    climatePayload += "\"pl_avail\":\"online\",";
+    climatePayload += "\"pl_not_avail\":\"offline\",";
+    // Action (abbreviated)
+    climatePayload += "\"act_t\":\"" + String(_nodeId) + "/action\",";
+    climatePayload += "\"qos\":0,";
+    climatePayload += "\"ret\":true";
     climatePayload += "}";
 
     Serial.print("  Discovery payload size: ");
@@ -250,7 +260,7 @@ void HomeAssistant::registerEntities() {
 
     // Re-publish states one more time to ensure HA picks them up
     // (Some sources suggest this helps with initialization)
-    delay(100);
+    // Note: No delay needed - publishing happens immediately
     Serial.println("\n=== Re-publishing States After Discovery ===");
     _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
     _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
@@ -261,8 +271,6 @@ void HomeAssistant::registerEntities() {
 
     // Add restart command option
     _mqttClient.subscribe("esp32_thermostat/restart");
-
-    delay(100); // Small delay between entity registrations
 
     // Binary sensor for heating status
     String heatingTopic = String(HA_DISCOVERY_PREFIX) + "/binary_sensor/" + _nodeId + "/heating/config";
@@ -275,13 +283,12 @@ void HomeAssistant::registerEntities() {
     heatingPayload += "\"payload_off\":\"OFF\",";
     heatingPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     heatingPayload += "\"icon\":\"mdi:radiator\",";
+    heatingPayload += "\"origin\":" + originInfo + ",";
     heatingPayload += "\"device\":" + deviceInfo;
     heatingPayload += "}";
     bool heatingSuccess = _mqttClient.publish(heatingTopic.c_str(), heatingPayload.c_str(), true);
     Serial.print("Published heating status config: ");
     Serial.println(heatingSuccess ? "Success" : "FAILED");
-
-    delay(100);
 
     // PID Kp parameter sensor
     String kpTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_kp/config";
@@ -292,13 +299,12 @@ void HomeAssistant::registerEntities() {
     kpPayload += "\"value_template\":\"{{ value }}\",";
     kpPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     kpPayload += "\"icon\":\"mdi:chart-bell-curve\",";
+    kpPayload += "\"origin\":" + originInfo + ",";
     kpPayload += "\"device\":" + deviceInfo;
     kpPayload += "}";
     bool kpSuccess = _mqttClient.publish(kpTopic.c_str(), kpPayload.c_str(), true);
     Serial.print("Published PID Kp config: ");
     Serial.println(kpSuccess ? "Success" : "FAILED");
-
-    delay(100);
 
     // PID Ki parameter sensor
     String kiTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_ki/config";
@@ -309,13 +315,12 @@ void HomeAssistant::registerEntities() {
     kiPayload += "\"value_template\":\"{{ value }}\",";
     kiPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     kiPayload += "\"icon\":\"mdi:chart-bell-curve\",";
+    kiPayload += "\"origin\":" + originInfo + ",";
     kiPayload += "\"device\":" + deviceInfo;
     kiPayload += "}";
     bool kiSuccess = _mqttClient.publish(kiTopic.c_str(), kiPayload.c_str(), true);
     Serial.print("Published PID Ki config: ");
     Serial.println(kiSuccess ? "Success" : "FAILED");
-
-    delay(100);
 
     // PID Kd parameter sensor
     String kdTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_kd/config";
@@ -326,13 +331,12 @@ void HomeAssistant::registerEntities() {
     kdPayload += "\"value_template\":\"{{ value }}\",";
     kdPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     kdPayload += "\"icon\":\"mdi:chart-bell-curve\",";
+    kdPayload += "\"origin\":" + originInfo + ",";
     kdPayload += "\"device\":" + deviceInfo;
     kdPayload += "}";
     bool kdSuccess = _mqttClient.publish(kdTopic.c_str(), kdPayload.c_str(), true);
     Serial.print("Published PID Kd config: ");
     Serial.println(kdSuccess ? "Success" : "FAILED");
-
-    delay(100);
 
     // WiFi signal strength sensor
     String wifiTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/wifi_signal/config";
@@ -346,13 +350,12 @@ void HomeAssistant::registerEntities() {
     wifiPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     wifiPayload += "\"state_class\":\"measurement\",";
     wifiPayload += "\"icon\":\"mdi:wifi\",";
+    wifiPayload += "\"origin\":" + originInfo + ",";
     wifiPayload += "\"device\":" + deviceInfo;
     wifiPayload += "}";
     bool wifiSuccess = _mqttClient.publish(wifiTopic.c_str(), wifiPayload.c_str(), true);
     Serial.print("Published WiFi signal config: ");
     Serial.println(wifiSuccess ? "Success" : "FAILED");
-
-    delay(100);
 
     // Uptime sensor
     String uptimeTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/uptime/config";
@@ -366,6 +369,7 @@ void HomeAssistant::registerEntities() {
     uptimePayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     uptimePayload += "\"state_class\":\"total_increasing\",";
     uptimePayload += "\"icon\":\"mdi:clock-outline\",";
+    uptimePayload += "\"origin\":" + originInfo + ",";
     uptimePayload += "\"device\":" + deviceInfo;
     uptimePayload += "}";
     bool uptimeSuccess = _mqttClient.publish(uptimeTopic.c_str(), uptimePayload.c_str(), true);
