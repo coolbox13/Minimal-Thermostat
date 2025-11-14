@@ -126,8 +126,21 @@ void HomeAssistant::registerEntities() {
     bool valvePosSuccess = _mqttClient.publish(valvePosTopic.c_str(), valuePosPayload.c_str(), true);
     Serial.print("Published valve position config: ");
     Serial.println(valvePosSuccess ? "Success" : "FAILED");
-    
-    // NEW: Climate entity for thermostat
+
+    // Publish climate state topics BEFORE discovery config
+    // This ensures HA finds retained messages when it subscribes
+    char setpointStr[8];
+    dtostrf(PID_SETPOINT, 1, 1, setpointStr);
+
+    extern ConfigManager* configManager;
+    String currentPreset = (configManager) ? configManager->getCurrentPreset() : "none";
+
+    _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
+    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+    _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
+    _mqttClient.publish("esp32_thermostat/action", "idle", true);
+
+    // Climate entity discovery
     String climateTopic = String(HA_DISCOVERY_PREFIX) + "/climate/" + _nodeId + "/thermostat/config";
     String climatePayload = "{";
     climatePayload += "\"name\":\"KNX Thermostat\",";
@@ -149,41 +162,16 @@ void HomeAssistant::registerEntities() {
     climatePayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
     climatePayload += "\"device\":" + deviceInfo;
     climatePayload += "}";
-    
-    delay(100); // Small delay to ensure MQTT client can process
+
     bool climateSuccess = _mqttClient.publish(climateTopic.c_str(), climatePayload.c_str(), true);
     Serial.print("Published climate config: ");
     Serial.println(climateSuccess ? "Success" : "FAILED");
-    
+
     // Subscribe to the thermostat control topics
     _mqttClient.subscribe("esp32_thermostat/mode/set");
     _mqttClient.subscribe("esp32_thermostat/temperature/set");
     _mqttClient.subscribe("esp32_thermostat/preset/set");
     Serial.println("Subscribed to thermostat control topics");
-
-    // Publish initial states
-    _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
-
-    // Publish initial setpoint from PID config
-    char setpointStr[8];
-    dtostrf(PID_SETPOINT, 1, 1, setpointStr);
-    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
-
-    // Publish initial preset state
-    extern ConfigManager* configManager;
-    if (configManager) {
-        String currentPreset = configManager->getCurrentPreset();
-        _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
-        Serial.print("Published initial preset state: ");
-        Serial.println(currentPreset);
-    } else {
-        _mqttClient.publish("esp32_thermostat/preset/state", "none", true);
-        Serial.println("Published initial preset state: none");
-    }
-
-    // Publish initial action state (idle at startup)
-    _mqttClient.publish("esp32_thermostat/action", "idle", true);
-    Serial.println("Published initial action state: idle");
 
     // Add restart command option
     _mqttClient.subscribe("esp32_thermostat/restart");
