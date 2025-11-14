@@ -152,13 +152,15 @@ void initializeWiFi() {
     
     WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
     wifiManager.registerEventCallback([&wifiManager, &ntpManager](const WiFiConnectionEvent& event) {
-        LOG_I(TAG_WIFI, "WiFi event: %s - %s",
-              wifiManager.getEventTypeName(event.type),
-              event.message.c_str());
+        // Note: Connection details are already logged by WiFiConnectionManager::setState()
+        // Only log the event type for non-CONNECTED events to avoid duplicate logging
+        if (event.type != WiFiEventType::CONNECTED) {
+            LOG_I(TAG_WIFI, "WiFi event: %s - %s",
+                  wifiManager.getEventTypeName(event.type),
+                  event.message.c_str());
+        }
+
         if (event.type == WiFiEventType::CONNECTED) {
-            LOG_I(TAG_WIFI, "Connected to: %s", event.ssid.c_str());
-            LOG_I(TAG_WIFI, "IP address: %s", event.networkInfo.ip.toString().c_str());
-            
             // Sync time with NTP server after WiFi connection
             LOG_I(TAG_WIFI, "Synchronizing time with NTP server...");
             if (ntpManager.syncTime(NTP_SYNC_TIMEOUT_MS)) {

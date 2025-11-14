@@ -482,46 +482,51 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
     if (_state != newState) {
         // Store old state for callback
         WiFiConnectionState oldState = _state;
-        
+
         // Get state names for better logging
         const char* oldStateName = getStateName(oldState);
         const char* newStateName = getStateName(newState);
-        
+
         LOG_I(TAG, "WiFi state changing: %s -> %s", oldStateName, newStateName);
-        
+
+        // Store reconnect attempts count before resetting
+        int attemptCount = _reconnectAttempts;
+
+        // Update state FIRST before any functions that depend on it
+        _state = newState;
+        _lastStateChangeTime = millis();
+
         // Additional detailed logging based on specific transitions
         if (newState == WiFiConnectionState::CONNECTED) {
-            // Log connection details
+            // Log connection details (now _state is already CONNECTED)
             String ssid = WiFi.SSID();
             String ip = WiFi.localIP().toString();
             int rssi = WiFi.RSSI();
-            
-            LOG_I(TAG, "Connected to: %s (IP: %s, RSSI: %d dBm, Quality: %d%%)", 
-                  ssid.c_str(), ip.c_str(), rssi, getSignalQuality());
-            
+            int quality = getSignalQuality();  // Now works correctly since _state is CONNECTED
+
+            LOG_I(TAG, "Connected to: %s (IP: %s, RSSI: %d dBm, Quality: %d%%)",
+                  ssid.c_str(), ip.c_str(), rssi, quality);
+
             // Log time since last connection attempt
-            if (_state == WiFiConnectionState::CONNECTING) {
+            if (oldState == WiFiConnectionState::CONNECTING) {
                 unsigned long connectionTime = millis() - _lastStateChangeTime;
-                LOG_I(TAG, "Connection established in %lu ms after %d attempts", 
-                      connectionTime, _reconnectAttempts);
+                LOG_I(TAG, "Connection established in %lu ms after %d attempt(s)",
+                      connectionTime, attemptCount + 1);  // Use stored count + 1 for correct display
             }
-            
+
             // Reset reconnect attempts on successful connection
             _reconnectAttempts = 0;
             _lastConnectedTime = millis();
         }
         else if (newState == WiFiConnectionState::CONNECTING) {
-            LOG_I(TAG, "Attempting to connect to WiFi (Attempt %d of %d)", 
-                  _reconnectAttempts + 1, 
+            LOG_I(TAG, "Attempting to connect to WiFi (Attempt %d of %d)",
+                  _reconnectAttempts + 1,
                   _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
         }
         else if (newState == WiFiConnectionState::CONNECTION_LOST) {
             unsigned long connectedDuration = millis() - _lastConnectedTime;
             LOG_W(TAG, "WiFi connection lost after %lu ms of connectivity", connectedDuration);
         }
-        
-        _state = newState;
-        _lastStateChangeTime = millis();
         
         // Notify callbacks about state change
         for (auto callback : _stateCallbacks) {
