@@ -54,9 +54,10 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 
 - **Home Assistant Integration**:
   - Full climate entity support with auto-discovery via MQTT
-  - Automatic device registration with 10 entities
+  - Automatic device registration with 11 entities
   - Supports on/off and heating modes
-  - Temperature setpoint adjustment
+  - **5 preset modes**: eco, comfort, away, sleep, boost
+  - Temperature setpoint adjustment (15-30°C, 0.5°C steps)
   - PID parameter sensors (Kp, Ki, Kd)
   - Diagnostic sensors (WiFi signal, uptime)
   - Valve position and heating status sensors
