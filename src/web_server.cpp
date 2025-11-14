@@ -224,12 +224,33 @@ void WebServerManager::setupDefaultRoutes() {
         }
     });
 
-    // Explicitly route to config.html
+    // Explicitly route to config.html with debug logging
     _server->on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        Serial.println("[WEB] Request received: /config.html");
+        Serial.print("[WEB] Client IP: ");
+        Serial.println(request->client()->remoteIP());
+
         if (SPIFFS.exists("/config.html")) {
+            Serial.println("[WEB] config.html found in SPIFFS, sending file");
             request->send(SPIFFS, "/config.html", "text/html");
         } else {
+            Serial.println("[WEB] ERROR: config.html not found in SPIFFS!");
             request->send(404, "text/plain", "Configuration page not found. Please upload the data files.");
+        }
+    });
+
+    // Explicitly route to status.html with debug logging
+    _server->on("/status.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        Serial.println("[WEB] Request received: /status.html");
+        Serial.print("[WEB] Client IP: ");
+        Serial.println(request->client()->remoteIP());
+
+        if (SPIFFS.exists("/status.html")) {
+            Serial.println("[WEB] status.html found in SPIFFS, sending file");
+            request->send(SPIFFS, "/status.html", "text/html");
+        } else {
+            Serial.println("[WEB] ERROR: status.html not found in SPIFFS!");
+            request->send(404, "text/plain", "System status page not found. Please upload the data files.");
         }
     });
 
