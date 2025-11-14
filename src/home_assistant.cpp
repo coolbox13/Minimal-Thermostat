@@ -46,11 +46,11 @@ void HomeAssistant::registerEntities() {
     Serial.println("Registering entities with Home Assistant at time: " + timestamp);
 
     // Create origin info (for sensors - full keys)
-    String originInfo = "{\"name\":\"ESP32-KNX-Thermostat\",\"sw_version\":\"1.4\",\"support_url\":\"https://github.com/yourusername/ESP32-KNX-Thermostat\"}";
+    String originInfo = "{\"name\":\"ESP32-KNX-Thermostat\",\"sw_version\":\"1.5\",\"support_url\":\"https://github.com/yourusername/ESP32-KNX-Thermostat\"}";
 
     // Create device info JSON string using ABBREVIATED keys for climate entity
     // Using abbreviated keys: ids, mf, mdl, sw (instead of identifiers, manufacturer, model, sw_version)
-    String deviceInfo = "{\"ids\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"mf\":\"DIY\",\"mdl\":\"ESP32-KNX-Thermostat\",\"sw\":\"1.4\"}";
+    String deviceInfo = "{\"ids\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"mf\":\"DIY\",\"mdl\":\"ESP32-KNX-Thermostat\",\"sw\":\"1.5\"}";
     
     // Temperature sensor with enhanced attributes
     String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
@@ -223,8 +223,10 @@ void HomeAssistant::registerEntities() {
     climatePayload += "\"max_temp\":30,";
     climatePayload += "\"temp_step\":0.5,";
     climatePayload += "\"temp_unit\":\"C\",";
-    // NOTE: Preset modes removed - they cause validation errors with abbreviated keys
-    // To use presets, add manual YAML config (see docs/ha_manual_mqtt_config.yaml)
+    // Preset modes (abbreviated) - verified working with HA
+    climatePayload += "\"pr_mode_cmd_t\":\"" + String(_nodeId) + "/preset/set\",";
+    climatePayload += "\"pr_mode_stat_t\":\"" + String(_nodeId) + "/preset/state\",";
+    climatePayload += "\"pr_modes\":[\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
     // Availability (abbreviated)
     climatePayload += "\"avty_t\":\"" + _availabilityTopic + "\",";
     climatePayload += "\"pl_avail\":\"online\",";
