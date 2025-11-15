@@ -4,6 +4,8 @@
 #include "config_manager.h"
 #include "serial_monitor.h"
 #include "serial_redirect.h"
+#include <ArduinoJson.h>
+#include <WiFi.h>
 
 // Redirect Serial to CapturedSerial for web monitor
 #define Serial CapturedSerial
@@ -61,6 +63,21 @@ void MQTTManager::publishSensorData(float temperature, float humidity, float pre
     if (_homeAssistant) {
         _homeAssistant->updateStates(temperature, humidity, pressure, _valvePosition);
     }
+
+    // Publish JSON aggregate if enabled
+    ConfigManager* configManager = ConfigManager::getInstance();
+    if (configManager && configManager->getMqttJsonAggregateEnabled()) {
+        // Get current PID parameters
+        float kp = configManager->getPidKp();
+        float ki = configManager->getPidKi();
+        float kd = configManager->getPidKd();
+        
+        // Get WiFi RSSI and uptime
+        int wifiRSSI = WiFi.RSSI();
+        unsigned long uptime = millis() / 1000; // Convert to seconds
+        
+        publishJsonAggregate(temperature, humidity, pressure, kp, ki, kd, wifiRSSI, uptime);
+    }
 }
 
 void MQTTManager::updatePIDParameters(float kp, float ki, float kd) {
@@ -78,6 +95,52 @@ void MQTTManager::updateDiagnostics(int wifiRSSI, unsigned long uptime) {
     // Update Home Assistant with diagnostic data
     if (_homeAssistant) {
         _homeAssistant->updateDiagnostics(wifiRSSI, uptime);
+    }
+}
+
+void MQTTManager::publishJsonAggregate(float temperature, float humidity, float pressure,
+                                        float kp, float ki, float kd, int wifiRSSI, unsigned long uptime) {
+    if (!_mqttClient.connected()) return;
+
+    ConfigManager* configManager = ConfigManager::getInstance();
+    if (!configManager) return;
+
+    // Create JSON document (512 bytes should be enough for all data)
+    StaticJsonDocument<512> doc;
+
+    // Sensor data
+    doc["temperature"] = roundf(temperature * 100) / 100.0f; // Round to 2 decimals
+    doc["humidity"] = roundf(humidity * 100) / 100.0f;
+    doc["pressure"] = roundf(pressure * 100) / 100.0f;
+
+    // Valve data
+    doc["valve_position"] = _valvePosition;
+    doc["action"] = (_valvePosition > 0) ? "heating" : "idle";
+    doc["heating_state"] = (_valvePosition > 0) ? "ON" : "OFF";
+
+    // PID parameters
+    doc["pid"]["kp"] = roundf(kp * 100) / 100.0f; // Round to 2 decimals
+    doc["pid"]["ki"] = roundf(ki * 1000) / 1000.0f; // Round to 3 decimals
+    doc["pid"]["kd"] = roundf(kd * 1000) / 1000.0f; // Round to 3 decimals
+    doc["pid"]["setpoint"] = roundf(configManager->getSetpoint() * 10) / 10.0f; // Round to 1 decimal
+
+    // Control state
+    doc["mode"] = configManager->getThermostatEnabled() ? "heat" : "off";
+    doc["preset"] = configManager->getCurrentPreset();
+
+    // Diagnostics
+    doc["wifi"]["rssi"] = wifiRSSI;
+    doc["uptime"] = uptime;
+    doc["status"] = "online";
+
+    // Serialize JSON to string
+    String jsonPayload;
+    serializeJson(doc, jsonPayload);
+
+    // Publish to 'telegraph' topic
+    bool published = _mqttClient.publish("telegraph", jsonPayload.c_str());
+    if (!published) {
+        Serial.println("Failed to publish JSON aggregate to 'telegraph' topic");
     }
 }
 

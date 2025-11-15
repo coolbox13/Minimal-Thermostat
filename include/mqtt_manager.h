@@ -33,6 +33,10 @@ public:
     // Publish diagnostic data to MQTT (for Home Assistant)
     void updateDiagnostics(int wifiRSSI, unsigned long uptime);
 
+    // Publish JSON aggregate to 'telegraph' topic (if enabled)
+    void publishJsonAggregate(float temperature, float humidity, float pressure, 
+                              float kp, float ki, float kd, int wifiRSSI, unsigned long uptime);
+
     // Set valve position (from KNX)
     void setValvePosition(int position);
     

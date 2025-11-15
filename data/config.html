@@ -97,6 +97,13 @@
                         <input type="password" id="mqtt_password" name="mqtt_password" class="form-input" placeholder="Leave empty for no authentication">
                         <span class="form-hint">Optional: MQTT broker password (leave empty to keep current password)</span>
                     </div>
+                    <div class="form-row checkbox-row">
+                        <label for="mqtt_json_aggregate_enabled">Enable JSON Aggregate:</label>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="mqtt_json_aggregate_enabled" name="mqtt_json_aggregate_enabled" class="form-checkbox">
+                            <span class="form-hint">Publish all data as JSON on 'telegraph' topic</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- KNX Settings Tab -->

@@ -144,6 +144,14 @@ void ConfigManager::setMqttPassword(const String& password) {
     _preferences.putString("mqtt_pass", password);
 }
 
+bool ConfigManager::getMqttJsonAggregateEnabled() {
+    return _preferences.getBool("mqtt_json_agg", false); // Default: disabled
+}
+
+void ConfigManager::setMqttJsonAggregateEnabled(bool enabled) {
+    _preferences.putBool("mqtt_json_agg", enabled);
+}
+
 // KNX settings
 uint8_t ConfigManager::getKnxArea() {
     return _preferences.getUChar("knx_area", DEFAULT_KNX_AREA);
@@ -448,6 +456,7 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["mqtt"]["port"] = getMqttPort();
     doc["mqtt"]["username"] = getMqttUsername();
     doc["mqtt"]["password"] = "**********"; // Don't expose password in JSON
+    doc["mqtt"]["json_aggregate_enabled"] = getMqttJsonAggregateEnabled();
     
     doc["knx"]["area"] = getKnxArea();
     doc["knx"]["line"] = getKnxLine();
@@ -618,6 +627,11 @@ bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String
             }
         }
         // If password is empty or masked, don't change it (keep current)
+    }
+    
+    if (doc["mqtt"].containsKey("json_aggregate_enabled")) {
+        setMqttJsonAggregateEnabled(doc["mqtt"]["json_aggregate_enabled"].as<bool>());
+        LOG_D(TAG, "MQTT JSON aggregate enabled: %s", doc["mqtt"]["json_aggregate_enabled"].as<bool>() ? "true" : "false");
     }
     
     return true;

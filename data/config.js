@@ -129,6 +129,7 @@ function loadConfiguration() {
                 document.getElementById('mqtt_server').value = data.mqtt.server || '';
                 document.getElementById('mqtt_port').value = data.mqtt.port || 1883;
                 document.getElementById('mqtt_username').value = data.mqtt.username || '';
+                document.getElementById('mqtt_json_aggregate_enabled').checked = data.mqtt.json_aggregate_enabled || false;
                 // Don't set password for security reasons
             }
             
@@ -240,7 +241,8 @@ function saveConfiguration(e) {
             server: formData.get('mqtt_server'),
             port: parseInt(formData.get('mqtt_port')),
             username: formData.get('mqtt_username') || '',
-            password: formData.get('mqtt_password') || ''
+            password: formData.get('mqtt_password') || '',
+            json_aggregate_enabled: formData.get('mqtt_json_aggregate_enabled') === 'on'
         },
         knx: {
             area: parseInt(formData.get('knx_area')),

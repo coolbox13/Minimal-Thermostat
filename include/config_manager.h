@@ -168,6 +168,18 @@ public:
      */
     void setMqttPassword(const String& password);
 
+    /**
+     * @brief Check if JSON aggregate publishing is enabled
+     * @return true if JSON aggregate is enabled, false otherwise
+     */
+    bool getMqttJsonAggregateEnabled();
+
+    /**
+     * @brief Enable or disable JSON aggregate publishing
+     * @param enabled true to enable JSON aggregate on 'telegraph' topic, false to disable
+     */
+    void setMqttJsonAggregateEnabled(bool enabled);
+
     // KNX settings
     /**
      * @brief Get the KNX area address component
