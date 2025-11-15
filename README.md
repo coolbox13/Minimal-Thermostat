@@ -27,6 +27,7 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 - **Multi-Protocol Support**:
   - Native KNX integration for building automation
   - MQTT connectivity for home automation systems with username/password authentication
+  - **JSON aggregated data publishing** to `telegraph` topic for InfluxDB/Telegraf integration
   - Web interface for direct control and configuration
   - Webhook integration for IFTTT, Zapier, and custom automation
 
@@ -707,6 +708,7 @@ The system maintains a 24-hour rolling history of sensor readings:
 |Output|**esp32_thermostat/uptime**|**System uptime (seconds)**|
 |Output|**esp32_thermostat/heating/state**|**Heating status (ON/OFF)**|
 |Output|esp32_thermostat/logs|Event log entries (JSON format)|
+|Output|**telegraph**|**JSON aggregate data for InfluxDB/Telegraf**|
 
 **Note**: Topics in **bold** were added for Home Assistant integration and diagnostic monitoring.
 
