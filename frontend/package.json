@@ -1,0 +1,30 @@
+{
+  "name": "esp32-thermostat-frontend",
+  "version": "2.0.0",
+  "description": "Preact-based frontend for ESP32 KNX Thermostat",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:esp32": "vite build && npm run copy-to-data",
+    "copy-to-data": "cp -r dist/* ../data/"
+  },
+  "dependencies": {
+    "preact": "^10.19.3",
+    "preact-router": "^4.1.2",
+    "htm": "^3.1.1",
+    "uplot": "^1.6.28",
+    "framer-motion": "^10.16.16",
+    "react-hot-toast": "^2.4.1",
+    "@headlessui/react": "^1.7.17"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.7.0",
+    "vite": "^5.0.8",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "vite-plugin-compression": "^0.5.1"
+  }
+}
