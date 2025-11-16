@@ -27,6 +27,14 @@ export function HistoryChart({
   const chartRef = useRef(null);
   const plotRef = useRef(null);
 
+  // Calculate responsive chart height based on viewport
+  const getResponsiveHeight = () => {
+    const vh = window.innerHeight;
+    if (vh < 600) return 250;    // Mobile: 250px
+    if (vh < 900) return 300;    // Tablet: 300px
+    return 400;                   // Desktop: 400px
+  };
+
   useEffect(() => {
     if (!chartRef.current || !timestamps || timestamps.length === 0) {
       return;
@@ -43,7 +51,7 @@ export function HistoryChart({
     // Configure uPlot options
     const opts = {
       width: chartRef.current.offsetWidth,
-      height: 300,
+      height: getResponsiveHeight(),
       plugins: [],
       scales: {
         x: {
@@ -151,7 +159,7 @@ export function HistoryChart({
       plotRef.current.setData(data);
       plotRef.current.setSize({
         width: chartRef.current.offsetWidth,
-        height: 300,
+        height: getResponsiveHeight(),
       });
     } else {
       plotRef.current = new uPlot(opts, data, chartRef.current);
@@ -162,7 +170,7 @@ export function HistoryChart({
       if (plotRef.current && chartRef.current) {
         plotRef.current.setSize({
           width: chartRef.current.offsetWidth,
-          height: 300,
+          height: getResponsiveHeight(),
         });
       }
     };

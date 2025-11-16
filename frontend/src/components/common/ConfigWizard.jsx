@@ -539,7 +539,7 @@ export function ConfigWizard({ isOpen, onClose, onComplete }) {
             <span>🎛️</span>
             <span>PID Configuration</span>
           </h3>
-          <div class="grid grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div class="text-center">
               <div class="text-gray-600 dark:text-gray-400 text-sm mb-1">
                 Kp

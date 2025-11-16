@@ -88,7 +88,7 @@ export function Serial() {
       <div class="bg-gray-900 dark:bg-black rounded-xl shadow-lg p-4 font-mono text-sm">
         <div
           ref=${scrollRef}
-          class="h-[600px] overflow-y-auto text-green-400 leading-relaxed"
+          class="h-[300px] sm:h-[400px] md:h-[600px] overflow-y-auto text-green-400 leading-relaxed"
         >
           ${lines.length === 0 ? html`
             <div class="text-center text-gray-500 py-12">

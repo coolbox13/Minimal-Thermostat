@@ -148,7 +148,7 @@ export function Logs() {
             <p class="text-gray-600 dark:text-gray-400">No logs available</p>
           </div>
         ` : html`
-          <div class="space-y-2 max-h-[600px] overflow-y-auto">
+          <div class="space-y-2 max-h-[400px] sm:max-h-[600px] overflow-y-auto">
             ${filteredLogs.map((log, index) => {
               const style = getLevelStyle(log.level);
               return html`
