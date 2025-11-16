@@ -2,6 +2,7 @@ import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import htm from 'htm';
 import { FactoryResetModal } from '../components/common/FactoryResetModal.jsx';
+import { ConfigWizard } from '../components/common/ConfigWizard.jsx';
 import { ValidatedInput } from '../components/common/ValidatedInput.jsx';
 import { validatePID } from '../utils/validation.js';
 import toast from '../utils/toast.js';
@@ -17,6 +18,7 @@ export function Config() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
 
   // PID parameter state with validation
   const [pidValues, setPidValues] = useState({
@@ -135,6 +137,28 @@ export function Config() {
 
   return html`
     <div class="space-y-6">
+      <!-- Getting Started Section -->
+      <div class="bg-gradient-to-r from-primary-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-bold mb-2 flex items-center gap-2">
+              <span>🚀</span>
+              <span>Getting Started</span>
+            </h2>
+            <p class="text-white/90">
+              New to the ESP32 Thermostat? Use our setup wizard to configure your device step-by-step.
+            </p>
+          </div>
+          <button
+            onClick=${() => setShowWizard(true)}
+            class="px-6 py-3 bg-white text-primary-600 hover:bg-gray-100 rounded-lg font-semibold transition-all flex items-center gap-2 whitespace-nowrap self-start md:self-center"
+          >
+            <span>✨</span>
+            <span>Launch Setup Wizard</span>
+          </button>
+        </div>
+      </div>
+
       <!-- WiFi Configuration -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -324,6 +348,16 @@ export function Config() {
         isOpen=${showResetModal}
         onClose=${() => setShowResetModal(false)}
         onConfirm=${handleFactoryReset}
+      />
+
+      <!-- Configuration Wizard -->
+      <${ConfigWizard}
+        isOpen=${showWizard}
+        onClose=${() => setShowWizard(false)}
+        onComplete=${() => {
+          setShowWizard(false);
+          fetchConfig(); // Refresh configuration after wizard completes
+        }}
       />
     </div>
   `;
