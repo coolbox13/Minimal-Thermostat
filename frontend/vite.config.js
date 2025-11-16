@@ -1,12 +1,12 @@
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
-import { compression } from 'vite-plugin-compression';
+import viteCompression from 'vite-plugin-compression';
 
 export default defineConfig({
   plugins: [
     preact(),
     // Gzip compression for smaller file sizes
-    compression({
+    viteCompression({
       algorithm: 'gzip',
       ext: '.gz',
       threshold: 1024, // Only compress files > 1KB
