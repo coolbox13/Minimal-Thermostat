@@ -2,6 +2,7 @@ import { h, render } from 'preact';
 import htm from 'htm';
 import Router from 'preact-router';
 import { Toaster } from 'react-hot-toast';
+import { ErrorBoundary } from './components/common/ErrorBoundary.jsx';
 import { Layout } from './components/layout/Layout.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
 import { Status } from './pages/Status.jsx';
@@ -14,36 +15,38 @@ const html = htm.bind(h);
 
 /**
  * Main Application Entry Point
- * Implements client-side routing with Preact Router
+ * Implements client-side routing with Preact Router and error boundaries
  */
 function App() {
   return html`
-    <div>
-      <${Layout}>
-        <${Router}>
-          <${Dashboard} path="/" />
-          <${Status} path="/status" />
-          <${Config} path="/config" />
-          <${Logs} path="/logs" />
-          <${Serial} path="/serial" />
+    <${ErrorBoundary}>
+      <div>
+        <${Layout}>
+          <${Router}>
+            <${Dashboard} path="/" />
+            <${Status} path="/status" />
+            <${Config} path="/config" />
+            <${Logs} path="/logs" />
+            <${Serial} path="/serial" />
+          <//>
         <//>
-      <//>
-      <${Toaster}
-        position="top-center"
-        reverseOrder=${false}
-        gutter=${8}
-        toastOptions=${{
-          duration: 3000,
-          style: {
-            borderRadius: '12px',
-            padding: '12px 16px',
-            fontSize: '14px',
-            fontWeight: '500',
-            maxWidth: '500px',
-          },
-        }}
-      />
-    </div>
+        <${Toaster}
+          position="top-center"
+          reverseOrder=${false}
+          gutter=${8}
+          toastOptions=${{
+            duration: 3000,
+            style: {
+              borderRadius: '12px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              maxWidth: '500px',
+            },
+          }}
+        />
+      </div>
+    <//>
   `;
 }
 
