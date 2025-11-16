@@ -15,9 +15,9 @@ const html = htm.bind(h);
  */
 export function Dashboard() {
   return html`
-    <div>
+    <div class="page-enter">
       <!-- Two-column layout on desktop, stacked on mobile -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 stagger-children">
         <!-- Left Column: Sensor Readings -->
         <div class="space-y-6">
           <${SensorCard} />
@@ -32,7 +32,7 @@ export function Dashboard() {
       </div>
 
       <!-- Full-width Graph Section -->
-      <div class="mt-6">
+      <div class="mt-6 slide-in-right">
         <${GraphContainer} />
       </div>
     </div>
