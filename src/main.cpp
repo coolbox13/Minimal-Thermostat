@@ -266,15 +266,20 @@ void performInitialSetup() {
         LOG_W(TAG_MAIN, "CAUTION: Flash usage high (>90%%)");
     }
 
-    // SPIFFS Information
-    uint32_t spiffsTotal = SPIFFS.totalBytes();
-    uint32_t spiffsUsed = SPIFFS.usedBytes();
-    uint32_t spiffsFree = spiffsTotal - spiffsUsed;
-    float spiffsPercent = (float)spiffsUsed / spiffsTotal * 100.0f;
-    LOG_I(TAG_MAIN, "SPIFFS: %u KB used / %u KB total (%.1f%% used)",
-          spiffsUsed / 1024, spiffsTotal / 1024, spiffsPercent);
-    LOG_I(TAG_MAIN, "SPIFFS Free: %u KB (%.1f%% available)",
-          spiffsFree / 1024, (float)spiffsFree / spiffsTotal * 100.0f);
+    // LittleFS Information (only if mounted)
+    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
+    if (LittleFS.begin(false, "/littlefs", 5, "littlefs")) {  // Check if mounted without formatting
+        uint32_t spiffsTotal = LittleFS.totalBytes();
+        uint32_t spiffsUsed = LittleFS.usedBytes();
+        uint32_t spiffsFree = spiffsTotal - spiffsUsed;
+        float spiffsPercent = (float)spiffsUsed / spiffsTotal * 100.0f;
+        LOG_I(TAG_MAIN, "LittleFS: %u KB used / %u KB total (%.1f%% used)",
+              spiffsUsed / 1024, spiffsTotal / 1024, spiffsPercent);
+        LOG_I(TAG_MAIN, "LittleFS Free: %u KB (%.1f%% available)",
+              spiffsFree / 1024, (float)spiffsFree / spiffsTotal * 100.0f);
+    } else {
+        LOG_W(TAG_MAIN, "LittleFS: Not mounted - files not uploaded or partition issue");
+    }
 
     LOG_I(TAG_MAIN, "Chip: %s Rev %d @ %d MHz",
           ESP.getChipModel(), ESP.getChipRevision(), ESP.getCpuFreqMHz());

@@ -12,7 +12,7 @@ EventLog::EventLog()
 }
 
 EventLog::~EventLog() {
-    saveToSPIFFS();
+    saveToLittleFS();
 }
 
 EventLog& EventLog::getInstance() {
@@ -21,14 +21,17 @@ EventLog& EventLog::getInstance() {
 }
 
 bool EventLog::begin() {
-    // SPIFFS should already be initialized by web server
-    if (!SPIFFS.begin()) {
-        Serial.println("EventLog: SPIFFS not available, using memory-only logging");
+    // Check if LittleFS is already mounted (by web server)
+    // If not mounted, try to mount it (for cases where EventLog is initialized first)
+    // Note: LittleFS.begin() returns true if already mounted, false if mount fails
+    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
+    if (!LittleFS.begin(false, "/littlefs", 5, "littlefs")) {  // false = don't format if mount fails
+        Serial.println("EventLog: LittleFS not available, using memory-only logging");
         return false;
     }
 
-    // Load existing logs from SPIFFS
-    return loadFromSPIFFS();
+    // Load existing logs from LittleFS
+    return loadFromLittleFS();
 }
 
 void EventLog::addEntry(LogLevel level, const char* tag, const char* message) {
@@ -43,8 +46,8 @@ void EventLog::addEntry(LogLevel level, const char* tag, const char* message) {
         _entries.erase(_entries.begin());
     }
 
-    // Save to SPIFFS (asynchronously would be better, but keep it simple for now)
-    saveToSPIFFS();
+    // Save to LittleFS (asynchronously would be better, but keep it simple for now)
+    saveToLittleFS();
 
     // Publish to MQTT if enabled
     if (_mqttLoggingEnabled && _mqttCallback) {
@@ -80,7 +83,7 @@ String EventLog::getFilteredEntriesJSON(LogLevel minLevel, const char* tag) {
 
 void EventLog::clear() {
     _entries.clear();
-    saveToSPIFFS();
+    saveToLittleFS();
 }
 
 size_t EventLog::getCount() const {
@@ -111,13 +114,25 @@ const char* EventLog::logLevelToString(LogLevel level) {
     }
 }
 
-bool EventLog::loadFromSPIFFS() {
-    if (!SPIFFS.exists(LOG_FILE)) {
+bool EventLog::loadFromLittleFS() {
+    // Check if LittleFS is mounted before attempting file operations
+    // LittleFS.begin(false) returns true if already mounted, false if not mounted
+    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
+    if (!LittleFS.begin(false, "/littlefs", 5, "littlefs")) {
+        Serial.println("EventLog: LittleFS not mounted, skipping load");
+        return false;
+    }
+
+    // LOG_FILE is "/event_log.json" - LittleFS.open() uses filesystem-relative paths
+    // When mounted at "/littlefs", filesystem root "/" maps to VFS "/littlefs"
+    // So we use LOG_FILE directly (it already has leading "/")
+    String logPath = String(LOG_FILE);
+    if (!LittleFS.exists(logPath)) {
         Serial.println("EventLog: No existing log file found, starting fresh");
         return true;
     }
 
-    File file = SPIFFS.open(LOG_FILE, "r");
+    File file = LittleFS.open(logPath, "r");
     if (!file) {
         Serial.println("EventLog: Failed to open log file for reading");
         return false;
@@ -159,13 +174,23 @@ bool EventLog::loadFromSPIFFS() {
 
     Serial.print("EventLog: Loaded ");
     Serial.print(_entries.size());
-    Serial.println(" log entries from SPIFFS");
+    Serial.println(" log entries from LittleFS");
 
     return true;
 }
 
-bool EventLog::saveToSPIFFS() {
-    File file = SPIFFS.open(LOG_FILE, "w");
+bool EventLog::saveToLittleFS() {
+    // Check if LittleFS is mounted before attempting file operations
+    // LittleFS.begin(false) returns true if already mounted, false if not mounted
+    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
+    if (!LittleFS.begin(false, "/littlefs", 5, "littlefs")) {
+        // Silently fail - filesystem not available, use memory-only logging
+        return false;
+    }
+
+    // LOG_FILE is "/event_log.json" - LittleFS.open() uses filesystem-relative paths
+    String logPath = String(LOG_FILE);
+    File file = LittleFS.open(logPath, "w");
     if (!file) {
         Serial.println("EventLog: Failed to open log file for writing");
         return false;

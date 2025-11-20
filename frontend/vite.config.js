@@ -31,34 +31,38 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Optimize chunk splitting for better caching
+        // Use SHORT names to avoid LittleFS path length limit (~31 chars including .gz)
+        // Format: /js/[name]-[hash].js.gz must be < 31 chars
+        // So [name]-[hash] must be < 23 chars (8 chars for /js/.js.gz)
         manualChunks(id) {
-          // Vendor chunks
+          // Vendor chunks - shortened names
           if (id.includes('node_modules')) {
             if (id.includes('preact')) {
-              return 'vendor-preact';
+              return 'v-preact';  // Was 'vendor-preact' (13) -> now 7 chars
             }
             if (id.includes('uplot')) {
-              return 'vendor-chart';
+              return 'v-chart';   // Was 'vendor-chart' (12) -> now 6 chars
             }
             if (id.includes('headlessui') || id.includes('react-hot-toast')) {
-              return 'vendor-ui';
+              return 'v-ui';      // Was 'vendor-ui' (9) -> now 3 chars
             }
             // Other node_modules go to vendor-misc
-            return 'vendor-misc';
+            return 'v-misc';      // Was 'vendor-misc' (11) -> now 5 chars
           }
 
-          // Page-based chunking for lazy loading
+          // Page-based chunking for lazy loading - shortened names
           if (id.includes('/pages/')) {
             const name = id.split('/pages/')[1].split('.')[0];
-            return `page-${name.toLowerCase()}`;
+            // Use single letter prefix: p-config, p-dashboard, etc.
+            return `p-${name.toLowerCase()}`;  // Was 'page-...' -> now 'p-...'
           }
 
-          // Component chunks
+          // Component chunks - shortened names
           if (id.includes('/components/Graph/')) {
-            return 'components-graph';
+            return 'c-graph';      // Was 'components-graph' (16) -> now 6 chars
           }
           if (id.includes('/components/Dashboard/')) {
-            return 'components-dashboard';
+            return 'c-dash';      // Was 'components-dashboard' (19) -> now 5 chars
           }
         },
 
@@ -73,8 +77,10 @@ export default defineConfig({
           }
           return `assets/[name]-[hash][extname]`;
         },
-        chunkFileNames: 'assets/js/[name]-[hash].js',
-        entryFileNames: 'assets/js/[name]-[hash].js',
+        // Use shorter paths to avoid LittleFS path length limit (~31 chars)
+        // Changed from 'assets/js/' to 'js/' to reduce path length
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
       },
     },
     chunkSizeWarningLimit: 600,

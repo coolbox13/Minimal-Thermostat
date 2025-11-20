@@ -2,7 +2,7 @@
 #define EVENT_LOG_H
 
 #include <Arduino.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 #include <vector>
 #include <ArduinoJson.h>
 #include "logger.h"
@@ -25,7 +25,7 @@ struct LogEntry {
 /**
  * @brief EventLog class for persistent logging
  *
- * Stores important events (errors, warnings, info) in SPIFFS for troubleshooting.
+ * Stores important events (errors, warnings, info) in LittleFS for troubleshooting.
  * Implements a circular buffer approach with configurable maximum entries.
  * Also publishes logs to MQTT if enabled.
  */
@@ -105,14 +105,14 @@ private:
     EventLog& operator=(const EventLog&) = delete;
 
     /**
-     * @brief Load log entries from SPIFFS
+     * @brief Load log entries from LittleFS
      */
-    bool loadFromSPIFFS();
+    bool loadFromLittleFS();
 
     /**
-     * @brief Save log entries to SPIFFS
+     * @brief Save log entries to LittleFS
      */
-    bool saveToSPIFFS();
+    bool saveToLittleFS();
 
     /**
      * @brief Publish log entry to MQTT
@@ -120,7 +120,7 @@ private:
     void publishToMQTT(LogLevel level, const char* tag, const char* message);
 
     static const int MAX_ENTRIES = 100;           // Maximum number of log entries to store
-    static constexpr const char* LOG_FILE = "/event_log.json";  // SPIFFS file path
+    static constexpr const char* LOG_FILE = "/event_log.json";  // LittleFS file path
 
     std::vector<LogEntry> _entries;               // In-memory log entries
     bool _mqttLoggingEnabled;                     // MQTT logging enabled flag

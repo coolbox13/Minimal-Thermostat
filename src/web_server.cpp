@@ -4,7 +4,7 @@
 // IMPORTANT: Must include serial_redirect.h early to redirect Serial
 #include "serial_redirect.h"
 
-#include "SPIFFS.h"
+#include "LittleFS.h"
 #include <Update.h>
 #include "bme280_sensor.h"
 #include "valve_control.h"
@@ -57,44 +57,69 @@ void WebServerManager::begin(AsyncWebServer* server) {
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
-    // Initialize SPIFFS with format_if_failed=true
-    if(!SPIFFS.begin(true)) {
-        Serial.println("ERROR: Failed to mount SPIFFS");
+    // Initialize LittleFS with format_if_failed=true and partition name "littlefs"
+    // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
+    if(!LittleFS.begin(true, "/littlefs", 5, "littlefs")) {
+        Serial.println("ERROR: Failed to mount LittleFS");
         Serial.println("Common causes:");
-        Serial.println("1. First time use - SPIFFS needs to be formatted");
-        Serial.println("2. Partition scheme doesn't include SPIFFS");
+        Serial.println("1. First time use - LittleFS needs to be formatted");
+        Serial.println("2. Partition scheme doesn't include filesystem");
         Serial.println("3. Flash memory corruption");
-        
-        // Create a dummy index.html in memory since SPIFFS failed
+
+        // Create a dummy index.html in memory since LittleFS failed
         setupDefaultRoutes();
         return;
     }
 
-    // Verify SPIFFS contents and list files for debugging
-    Serial.println("SPIFFS mounted successfully. Files in SPIFFS:");
-    File root = SPIFFS.open("/");
-    File file = root.openNextFile();
-    bool foundIndex = false;
+    // Verify LittleFS contents and list files for debugging
+    Serial.println("LittleFS mounted successfully. Files in LittleFS:");
     
-    // In the WebServerManager::begin method, update the file listing code:
-    while(file) {
-        String fileName = file.name();
-        size_t fileSize = file.size();
-        Serial.print("File: ");
-        Serial.print(fileName);
-        Serial.print(" - Size: ");
-        Serial.println(fileSize);
-        
-        // Check for index.html (both with and without leading slash)
-        if(fileName == "/index.html" || fileName == "index.html") {
-            foundIndex = true;
+    // Helper function to list directory contents
+    auto listDir = [](const char* dirname) {
+        Serial.printf("\nListing directory: %s\n", dirname);
+        File root = LittleFS.open(dirname);
+        if (!root || !root.isDirectory()) {
+            Serial.printf("  Failed to open directory: %s\n", dirname);
+            return;
         }
-        file = root.openNextFile();
+        
+        File file = root.openNextFile();
+        int count = 0;
+        while (file) {
+            Serial.printf("  %s %s (%d bytes)\n", 
+                file.isDirectory() ? "DIR " : "FILE", 
+                file.name(), 
+                file.size());
+            count++;
+            file = root.openNextFile();
+        }
+        Serial.printf("  Total: %d entries\n", count);
+        root.close();
+    };
+    
+    // List root directory
+    listDir("/");
+    
+    // List assets directory if it exists
+    File assetsDir = LittleFS.open("/assets");
+    if (assetsDir && assetsDir.isDirectory()) {
+        listDir("/assets");
+        assetsDir.close();
+        
+        // List js directory if it exists (JS files moved from /assets/js/ to /js/ to avoid path length limit)
+        File jsDir = LittleFS.open("/js");
+        if (jsDir && jsDir.isDirectory()) {
+            listDir("/js");
+            jsDir.close();
+        }
     }
-
-    if(!foundIndex) {
-        Serial.println("WARNING: index.html not found in SPIFFS");
-        Serial.println("Creating a default index.html in memory");
+    
+    // Check for index.html
+    if (LittleFS.exists("/index.html.gz") || LittleFS.exists("/index.html")) {
+        Serial.println("✓ index.html found in LittleFS");
+    } else {
+        Serial.println("WARNING: index.html not found in LittleFS");
+        Serial.println("Please upload filesystem using 'platformio run --target uploadfs'");
     }
     
     setupDefaultRoutes();
@@ -205,14 +230,21 @@ void WebServerManager::handleNTPUpdate(const JsonDocument& jsonDoc) {
 void WebServerManager::setupDefaultRoutes() {
     if (!_server) return;
 
-    // Setup root route to serve index.html
+    // Setup root route to serve index.html (with gzip support)
     _server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        // Check if index.html exists in SPIFFS
-        if (SPIFFS.exists("/index.html")) {
-            request->send(SPIFFS, "/index.html", "text/html");
+        // Check for gzip version first (space-optimized)
+        // LittleFS.exists() and beginResponse() use filesystem-relative paths, not VFS paths
+        // When mounted at "/littlefs", filesystem files at "/index.html.gz" become "/littlefs/index.html.gz" in VFS
+        // But LittleFS API needs filesystem-relative path: "/index.html.gz"
+        if (LittleFS.exists("/index.html.gz")) {
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
+            response->addHeader("Content-Encoding", "gzip");
+            request->send(response);
+        } else if (LittleFS.exists("/index.html")) {
+            request->send(LittleFS, "/index.html", "text/html");
         } else {
             // Serve a basic HTML with error message if file doesn't exist
-            request->send(200, "text/html", 
+            request->send(200, "text/html",
                 "<html><head><title>ESP32 KNX Thermostat</title></head>"
                 "<body style='font-family:Arial;text-align:center;'>"
                 "<h1>ESP32 KNX Thermostat</h1>"
@@ -224,39 +256,195 @@ void WebServerManager::setupDefaultRoutes() {
         }
     });
 
-    // Explicitly route to config.html with debug logging
-    _server->on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        Serial.println("[WEB] Request received: /config.html");
-        Serial.print("[WEB] Client IP: ");
-        Serial.println(request->client()->remoteIP());
-
-        if (SPIFFS.exists("/config.html")) {
-            Serial.println("[WEB] config.html found in SPIFFS, sending file");
-            request->send(SPIFFS, "/config.html", "text/html");
+    // SPA routing: All HTML routes should serve index.html (client-side routing)
+    // This includes /config, /status, /logs, etc.
+    auto spaRouteHandler = [](AsyncWebServerRequest *request) {
+        // LittleFS.exists() and beginResponse() use filesystem-relative paths
+        if (LittleFS.exists("/index.html.gz")) {
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
+            response->addHeader("Content-Encoding", "gzip");
+            request->send(response);
+        } else if (LittleFS.exists("/index.html")) {
+            request->send(LittleFS, "/index.html", "text/html");
         } else {
-            Serial.println("[WEB] ERROR: config.html not found in SPIFFS!");
-            request->send(404, "text/plain", "Configuration page not found. Please upload the data files.");
+            request->send(404, "text/html",
+                "<html><body><h1>Frontend not found</h1>"
+                "<p>Please upload the data files using 'platformio run --target uploadfs'.</p></body></html>");
         }
-    });
+    };
 
-    // Explicitly route to status.html with debug logging
-    _server->on("/status.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        Serial.println("[WEB] Request received: /status.html");
-        Serial.print("[WEB] Client IP: ");
-        Serial.println(request->client()->remoteIP());
-
-        if (SPIFFS.exists("/status.html")) {
-            Serial.println("[WEB] status.html found in SPIFFS, sending file");
-            request->send(SPIFFS, "/status.html", "text/html");
-        } else {
-            Serial.println("[WEB] ERROR: status.html not found in SPIFFS!");
-            request->send(404, "text/plain", "System status page not found. Please upload the data files.");
+    // CRITICAL: Handle /assets/ and /js/ files FIRST, before SPA routes
+    // This ensures asset requests don't fall through to SPA handler
+    // This is necessary because serveStatic doesn't properly detect MIME types for ES6 modules
+    auto assetHandler = [](AsyncWebServerRequest *request) {
+        String path = request->url();
+        
+        // Debug: log the request
+        Serial.printf("[ASSET HANDLER] Request URL: %s\n", path.c_str());
+        
+        // Sanitize path: remove query strings and fragments
+        int queryIndex = path.indexOf('?');
+        if (queryIndex >= 0) {
+            path = path.substring(0, queryIndex);
         }
-    });
+        int fragmentIndex = path.indexOf('#');
+        if (fragmentIndex >= 0) {
+            path = path.substring(0, fragmentIndex);
+        }
 
-    // Serve static files from SPIFFS with proper MIME types
-    _server->serveStatic("/", SPIFFS, "/")
-        .setCacheControl("max-age=600");
+        // Ensure path starts with / (filesystem-relative paths must start with /)
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        
+        Serial.printf("[ASSET HANDLER] Processed path: %s\n", path.c_str());
+
+        // Determine correct MIME type based on file extension
+        String contentType = "application/octet-stream";
+        if (path.endsWith(".js")) {
+            contentType = "application/javascript";
+        } else if (path.endsWith(".css")) {
+            contentType = "text/css";
+        } else if (path.endsWith(".json")) {
+            contentType = "application/json";
+        } else if (path.endsWith(".png")) {
+            contentType = "image/png";
+        } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+            contentType = "image/jpeg";
+        } else if (path.endsWith(".svg")) {
+            contentType = "image/svg+xml";
+        } else if (path.endsWith(".ico")) {
+            contentType = "image/x-icon";
+        }
+
+        // IMPORTANT: Use filesystem-relative paths ONLY (no /littlefs prefix!)
+        // LittleFS.exists() and beginResponse() use filesystem-relative paths
+        // The /littlefs mount point is handled internally by the VFS layer
+        String fsPath = path;  // Already filesystem-relative (e.g., "/assets/js/file.js")
+        
+        // Try gzipped version first (consistent with root route, space-optimized)
+        String gzPath = fsPath + ".gz";  // e.g., "/assets/js/file.js.gz"
+        
+        Serial.printf("[ASSET] Checking: %s\n", gzPath.c_str());
+        if (LittleFS.exists(gzPath)) {
+            Serial.printf("[ASSET] Found gzip: %s\n", gzPath.c_str());
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+            response->addHeader("Content-Encoding", "gzip");
+            request->send(response);
+            return;
+        }
+
+        // Try uncompressed file as fallback
+        Serial.printf("[ASSET] Checking uncompressed: %s\n", fsPath.c_str());
+        if (LittleFS.exists(fsPath)) {
+            Serial.printf("[ASSET] Found uncompressed: %s\n", fsPath.c_str());
+            request->send(LittleFS, fsPath, contentType);
+            return;
+        }
+
+        // File not found - log for debugging
+        Serial.printf("[ASSET] NOT FOUND: %s (tried %s and %s)\n", path.c_str(), gzPath.c_str(), fsPath.c_str());
+        request->send(404, "text/plain", "Asset not found: " + path);
+    };
+
+    // Handle /assets/* (CSS, images, etc.) and /js/* (JavaScript bundles)
+    // JS files moved from /assets/js/ to /js/ to avoid LittleFS path length limit (~31 chars)
+    // Register these BEFORE SPA routes to ensure they match first
+    _server->on("/assets/*", HTTP_GET, assetHandler);
+    _server->on("/js/*", HTTP_GET, assetHandler);
+
+    // Register SPA routes AFTER asset handlers (all should serve index.html for client-side routing)
+    _server->on("/config", HTTP_GET, spaRouteHandler);
+    _server->on("/status", HTTP_GET, spaRouteHandler);
+    _server->on("/logs", HTTP_GET, spaRouteHandler);
+    _server->on("/serial", HTTP_GET, spaRouteHandler);
+    _server->on("/dashboard", HTTP_GET, spaRouteHandler);
+
+    // Handle gzip files for other static files (manifest.json, sw.js, icons, etc.)
+    // serveStatic doesn't handle .gz files, so we need explicit handlers
+    auto staticFileHandler = [](AsyncWebServerRequest *request) {
+        String path = request->url();
+        
+        // Sanitize path: remove query strings
+        int queryIndex = path.indexOf('?');
+        if (queryIndex >= 0) {
+            path = path.substring(0, queryIndex);
+        }
+        
+        // Determine MIME type
+        String contentType = "application/octet-stream";
+        if (path.endsWith(".json")) {
+            contentType = "application/json";
+        } else if (path.endsWith(".js")) {
+            contentType = "application/javascript";
+        } else if (path.endsWith(".png")) {
+            contentType = "image/png";
+        } else if (path.endsWith(".ico")) {
+            contentType = "image/x-icon";
+        } else if (path.endsWith(".svg")) {
+            contentType = "image/svg+xml";
+        }
+        
+        // IMPORTANT: Use filesystem-relative paths ONLY (no /littlefs prefix!)
+        // LittleFS.exists() and beginResponse() use filesystem-relative paths
+        String fsPath = path;  // Already filesystem-relative (e.g., "/manifest.json")
+        
+        // Try gzipped version first
+        String gzPath = fsPath + ".gz";  // e.g., "/manifest.json.gz"
+        if (LittleFS.exists(gzPath)) {
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+            response->addHeader("Content-Encoding", "gzip");
+            request->send(response);
+            return;
+        }
+        
+        // Try uncompressed
+        if (LittleFS.exists(fsPath)) {
+            request->send(LittleFS, fsPath, contentType);
+            return;
+        }
+        
+        request->send(404, "text/plain", "File not found: " + path);
+    };
+    
+    // Register handlers for common static files that might be gzipped
+    _server->on("/manifest.json", HTTP_GET, staticFileHandler);
+    _server->on("/sw.js", HTTP_GET, staticFileHandler);
+    _server->on("/favicon-32x32.png", HTTP_GET, staticFileHandler);
+    _server->on("/icon-*.png", HTTP_GET, staticFileHandler);
+    _server->on("/apple-touch-icon.png", HTTP_GET, staticFileHandler);
+
+    // Note: serveStatic removed - it was causing double prefix issues
+    // All file serving is handled by explicit routes above for better control
+    // Explicit routes handle gzip support and correct MIME types
+
+    // DEBUG: List all files in LittleFS
+    _server->on("/api/debug/files", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String output = "Files in LittleFS:\n\n";
+        // LittleFS.open() uses paths relative to filesystem root, not VFS mount point
+        File root = LittleFS.open("/");
+        if (!root) {
+            output += "ERROR: Failed to open root directory\n";
+            request->send(500, "text/plain", output);
+            return;
+        }
+
+        File file = root.openNextFile();
+        int count = 0;
+        while (file) {
+            output += file.name();
+            output += " (";
+            output += String(file.size());
+            output += " bytes)\n";
+            count++;
+            file = root.openNextFile();
+        }
+
+        output += "\nTotal files: " + String(count) + "\n";
+        output += "LittleFS Total: " + String(LittleFS.totalBytes()) + " bytes\n";
+        output += "LittleFS Used: " + String(LittleFS.usedBytes()) + " bytes\n";
+        request->send(200, "text/plain", output);
+    });
 
     // API endpoints
     _server->on("/api/sensor-data", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -677,60 +865,7 @@ void WebServerManager::setupDefaultRoutes() {
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Logs cleared\"}");
     });
 
-    // Redirect /logs to /logs.html
-    _server->on("/logs", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->redirect("/logs.html");
-    });
-
-    // Serve logs.html (inline fallback if not in SPIFFS)
-    _server->on("/logs.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if (SPIFFS.exists("/logs.html")) {
-            request->send(SPIFFS, "/logs.html", "text/html");
-        } else {
-            // Inline HTML fallback
-            request->send(200, "text/html",
-                "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\">"
-                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">"
-                "<title>Event Logs - ESP32 KNX Thermostat</title>"
-                "<link rel=\"stylesheet\" href=\"style.css\">"
-                "<style>.log-table{width:100%;border-collapse:collapse;margin-top:10px}"
-                ".log-table th{background-color:#2c3e50;color:white;padding:10px;text-align:left;border-bottom:2px solid #34495e}"
-                ".log-table td{padding:8px;border-bottom:1px solid #ecf0f1}.log-table tr:hover{background-color:#f8f9fa}"
-                ".log-level{display:inline-block;padding:3px 8px;border-radius:3px;font-size:.85em;font-weight:bold}"
-                ".log-level-ERROR{background-color:#e74c3c;color:white}.log-level-WARNING{background-color:#f39c12;color:white}"
-                ".log-level-INFO{background-color:#3498db;color:white}.log-level-DEBUG{background-color:#95a5a6;color:white}"
-                ".log-level-VERBOSE{background-color:#bdc3c7;color:#2c3e50}.log-timestamp{font-family:monospace;color:#7f8c8d}"
-                ".log-tag{font-family:monospace;font-weight:bold;color:#2c3e50}.log-message{color:#2c3e50}"
-                ".controls{display:flex;gap:10px;margin-bottom:15px;align-items:center}"
-                ".filter-select{padding:8px;border:1px solid #bdc3c7;border-radius:4px;font-size:14px}"
-                ".no-logs{text-align:center;padding:30px;color:#7f8c8d;font-style:italic}.log-count{color:#7f8c8d;font-size:.9em}</style>"
-                "</head><body><header><h1>Event Logs</h1></header><div class=\"container\"><div class=\"card\">"
-                "<h2 class=\"card-title\">System Event Logs</h2><div class=\"controls\">"
-                "<button id=\"refresh-logs\">Refresh</button><button id=\"clear-logs\" style=\"background-color:#e74c3c\">Clear All Logs</button>"
-                "<select id=\"filter-level\" class=\"filter-select\"><option value=\"all\">All Levels</option>"
-                "<option value=\"ERROR\">Errors Only</option><option value=\"WARNING\">Warnings & Errors</option>"
-                "<option value=\"INFO\">Info & Above</option></select><span class=\"log-count\" id=\"log-count\">0 entries</span></div>"
-                "<div id=\"logs-container\"><table class=\"log-table\"><thead><tr><th>Time</th><th>Level</th><th>Tag</th><th>Message</th></tr></thead>"
-                "<tbody id=\"logs-body\"><tr><td colspan=\"4\" class=\"no-logs\">Loading logs...</td></tr></tbody></table></div></div>"
-                "<div class=\"card\"><h2 class=\"card-title\">Navigation</h2><div class=\"control-row\"><a href=\"/\"><button>Dashboard</button></a></div>"
-                "<div class=\"control-row\"><a href=\"/config.html\"><button>Configuration</button></a></div></div></div>"
-                "<script>let allLogs=[];async function fetchLogs(){try{const r=await fetch('/api/logs');if(!r.ok)throw new Error('Failed');allLogs=await r.json();displayLogs()}catch(e){console.error('Error:',e);document.getElementById('logs-body').innerHTML='<tr><td colspan=\"4\" class=\"no-logs\">Error loading logs</td></tr>'}}"
-                "function displayLogs(){const f=document.getElementById('filter-level').value;const b=document.getElementById('logs-body');"
-                "let logs=allLogs;if(f!=='all'){const p={'ERROR':1,'WARNING':2,'INFO':3,'DEBUG':4,'VERBOSE':5};const m=p[f]||5;"
-                "logs=allLogs.filter(l=>(p[l.level]||5)<=m)}document.getElementById('log-count').textContent=`${logs.length} of ${allLogs.length} entries`;"
-                "b.innerHTML='';if(logs.length===0){b.innerHTML='<tr><td colspan=\"4\" class=\"no-logs\">No logs to display</td></tr>';return}"
-                "logs.sort((a,b)=>b.timestamp-a.timestamp);logs.forEach(l=>{const r=b.insertRow();const t=r.insertCell();t.className='log-timestamp';"
-                "t.textContent=formatTimestamp(l.timestamp);const lc=r.insertCell();const s=document.createElement('span');"
-                "s.className=`log-level log-level-${l.level}`;s.textContent=l.level;lc.appendChild(s);const tc=r.insertCell();"
-                "tc.className='log-tag';tc.textContent=l.tag;const mc=r.insertCell();mc.className='log-message';mc.textContent=l.message})}"
-                "function formatTimestamp(ms){const s=Math.floor(ms/1000);const m=Math.floor(s/60);const h=Math.floor(m/60);const d=Math.floor(h/24);"
-                "if(d>0)return `${d}d ${h%24}h ${m%60}m`;else if(h>0)return `${h}h ${m%60}m ${s%60}s`;else if(m>0)return `${m}m ${s%60}s`;else return `${s}s`}"
-                "async function clearLogs(){if(!confirm('Clear all logs?'))return;try{const r=await fetch('/api/logs/clear',{method:'POST'});"
-                "if(!r.ok)throw new Error('Failed');allLogs=[];displayLogs();alert('Logs cleared')}catch(e){console.error('Error:',e);alert('Failed to clear logs')}}"
-                "document.getElementById('refresh-logs').addEventListener('click',fetchLogs);document.getElementById('clear-logs').addEventListener('click',clearLogs);"
-                "document.getElementById('filter-level').addEventListener('change',displayLogs);fetchLogs();setInterval(fetchLogs,10000);</script></body></html>");
-        }
-    });
+    // Logs are now handled by SPA router above - no inline HTML fallback needed
 
     // Factory reset - clear all settings and reboot
     _server->on("/api/factory-reset", HTTP_POST, [](AsyncWebServerRequest *request) {
