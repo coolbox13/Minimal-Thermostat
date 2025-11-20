@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="Smart ESP32 KNX Thermostat Configuration">
+    <meta name="theme-color" content="#1e88e5">
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Thermostat">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <title>ESP32 KNX Thermostat - Configuration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>ESP32 KNX Thermostat - Configuration</h1>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2 class="card-title">System Configuration</h2>
+            
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="network">Network</button>
+                <button class="tab-button" data-tab="mqtt">MQTT</button>
+                <button class="tab-button" data-tab="knx">KNX</button>
+                <button class="tab-button" data-tab="bme280">BME280</button>
+                <button class="tab-button" data-tab="pid">PID Control</button>
+                <button class="tab-button" data-tab="presets">Presets</button>
+                <button class="tab-button" data-tab="timing">Timing</button>
+                <button class="tab-button" data-tab="webhook">Webhooks</button>
+            </div>
+            
+            <form id="config-form">
+                <!-- Network Settings Tab -->
+                <div id="network" class="tab-content active">
+                    <h3>Network Settings</h3>
+                    <div class="form-row">
+                        <label for="wifi_ssid">WiFi SSID:</label>
+                        <input type="text" id="wifi_ssid" name="wifi_ssid" class="form-input">
+                        <span class="form-hint">Your WiFi network name</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="wifi_pass">WiFi Password:</label>
+                        <input type="password" id="wifi_pass" name="wifi_pass" class="form-input">
+                        <span class="form-hint">Leave empty to keep current password</span>
+                    </div>
+                    
+                    <h4 style="margin-top: 20px; margin-bottom: 10px;">NTP Time Synchronization</h4>
+                    <div class="form-row">
+                        <label for="ntp_server">NTP Server:</label>
+                        <input type="text" id="ntp_server" name="ntp_server" class="form-input" placeholder="pool.ntp.org">
+                        <span class="form-hint">NTP server hostname or IP address (default: pool.ntp.org)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="ntp_timezone_offset">Timezone Offset (seconds):</label>
+                        <input type="number" id="ntp_timezone_offset" name="ntp_timezone_offset" step="3600" min="-43200" max="43200" value="0" class="form-input">
+                        <span class="form-hint">UTC offset in seconds (e.g., UTC+1 = 3600, UTC+2 = 7200, UTC-5 = -18000)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="ntp_daylight_offset">Daylight Saving Offset (seconds):</label>
+                        <input type="number" id="ntp_daylight_offset" name="ntp_daylight_offset" step="3600" min="0" max="7200" value="0" class="form-input">
+                        <span class="form-hint">DST offset in seconds (typically 3600 for 1 hour, 0 = no DST)</span>
+                    </div>
+                </div>
+                
+                <!-- MQTT Settings Tab -->
+                <div id="mqtt" class="tab-content">
+                    <h3>MQTT Settings</h3>
+                    <div class="form-row">
+                        <label for="mqtt_server">MQTT Server:</label>
+                        <input type="text" id="mqtt_server" name="mqtt_server" class="form-input">
+                        <span class="form-hint">IP address or hostname</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="mqtt_port">MQTT Port:</label>
+                        <input type="number" id="mqtt_port" name="mqtt_port" min="1" max="65535" class="form-input">
+                        <span class="form-hint">Default: 1883</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="mqtt_username">MQTT Username:</label>
+                        <input type="text" id="mqtt_username" name="mqtt_username" class="form-input" placeholder="Leave empty for no authentication">
+                        <span class="form-hint">Optional: MQTT broker username</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="mqtt_password">MQTT Password:</label>
+                        <input type="password" id="mqtt_password" name="mqtt_password" class="form-input" placeholder="Leave empty for no authentication">
+                        <span class="form-hint">Optional: MQTT broker password (leave empty to keep current password)</span>
+                    </div>
+                    <div class="form-row checkbox-row">
+                        <label for="mqtt_json_aggregate_enabled">Enable JSON Aggregate:</label>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="mqtt_json_aggregate_enabled" name="mqtt_json_aggregate_enabled" class="form-checkbox">
+                            <span class="form-hint">Publish all data as JSON on 'telegraph' topic</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- KNX Settings Tab -->
+                <div id="knx" class="tab-content">
+                    <h3>KNX Settings</h3>
+
+                    <!-- Physical Address -->
+                    <h4 style="margin-top: 20px; margin-bottom: 10px; color: #1e88e5;">Physical Address</h4>
+                    <div class="form-row">
+                        <label for="knx_area">Area:</label>
+                        <input type="number" id="knx_area" name="knx_area" min="0" max="15" class="form-input">
+                        <span class="form-hint">Range: 0-15</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="knx_line">Line:</label>
+                        <input type="number" id="knx_line" name="knx_line" min="0" max="15" class="form-input">
+                        <span class="form-hint">Range: 0-15</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="knx_member">Member:</label>
+                        <input type="number" id="knx_member" name="knx_member" min="0" max="255" class="form-input">
+                        <span class="form-hint">Range: 0-255</span>
+                    </div>
+
+                    <!-- Test Mode Toggle -->
+                    <h4 style="margin-top: 30px; margin-bottom: 10px; color: #1e88e5;">Address Mode</h4>
+                    <div class="form-row checkbox-row">
+                        <label for="knx_test">Use Test Addresses:</label>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="knx_test" name="knx_test" class="form-checkbox">
+                            <span class="form-hint">Enable hardcoded test addresses for testing</span>
+                        </div>
+                    </div>
+
+                    <!-- Test Addresses Display (shown when test mode is enabled) -->
+                    <div id="test_addresses_display" style="display: none; padding: 15px; background-color: #fff3cd; border-radius: 8px; margin-top: 15px; border: 2px solid #ffc107;">
+                        <h4 style="margin-top: 0; color: #856404;">Active Test Addresses</h4>
+                        <p style="margin: 5px 0; color: #856404;"><strong>Valve Command/Feedback:</strong> <span id="test_valve_addr">10/2/2</span></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #856404; font-style: italic;">Note: In test mode, command and feedback use the same address</p>
+                    </div>
+
+                    <!-- Production Valve Addresses (shown when test mode is disabled) -->
+                    <div id="production_addresses_config" style="display: none;">
+                        <h4 style="margin-top: 30px; margin-bottom: 10px; color: #1e88e5;">Valve Control Addresses (Production)</h4>
+
+                        <!-- Valve Command Address -->
+                        <div style="padding: 15px; background-color: #e3f2fd; border-radius: 8px; margin-bottom: 20px;">
+                            <h5 style="margin-top: 0; color: #1976d2;">Valve Command Address</h5>
+                            <p style="margin: 5px 0 15px 0; font-size: 13px; color: #555;">Group address for sending valve position commands</p>
+                            <div class="form-row">
+                                <label for="knx_valve_cmd_area">Area:</label>
+                                <input type="number" id="knx_valve_cmd_area" name="knx_valve_cmd_area" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_cmd_line">Line:</label>
+                                <input type="number" id="knx_valve_cmd_line" name="knx_valve_cmd_line" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_cmd_member">Member:</label>
+                                <input type="number" id="knx_valve_cmd_member" name="knx_valve_cmd_member" min="0" max="255" class="form-input">
+                                <span class="form-hint">0-255</span>
+                            </div>
+                        </div>
+
+                        <!-- Valve Feedback Address -->
+                        <div style="padding: 15px; background-color: #e8f5e9; border-radius: 8px;">
+                            <h5 style="margin-top: 0; color: #388e3c;">Valve Feedback Address</h5>
+                            <p style="margin: 5px 0 15px 0; font-size: 13px; color: #555;">Group address for receiving actual valve position</p>
+                            <div class="form-row">
+                                <label for="knx_valve_fb_area">Area:</label>
+                                <input type="number" id="knx_valve_fb_area" name="knx_valve_fb_area" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_fb_line">Line:</label>
+                                <input type="number" id="knx_valve_fb_line" name="knx_valve_fb_line" min="0" max="15" class="form-input">
+                                <span class="form-hint">0-15</span>
+                            </div>
+                            <div class="form-row">
+                                <label for="knx_valve_fb_member">Member:</label>
+                                <input type="number" id="knx_valve_fb_member" name="knx_valve_fb_member" min="0" max="255" class="form-input">
+                                <span class="form-hint">0-255</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- BME280 Settings Tab -->
+                <div id="bme280" class="tab-content">
+                    <h3>BME280 Sensor Settings</h3>
+                    <div class="form-row">
+                        <label for="bme280_address">I²C Address:</label>
+                        <select id="bme280_address" name="bme280_address" class="form-input">
+                            <option value="0x76">0x76 (default)</option>
+                            <option value="0x77">0x77</option>
+                        </select>
+                        <span class="form-hint">BME280 I²C address</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="bme280_sda">SDA Pin:</label>
+                        <input type="number" id="bme280_sda" name="bme280_sda" min="0" max="39" value="21" class="form-input">
+                        <span class="form-hint">Default: 21</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="bme280_scl">SCL Pin:</label>
+                        <input type="number" id="bme280_scl" name="bme280_scl" min="0" max="39" value="22" class="form-input">
+                        <span class="form-hint">Default: 22</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="bme280_interval">Update Interval:</label>
+                        <input type="number" id="bme280_interval" name="bme280_interval" min="1" max="3600" value="30" class="form-input">
+                        <span class="form-hint">Seconds between readings (1-3600)</span>
+                    </div>
+                </div>
+                
+                <!-- PID Controller Settings Tab -->
+                <div id="pid" class="tab-content">
+                    <h3>PID Controller Settings</h3>
+                    <div class="form-row">
+                        <label for="pid_kp">Kp (Proportional):</label>
+                        <input type="number" id="pid_kp" name="pid_kp" step="0.01" min="0" max="100" class="form-input">
+                        <span class="form-hint">Recommended: 2.00-4.00 (2 decimal places)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_ki">Ki (Integral):</label>
+                        <input type="number" id="pid_ki" name="pid_ki" step="0.001" min="0" max="10" class="form-input">
+                        <span class="form-hint">Recommended: 0.080-0.120 (3 decimal places)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_kd">Kd (Derivative):</label>
+                        <input type="number" id="pid_kd" name="pid_kd" step="0.001" min="0" max="10" class="form-input">
+                        <span class="form-hint">Recommended: 0.100-0.500 (3 decimal places)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="setpoint">Default Setpoint:</label>
+                        <input type="number" id="setpoint" name="setpoint" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Range: 5.0°C - 30.0°C (1 decimal place)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_deadband">Deadband:</label>
+                        <input type="number" id="pid_deadband" name="pid_deadband" step="0.1" min="0" max="5" class="form-input">
+                        <span class="form-hint">Temperature deadband ±°C (0-5, 1 decimal place)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_adaptation_interval">Adaptation Interval:</label>
+                        <input type="number" id="pid_adaptation_interval" name="pid_adaptation_interval" step="1" min="10" max="600" class="form-input">
+                        <span class="form-hint">Seconds between PID adaptations (10-600)</span>
+                    </div>
+                </div>
+
+                <!-- Preset Settings Tab -->
+                <div id="presets" class="tab-content">
+                    <h3>Preset Temperature Settings</h3>
+                    <p style="margin-bottom: 20px; color: #7f8c8d;">
+                        Configure the temperature for each preset mode. These presets can be quickly selected from the dashboard for different scenarios.
+                    </p>
+
+                    <div class="form-row">
+                        <label for="preset_eco">Eco Temperature:</label>
+                        <input type="number" id="preset_eco" name="preset_eco" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Energy-saving temperature (typically 16-18°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_comfort">Comfort Temperature:</label>
+                        <input type="number" id="preset_comfort" name="preset_comfort" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Standard comfortable temperature (typically 20-22°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_away">Away Temperature:</label>
+                        <input type="number" id="preset_away" name="preset_away" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Temperature when nobody is home (typically 14-16°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_sleep">Sleep Temperature:</label>
+                        <input type="number" id="preset_sleep" name="preset_sleep" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Nighttime sleeping temperature (typically 18-19°C)</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="preset_boost">Boost Temperature:</label>
+                        <input type="number" id="preset_boost" name="preset_boost" step="0.5" min="5" max="30" class="form-input">
+                        <span class="form-hint">Maximum heating temperature (typically 23-25°C)</span>
+                    </div>
+                </div>
+
+                <!-- Timing Settings Tab -->
+                <div id="timing" class="tab-content">
+                    <h3>Timing Settings</h3>
+                    <h4>Update Intervals</h4>
+                    <div class="form-row">
+                        <label for="sensor_update_interval">Sensor Update Interval:</label>
+                        <input type="number" id="sensor_update_interval" name="sensor_update_interval" step="1000" min="1000" max="300000" class="form-input">
+                        <span class="form-hint">Milliseconds (1000-300000, default: 30000 = 30s)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="history_update_interval">Graph Data Interval:</label>
+                        <input type="number" id="history_update_interval" name="history_update_interval" step="1000" min="1000" max="300000" class="form-input">
+                        <span class="form-hint">Milliseconds (1000-300000, default: 30000 = 30s, buffer stores 24h)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_update_interval">PID Update Interval:</label>
+                        <input type="number" id="pid_update_interval" name="pid_update_interval" step="1000" min="1000" max="60000" class="form-input">
+                        <span class="form-hint">Milliseconds (1000-60000, default: 10000 = 10s)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="connectivity_check_interval">Connectivity Check Interval:</label>
+                        <input type="number" id="connectivity_check_interval" name="connectivity_check_interval" step="1000" min="60000" max="3600000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-3600000, default: 300000 = 5min)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="pid_config_write_interval">PID Config Write Interval:</label>
+                        <input type="number" id="pid_config_write_interval" name="pid_config_write_interval" step="1000" min="60000" max="3600000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-3600000, default: 300000 = 5min)</span>
+                    </div>
+
+                    <h4>Timeout Settings</h4>
+                    <div class="form-row">
+                        <label for="wifi_connect_timeout">WiFi Connect Timeout:</label>
+                        <input type="number" id="wifi_connect_timeout" name="wifi_connect_timeout" step="1" min="10" max="600" class="form-input">
+                        <span class="form-hint">Seconds (10-600, default: 180 = 3min)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="system_watchdog_timeout">System Watchdog Timeout:</label>
+                        <input type="number" id="system_watchdog_timeout" name="system_watchdog_timeout" step="1000" min="60000" max="7200000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-7200000, default: 2700000 = 45min)</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="wifi_watchdog_timeout">WiFi Watchdog Timeout:</label>
+                        <input type="number" id="wifi_watchdog_timeout" name="wifi_watchdog_timeout" step="1000" min="60000" max="7200000" class="form-input">
+                        <span class="form-hint">Milliseconds (60000-7200000, default: 1800000 = 30min)</span>
+                    </div>
+
+                    <h4>Reconnection Settings</h4>
+                    <div class="form-row">
+                        <label for="max_reconnect_attempts">Max Reconnect Attempts:</label>
+                        <input type="number" id="max_reconnect_attempts" name="max_reconnect_attempts" step="1" min="1" max="100" class="form-input">
+                        <span class="form-hint">Number of attempts (1-100, default: 10)</span>
+                    </div>
+                </div>
+
+                <!-- Webhook Settings Tab -->
+                <div id="webhook" class="tab-content">
+                    <h3>Webhook / IFTTT Integration</h3>
+                    <p style="margin-bottom: 15px;">
+                        Configure webhooks to send events to IFTTT, Zapier, or custom endpoints for temperature alerts and notifications.
+                    </p>
+
+                    <div class="form-row">
+                        <label for="webhook_enabled">Enable Webhooks:</label>
+                        <input type="checkbox" id="webhook_enabled" name="webhook_enabled" style="width: auto;">
+                        <span class="form-hint">Turn on/off webhook notifications</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="webhook_url">Webhook URL:</label>
+                        <input type="url" id="webhook_url" name="webhook_url" class="form-input" placeholder="https://maker.ifttt.com/trigger/event/with/key/YOUR_KEY">
+                        <span class="form-hint">Full URL including authentication key</span>
+                    </div>
+
+                    <h4>Temperature Alerts</h4>
+                    <div class="form-row">
+                        <label for="webhook_temp_low">Low Temperature Threshold:</label>
+                        <input type="number" id="webhook_temp_low" name="webhook_temp_low" step="0.5" min="-20" max="50" class="form-input">
+                        <span class="form-hint">°C - Send alert when temperature drops below this</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="webhook_temp_high">High Temperature Threshold:</label>
+                        <input type="number" id="webhook_temp_high" name="webhook_temp_high" step="0.5" min="-20" max="50" class="form-input">
+                        <span class="form-hint">°C - Send alert when temperature exceeds this</span>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="button" id="test-webhook" style="background-color: #f39c12;">Test Webhook</button>
+                        <span id="webhook-test-status" class="form-hint"></span>
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 10px; background-color: #ecf0f1; border-radius: 4px;">
+                        <strong>IFTTT Setup:</strong>
+                        <ol style="margin: 10px 0 0 20px; line-height: 1.6;">
+                            <li>Create an IFTTT account at <a href="https://ifttt.com" target="_blank">ifttt.com</a></li>
+                            <li>Go to Webhooks service and get your key</li>
+                            <li>Create an applet with Webhooks as trigger</li>
+                            <li>Use events: temperature_low, temperature_high, valve_alert, wifi_status</li>
+                            <li>Paste your webhook URL above</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button type="submit" id="save-config">Save Configuration</button>
+                    <button type="button" id="reboot-device">Reboot Device</button>
+                    <button type="button" id="factory-reset" style="background-color: #e74c3c;">Factory Reset</button>
+                    <a href="/"><button type="button">Back to Dashboard</button></a>
+                </div>
+                
+                <div id="config-status" class="status"></div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Backup & Restore</h2>
+            <p style="margin-bottom: 15px;">Export your configuration for backup or import a previously saved configuration.</p>
+
+            <div class="action-buttons">
+                <button type="button" id="export-config" style="background-color: #27ae60;">Export Configuration</button>
+                <button type="button" id="import-config" style="background-color: #f39c12;">Import Configuration</button>
+            </div>
+
+            <input type="file" id="config-file-input" accept=".json" style="display: none;">
+            <div id="backup-status" class="status"></div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+</body>
+</html>
