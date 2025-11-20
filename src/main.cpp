@@ -267,8 +267,9 @@ void performInitialSetup() {
     }
 
     // LittleFS Information (only if mounted)
-    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
-    if (LittleFS.begin(false, "/littlefs", 5, "littlefs")) {  // Check if mounted without formatting
+    // Specify partition name "spiffs" to match partition table (PlatformIO requirement)
+    // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
+    if (LittleFS.begin(false, "/littlefs", 5, "spiffs")) {  // Check if mounted without formatting
         uint32_t spiffsTotal = LittleFS.totalBytes();
         uint32_t spiffsUsed = LittleFS.usedBytes();
         uint32_t spiffsFree = spiffsTotal - spiffsUsed;

@@ -24,8 +24,9 @@ bool EventLog::begin() {
     // Check if LittleFS is already mounted (by web server)
     // If not mounted, try to mount it (for cases where EventLog is initialized first)
     // Note: LittleFS.begin() returns true if already mounted, false if mount fails
-    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
-    if (!LittleFS.begin(false, "/littlefs", 5, "littlefs")) {  // false = don't format if mount fails
+    // Specify partition name "spiffs" to match partition table (PlatformIO requirement)
+    // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
+    if (!LittleFS.begin(false, "/littlefs", 5, "spiffs")) {  // false = don't format if mount fails
         Serial.println("EventLog: LittleFS not available, using memory-only logging");
         return false;
     }
@@ -117,8 +118,9 @@ const char* EventLog::logLevelToString(LogLevel level) {
 bool EventLog::loadFromLittleFS() {
     // Check if LittleFS is mounted before attempting file operations
     // LittleFS.begin(false) returns true if already mounted, false if not mounted
-    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
-    if (!LittleFS.begin(false, "/littlefs", 5, "littlefs")) {
+    // Specify partition name "spiffs" to match partition table (PlatformIO requirement)
+    // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
+    if (!LittleFS.begin(false, "/littlefs", 5, "spiffs")) {
         Serial.println("EventLog: LittleFS not mounted, skipping load");
         return false;
     }
@@ -182,8 +184,9 @@ bool EventLog::loadFromLittleFS() {
 bool EventLog::saveToLittleFS() {
     // Check if LittleFS is mounted before attempting file operations
     // LittleFS.begin(false) returns true if already mounted, false if not mounted
-    // Specify partition name "littlefs" to match partition table, mount at "/littlefs"
-    if (!LittleFS.begin(false, "/littlefs", 5, "littlefs")) {
+    // Specify partition name "spiffs" to match partition table (PlatformIO requirement)
+    // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
+    if (!LittleFS.begin(false, "/littlefs", 5, "spiffs")) {
         // Silently fail - filesystem not available, use memory-only logging
         return false;
     }

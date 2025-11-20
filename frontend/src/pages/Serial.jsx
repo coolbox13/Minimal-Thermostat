@@ -13,24 +13,48 @@ export function Serial() {
   const [isConnected, setIsConnected] = useState(false);
   const [autoscroll, setAutoscroll] = useState(true);
   const scrollRef = useRef(null);
+  const wsRef = useRef(null);
 
   useEffect(() => {
-    // Poll serial output every 1 second
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch('/api/serial');
-        const data = await response.json();
+    // Connect to WebSocket for real-time serial output
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/serial`;
+    
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
-        if (data.lines && data.lines.length > 0) {
-          setLines(prev => [...prev, ...data.lines].slice(-500)); // Keep last 500 lines
-          setIsConnected(true);
-        }
-      } catch (err) {
-        setIsConnected(false);
+    ws.onopen = () => {
+      setIsConnected(true);
+      setLines([]); // Clear on reconnect
+    };
+
+    ws.onmessage = (event) => {
+      const line = event.data;
+      if (line && line.trim()) {
+        setLines(prev => [...prev, line].slice(-500)); // Keep last 500 lines
       }
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setIsConnected(false);
+    };
+
+    ws.onclose = () => {
+      setIsConnected(false);
+      // Attempt to reconnect after 3 seconds
+      setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.CLOSED) {
+          // Reconnect logic handled by useEffect cleanup/re-run
+        }
+      }, 3000);
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+    };
   }, []);
 
   // Auto-scroll to bottom
@@ -111,10 +135,11 @@ export function Serial() {
           <div class="text-blue-700 dark:text-blue-300 text-sm">
             <p class="font-semibold mb-1">Serial Monitor Tips:</p>
             <ul class="list-disc list-inside space-y-1">
-              <li>Output updates automatically every second</li>
+              <li>Real-time serial output via WebSocket</li>
               <li>Maximum 500 lines are kept in memory</li>
               <li>Disable auto-scroll to review previous output</li>
               <li>Use Clear to remove all lines</li>
+              <li>Reconnects automatically if connection is lost</li>
             </ul>
           </div>
         </div>

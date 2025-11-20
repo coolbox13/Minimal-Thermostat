@@ -57,9 +57,10 @@ void WebServerManager::begin(AsyncWebServer* server) {
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
-    // Initialize LittleFS with format_if_failed=true and partition name "littlefs"
+    // Initialize LittleFS with format_if_failed=true and partition name "spiffs"
+    // Note: Partition table uses "spiffs" name (required by PlatformIO buildfs tool)
     // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
-    if(!LittleFS.begin(true, "/littlefs", 5, "littlefs")) {
+    if(!LittleFS.begin(true, "/littlefs", 5, "spiffs")) {
         Serial.println("ERROR: Failed to mount LittleFS");
         Serial.println("Common causes:");
         Serial.println("1. First time use - LittleFS needs to be formatted");
@@ -301,7 +302,7 @@ void WebServerManager::setupDefaultRoutes() {
 
         // Determine correct MIME type based on file extension
         String contentType = "application/octet-stream";
-        if (path.endsWith(".js")) {
+        if (path.endsWith(".js") || path.endsWith(".mjs")) {
             contentType = "application/javascript";
         } else if (path.endsWith(".css")) {
             contentType = "text/css";
@@ -315,6 +316,10 @@ void WebServerManager::setupDefaultRoutes() {
             contentType = "image/svg+xml";
         } else if (path.endsWith(".ico")) {
             contentType = "image/x-icon";
+        } else if (path.endsWith(".woff") || path.endsWith(".woff2")) {
+            contentType = "font/woff";
+        } else if (path.endsWith(".ttf")) {
+            contentType = "font/ttf";
         }
 
         // IMPORTANT: Use filesystem-relative paths ONLY (no /littlefs prefix!)
@@ -447,7 +452,8 @@ void WebServerManager::setupDefaultRoutes() {
     });
 
     // API endpoints
-    _server->on("/api/sensor-data", HTTP_GET, [](AsyncWebServerRequest *request) {
+    // Sensor data endpoint - support both /api/sensor and /api/sensor-data for compatibility
+    auto sensorDataHandler = [](AsyncWebServerRequest *request) {
         extern BME280Sensor bme280;
         extern float temperature;
         extern float humidity;
@@ -464,7 +470,10 @@ void WebServerManager::setupDefaultRoutes() {
         String response;
         serializeJson(doc, response);
         request->send(200, "application/json", response);
-    });
+    };
+    
+    _server->on("/api/sensor", HTTP_GET, sensorDataHandler);  // Frontend uses this
+    _server->on("/api/sensor-data", HTTP_GET, sensorDataHandler);  // Legacy endpoint
 
     // Historical data endpoint
     _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -562,6 +571,42 @@ void WebServerManager::setupDefaultRoutes() {
         doc["knx"]["address"] = String(configManager->getKnxArea()) + "." +
                                  String(configManager->getKnxLine()) + "." +
                                  String(configManager->getKnxMember());
+
+        // Timing intervals and configuration
+        doc["timing"]["sensor_update_interval"] = configManager->getSensorUpdateInterval();
+        doc["timing"]["history_update_interval"] = configManager->getHistoryUpdateInterval();
+        doc["timing"]["pid_update_interval"] = configManager->getPidUpdateInterval();
+        doc["timing"]["connectivity_check_interval"] = configManager->getConnectivityCheckInterval();
+        doc["timing"]["pid_config_write_interval"] = configManager->getPidConfigWriteInterval();
+        doc["timing"]["wifi_connect_timeout"] = configManager->getWifiConnectTimeout();
+        doc["timing"]["max_reconnect_attempts"] = configManager->getMaxReconnectAttempts();
+        doc["timing"]["system_watchdog_timeout"] = configManager->getSystemWatchdogTimeout();
+        doc["timing"]["wifi_watchdog_timeout"] = configManager->getWifiWatchdogTimeout();
+
+        // PID configuration - adaptation interval only (no enabled flag exists)
+        doc["pid"]["adaptation_interval"] = configManager->getPidAdaptationInterval();
+
+        // Presets
+        doc["presets"]["current"] = configManager->getCurrentPreset();
+        doc["presets"]["eco"] = configManager->getPresetTemperature("eco");
+        doc["presets"]["comfort"] = configManager->getPresetTemperature("comfort");
+        doc["presets"]["away"] = configManager->getPresetTemperature("away");
+        doc["presets"]["sleep"] = configManager->getPresetTemperature("sleep");
+        doc["presets"]["boost"] = configManager->getPresetTemperature("boost");
+
+        // Manual override
+        doc["manual_override"]["enabled"] = configManager->getManualOverrideEnabled();
+        doc["manual_override"]["position"] = configManager->getManualOverridePosition();
+        doc["manual_override"]["timeout"] = configManager->getManualOverrideTimeout();
+
+        // Webhook configuration
+        doc["webhook"]["enabled"] = configManager->getWebhookEnabled();
+        doc["webhook"]["url"] = configManager->getWebhookUrl();
+        doc["webhook"]["temp_low_threshold"] = configManager->getWebhookTempLowThreshold();
+        doc["webhook"]["temp_high_threshold"] = configManager->getWebhookTempHighThreshold();
+
+        // Thermostat mode
+        doc["thermostat"]["enabled"] = configManager->getThermostatEnabled();
 
         String response;
         serializeJson(doc, response);
