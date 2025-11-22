@@ -756,41 +756,51 @@ Both audits highlighted:
 
 ## 11. Final Recommendations (Priority Order)
 
-### Phase 1: CRITICAL (Do This Week) ⏰ ETA: 3-4 hours
+### Phase 1: CRITICAL (Do This Week) ⏰ ETA: 4-5 hours
 
-1. ✅ **Implement Server-Side History Filtering** (2-3 hours)
+1. ⏳ **Implement Automatic 25-Hour Data Retention in HistoryManager** (1-2 hours)
+   - **OWNER INSIGHT:** Since only 24 hours of data is needed, delete data older than 25 hours
+   - Modify `src/history_manager.cpp` to auto-delete old datapoints on write
+   - Implement rolling 24-hour window (delete oldest when adding new if >25h old)
+   - Remove need for periodic cleanup - happens naturally on each data write
+   - **Impact:** Fixed memory footprint, prevents unbounded growth, simplifies architecture
+   - **Rationale:** More efficient than server-side filtering alone - prevents data accumulation at source
+   - **User Requirement:** "I am only interested in the last 24hr of data. Why would we keep all data in history?"
+
+2. ⏳ **Implement Server-Side History Filtering** (2-3 hours)
    - Modify `/api/history` to accept `hours` parameter
    - Update `useHistoryData.js` to pass time range
    - Test on mobile device with 2-week-old data
    - **Impact:** Prevents mobile crashes, reduces bandwidth by 80-95%
+   - **Note:** Works in conjunction with #1 - backend never has >25h of data to send anyway
 
-2. ✅ **Add AbortController to Hooks** (30-45 min)
+3. ⏳ **Add AbortController to Hooks** (30-45 min)
    - Update `useSensorData.js`, `useHistoryData.js`, `usePresets.js`
    - Cancel in-flight requests on unmount
    - **Impact:** Prevents memory leaks during rapid navigation
 
 ### Phase 2: MEDIUM (Next Week) ⏰ ETA: 1-2 hours
 
-3. ✅ **Fix useEffect Dependency in usePresets** (5 min)
+4. ✅ **Fix useEffect Dependency in usePresets** (5 min)
    - Change `[fetchPresetConfig]` to `[]`
    - **Impact:** Prevents potential infinite loop
 
-4. ✅ **Add Loading States to Config Page** (1 hour)
+5. ✅ **Add Loading States to Config Page** (1 hour)
    - Spinner on save button
    - Disable inputs during save
    - **Impact:** Better UX
 
 ### Phase 3: LOW (Nice to Have) ⏰ ETA: 2-3 hours
 
-5. ⚪ **Environment-Based API URLs** (30 min)
+6. ⚪ **Environment-Based API URLs** (30 min)
    - Use Vite environment variables
    - **Impact:** Easier development
 
-6. ⚪ **Fix Dark Mode Flash** (15 min)
+7. ⚪ **Fix Dark Mode Flash** (15 min)
    - Add inline script to index.html
    - **Impact:** Smoother dark mode transition
 
-7. ⚪ **Comprehensive Testing** (2 hours)
+8. ⚪ **Comprehensive Testing** (2 hours)
    - Mobile memory tests
    - Network resilience tests
    - Long-running stability tests
