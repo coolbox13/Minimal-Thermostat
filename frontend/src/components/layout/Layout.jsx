@@ -2,6 +2,7 @@ import { h } from 'preact';
 import htm from 'htm';
 import { Link } from 'preact-router/match';
 import { useDarkMode } from '../../hooks/useDarkMode.js';
+import { useSystemInfo } from '../../hooks/useSystemInfo.js';
 
 const html = htm.bind(h);
 
@@ -15,6 +16,7 @@ const html = htm.bind(h);
  */
 export function Layout({ children }) {
   const { isDark, toggle } = useDarkMode();
+  const { version } = useSystemInfo();
 
   const navItems = [
     { path: '/', label: 'Dashboard' },
@@ -116,6 +118,7 @@ export function Layout({ children }) {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p class="text-center text-sm text-gray-500 dark:text-gray-400">
             ESP32 KNX Thermostat © ${new Date().getFullYear()}
+            ${version ? html`<span class="ml-2">· v${version}</span>` : ''}
           </p>
         </div>
       </footer>

@@ -1,6 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Firmware Version
+#define FIRMWARE_VERSION "1.5.0"
+
 // KNX Configuration
 #define KNX_AREA 1
 #define KNX_LINE 1

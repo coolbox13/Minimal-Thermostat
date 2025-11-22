@@ -46,11 +46,11 @@ void HomeAssistant::registerEntities() {
     Serial.println("Registering entities with Home Assistant at time: " + timestamp);
 
     // Create origin info (for sensors - full keys)
-    String originInfo = "{\"name\":\"ESP32-KNX-Thermostat\",\"sw_version\":\"1.5\",\"support_url\":\"https://github.com/yourusername/ESP32-KNX-Thermostat\"}";
+    String originInfo = "{\"name\":\"ESP32-KNX-Thermostat\",\"sw_version\":\"" + String(FIRMWARE_VERSION) + "\",\"support_url\":\"https://github.com/yourusername/ESP32-KNX-Thermostat\"}";
 
     // Create device info JSON string using ABBREVIATED keys for climate entity
     // Using abbreviated keys: ids, mf, mdl, sw (instead of identifiers, manufacturer, model, sw_version)
-    String deviceInfo = "{\"ids\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"mf\":\"DIY\",\"mdl\":\"ESP32-KNX-Thermostat\",\"sw\":\"1.5\"}";
+    String deviceInfo = "{\"ids\":[\"" + String(_nodeId) + "\"],\"name\":\"ESP32 KNX Thermostat\",\"mf\":\"DIY\",\"mdl\":\"ESP32-KNX-Thermostat\",\"sw\":\"" + String(FIRMWARE_VERSION) + "\"}";
     
     // Temperature sensor with enhanced attributes
     String tempTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/temperature/config";
