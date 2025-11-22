@@ -9,7 +9,11 @@
       "Bash(git commit:*)",
       "Bash(~/.platformio/penv/bin/platformio test:*)",
       "Bash(git push)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run copy:data:*)",
+      "Bash(npm run copy-to-data:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

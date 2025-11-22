@@ -562,6 +562,7 @@ void WebServerManager::setupDefaultRoutes() {
         doc["system"]["uptime"] = millis() / 1000; // seconds
         doc["system"]["free_heap"] = ESP.getFreeHeap();
         doc["system"]["total_heap"] = ESP.getHeapSize();
+        doc["system"]["firmware_version"] = FIRMWARE_VERSION;
 
         // Flash memory - pre-calculated values
         uint32_t freeFlash = ESP.getFreeSketchSpace();

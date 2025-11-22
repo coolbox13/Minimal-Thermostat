@@ -2,6 +2,7 @@ import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import htm from 'htm';
 import uPlot from 'uplot';
+import 'uplot/dist/uPlot.min.css';
 
 const html = htm.bind(h);
 
@@ -40,13 +41,54 @@ export function HistoryChart({
       return;
     }
 
+    // Validate and sanitize data arrays
+    // uPlot requires arrays of equal length, and null/undefined values should be null
+    const sanitizeArray = (arr, defaultValue = null) => {
+      if (!arr || !Array.isArray(arr)) return [];
+      return arr.map(val => (val === undefined || val === null || isNaN(val)) ? null : Number(val));
+    };
+
+    const sanitizedTimestamps = sanitizeArray(timestamps);
+    const sanitizedTemperatures = sanitizeArray(temperatures);
+    const sanitizedHumidities = sanitizeArray(humidities);
+    const sanitizedValvePositions = sanitizeArray(valvePositions);
+
+    // Ensure all arrays have the same length (pad with null if needed)
+    const maxLength = Math.max(
+      sanitizedTimestamps.length,
+      sanitizedTemperatures.length,
+      sanitizedHumidities.length,
+      sanitizedValvePositions.length
+    );
+
+    const padArray = (arr, length) => {
+      const padded = [...arr];
+      while (padded.length < length) {
+        padded.push(null);
+      }
+      return padded;
+    };
+
     // Prepare data in uPlot format [timestamps, temp, humidity, valve]
     const data = [
-      timestamps,
-      temperatures,
-      humidities,
-      valvePositions,
+      padArray(sanitizedTimestamps, maxLength),
+      padArray(sanitizedTemperatures, maxLength),
+      padArray(sanitizedHumidities, maxLength),
+      padArray(sanitizedValvePositions, maxLength),
     ];
+
+    // Debug logging (remove in production if needed)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[HistoryChart] Data summary:', {
+        timestamps: data[0].length,
+        temperatures: data[1].filter(v => v !== null).length,
+        humidities: data[2].filter(v => v !== null).length,
+        valvePositions: data[3].filter(v => v !== null).length,
+        sampleTemp: data[1].slice(0, 3),
+        sampleHumid: data[2].slice(0, 3),
+        sampleValve: data[3].slice(0, 3),
+      });
+    }
 
     // Configure uPlot options
     const opts = {
@@ -66,7 +108,7 @@ export function HistoryChart({
           },
         },
         '%': {
-          auto: true,
+          auto: false, // Fixed range for percentage
           range: [0, 100],
         },
       },
@@ -122,7 +164,12 @@ export function HistoryChart({
           stroke: '#1e88e5',
           width: 2,
           scale: 'y',
-          value: (self, rawValue) => rawValue?.toFixed(1) + '°C',
+          value: (self, rawValue) => {
+            if (rawValue === null || rawValue === undefined || isNaN(rawValue)) {
+              return '--';
+            }
+            return rawValue.toFixed(1) + '°C';
+          },
         },
         {
           // Humidity
@@ -130,7 +177,12 @@ export function HistoryChart({
           stroke: '#4caf50',
           width: 2,
           scale: '%',
-          value: (self, rawValue) => rawValue?.toFixed(1) + '%',
+          value: (self, rawValue) => {
+            if (rawValue === null || rawValue === undefined || isNaN(rawValue)) {
+              return '--';
+            }
+            return rawValue.toFixed(1) + '%';
+          },
         },
         {
           // Valve Position
@@ -138,7 +190,12 @@ export function HistoryChart({
           stroke: '#ff9800',
           width: 2,
           scale: '%',
-          value: (self, rawValue) => rawValue?.toFixed(0) + '%',
+          value: (self, rawValue) => {
+            if (rawValue === null || rawValue === undefined || isNaN(rawValue)) {
+              return '--';
+            }
+            return rawValue.toFixed(0) + '%';
+          },
           dash: [5, 5], // Dashed line
         },
       ],

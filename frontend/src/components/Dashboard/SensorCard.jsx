@@ -51,25 +51,21 @@ export function SensorCard() {
     {
       label: 'Temperature',
       value: data?.temperature != null ? `${data.temperature.toFixed(1)}°C` : '--',
-      icon: '🌡️',
       color: 'text-blue-600 dark:text-blue-400',
     },
     {
       label: 'Humidity',
       value: data?.humidity != null ? `${data.humidity.toFixed(1)}%` : '--',
-      icon: '💧',
       color: 'text-green-600 dark:text-green-400',
     },
     {
       label: 'Pressure',
       value: data?.pressure != null ? `${data.pressure.toFixed(0)} hPa` : '--',
-      icon: '🌤️',
       color: 'text-purple-600 dark:text-purple-400',
     },
     {
       label: 'Valve Position',
       value: data?.valve != null ? `${data.valve}%` : '--',
-      icon: '🔧',
       color: 'text-orange-600 dark:text-orange-400',
     },
   ];
@@ -80,12 +76,9 @@ export function SensorCard() {
         Current Readings
       </h2>
       <div class="space-y-3">
-        ${readings.map(({ label, value, icon, color }) => html`
+        ${readings.map(({ label, value, color }) => html`
           <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-            <div class="flex items-center gap-2">
-              <span class="text-xl">${icon}</span>
-              <span class="text-gray-600 dark:text-gray-400">${label}</span>
-            </div>
+            <span class="text-gray-600 dark:text-gray-400">${label}</span>
             <span class="${color} text-lg font-semibold">${value}</span>
           </div>
         `)}
