@@ -12,9 +12,9 @@ export function useHistoryData(refreshInterval = 30000) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = async (signal) => {
     try {
-      const response = await fetch('/api/history?maxPoints=0');
+      const response = await fetch('/api/history?maxPoints=0', { signal });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -37,6 +37,10 @@ export function useHistoryData(refreshInterval = 30000) {
       });
       setError(null);
     } catch (err) {
+      // Don't log AbortError as it's expected on unmount
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to fetch history data:', err);
       setError(err.message);
     } finally {
@@ -47,10 +51,11 @@ export function useHistoryData(refreshInterval = 30000) {
   useEffect(() => {
     let isMounted = true;
     let timerId = null;
+    let abortController = new AbortController();
 
     // Recursive polling pattern - only schedule next poll after current one completes
     const poll = async () => {
-      await fetchData();
+      await fetchData(abortController.signal);
       if (isMounted) {
         timerId = setTimeout(poll, refreshInterval);
       }
@@ -62,6 +67,7 @@ export function useHistoryData(refreshInterval = 30000) {
     // Cleanup on unmount
     return () => {
       isMounted = false;
+      abortController.abort();
       if (timerId) clearTimeout(timerId);
     };
   }, [refreshInterval]);
