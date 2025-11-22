@@ -46,10 +46,10 @@ export function ControlCard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/temperature', {
+      const response = await fetch('/api/setpoint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ temperature: setpoint }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `value=${setpoint}`,
       });
 
       if (!response.ok) {
