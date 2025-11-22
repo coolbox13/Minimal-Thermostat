@@ -20,9 +20,9 @@ export function usePresets() {
   const [error, setError] = useState(null);
 
   // Fetch preset configuration from API
-  const fetchPresetConfig = useCallback(async () => {
+  const fetchPresetConfig = useCallback(async (signal) => {
     try {
-      const response = await fetch('/api/config');
+      const response = await fetch('/api/config', { signal });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -42,6 +42,10 @@ export function usePresets() {
       }
       setError(null);
     } catch (err) {
+      // Don't log AbortError as it's expected on unmount
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to fetch preset config:', err);
       setError(err.message);
     } finally {
@@ -89,8 +93,13 @@ export function usePresets() {
   }, [presetConfig]);
 
   useEffect(() => {
-    fetchPresetConfig();
-  }, [fetchPresetConfig]);
+    const abortController = new AbortController();
+    fetchPresetConfig(abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   return {
     presetMode,
