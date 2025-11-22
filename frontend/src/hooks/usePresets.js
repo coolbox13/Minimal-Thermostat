@@ -61,12 +61,19 @@ export function usePresets() {
     setPresetMode(mode);
 
     try {
-      const response = await fetch('/api/preset', {
+      // Get the temperature for this preset
+      const temperature = presetConfig[mode];
+      if (temperature == null) {
+        throw new Error(`Invalid preset mode: ${mode}`);
+      }
+
+      // Use the /api/setpoint endpoint to set the temperature
+      const response = await fetch('/api/setpoint', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({ mode }),
+        body: `value=${temperature}`,
       });
 
       if (!response.ok) {
@@ -84,7 +91,7 @@ export function usePresets() {
 
       return false;
     }
-  }, [presetMode]);
+  }, [presetMode, presetConfig]);
 
   // Get temperature for a specific preset
   const getPresetTemperature = useCallback((mode) => {

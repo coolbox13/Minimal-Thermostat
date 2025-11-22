@@ -21,7 +21,7 @@ export function ManualOverrideCard() {
   useEffect(() => {
     const fetchOverrideState = async () => {
       try {
-        const response = await fetch('/api/override');
+        const response = await fetch('/api/manual-override');
         const data = await response.json();
         setOverrideEnabled(data.enabled || false);
         setValvePosition(data.position || 0);
@@ -64,7 +64,7 @@ export function ManualOverrideCard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/override', {
+      const response = await fetch('/api/manual-override', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,7 +101,7 @@ export function ManualOverrideCard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/override', {
+      const response = await fetch('/api/manual-override', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
