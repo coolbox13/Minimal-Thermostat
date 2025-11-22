@@ -1,4 +1,4 @@
-import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-misc-CJ9EBB9u.js";import{t as d}from"./c-dash-DgD2aYgE.js";import{_ as l}from"./v-ui-BuZZnogH.js";const s=r.bind(e),i="RESET";function o({isOpen:e,onClose:r,onConfirm:o}){const[n,g]=t(""),[p,b]=t(10),[c,u]=t(!1);a(()=>{e&&(g(""),b(10),u(!1))},[e]),a(()=>{if(!e||0===p)return;const t=setInterval(()=>{b(e=>Math.max(0,e-1))},1e3);return()=>clearInterval(t)},[e,p]);const m=n===i&&0===p&&!c;return s`
+import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-misc-CJ9EBB9u.js";import{t as d}from"./c-dash-yfXJLQcn.js";import{_ as l}from"./v-ui-BuZZnogH.js";const s=r.bind(e),i="RESET";function o({isOpen:e,onClose:r,onConfirm:o}){const[n,g]=t(""),[p,b]=t(10),[c,u]=t(!1);a(()=>{e&&(g(""),b(10),u(!1))},[e]),a(()=>{if(!e||0===p)return;const t=setInterval(()=>{b(e=>Math.max(0,e-1))},1e3);return()=>clearInterval(t)},[e,p]);const m=n===i&&0===p&&!c;return s`
     <${l}
       open=${e}
       onClose=${()=>!c&&r()}

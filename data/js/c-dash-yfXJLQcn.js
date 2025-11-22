@@ -1,4 +1,4 @@
-import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}from"./v-misc-CJ9EBB9u.js";import{z as s}from"./v-ui-BuZZnogH.js";function n(a=5e3){const[o,s]=e(null),[n,l]=e(!0),[i,d]=e(null),u=t(async e=>{try{const t=await fetch("/api/sensor",{signal:e});if(!t.ok)throw new Error(`HTTP ${t.status}: ${t.statusText}`);const r=await t.json();s({temperature:r.temperature??0,humidity:r.humidity??0,pressure:r.pressure??0,valve:r.valve??0,setpoint:r.setpoint??22}),d(null)}catch(t){if("AbortError"===t.name)return;d(t.message)}finally{l(!1)}},[]);return r(()=>{let e=!0,t=null,r=new AbortController;const o=async()=>{await u(r.signal),e&&(t=setTimeout(o,a))};return o(),()=>{e=!1,r.abort(),t&&clearTimeout(t)}},[a,u]),{data:o,loading:n,error:i,refetch:u}}const l=o.bind(a);function i(){const{data:e,loading:t,error:r}=n(5e3);if(t||!e)return l`
+import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}from"./v-misc-CJ9EBB9u.js";import{z as s}from"./v-ui-BuZZnogH.js";function n(a=5e3){const[o,s]=e(null),[n,l]=e(!0),[d,i]=e(null),u=t(async e=>{try{const t=await fetch("/api/sensor",{signal:e});if(!t.ok)throw new Error(`HTTP ${t.status}: ${t.statusText}`);const r=await t.json();s({temperature:r.temperature??0,humidity:r.humidity??0,pressure:r.pressure??0,valve:r.valve??0,setpoint:r.setpoint??22}),i(null)}catch(t){if("AbortError"===t.name)return;i(t.message)}finally{l(!1)}},[]);return r(()=>{let e=!0,t=null,r=new AbortController;const o=async()=>{await u(r.signal),e&&(t=setTimeout(o,a))};return o(),()=>{e=!1,r.abort(),t&&clearTimeout(t)}},[a,u]),{data:o,loading:n,error:d,refetch:u}}const l=o.bind(a);function d(){const{data:e,loading:t,error:r}=n(5e3);if(t||!e)return l`
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
         <div class="animate-pulse">
           <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-4"></div>
@@ -36,7 +36,7 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
         `)}
       </div>
     </div>
-  `}const d={duration:3e3,position:"top-center",style:{borderRadius:"12px",padding:"12px 16px",fontSize:"14px",maxWidth:"500px"}},u={success:function(e){return s.success(e,{...d,icon:"✅",style:{...d.style,background:"#10b981",color:"#ffffff"}})},error:function(e){return s.error(e,{...d,duration:4e3,icon:"❌",style:{...d.style,background:"#ef4444",color:"#ffffff"}})},info:function(e){return s(e,{...d,icon:"ℹ️",style:{...d.style,background:"#3b82f6",color:"#ffffff"}})},warning:function(e){return s(e,{...d,icon:"⚠️",style:{...d.style,background:"#f59e0b",color:"#ffffff"}})},loading:function(e){return s.loading(e,{...d,duration:1/0,style:{...d.style,background:"#6b7280",color:"#ffffff"}})},promise:function(e,t){return s.promise(e,{loading:t.loading,success:t.success,error:t.error},{...d,success:{icon:"✅",style:{...d.style,background:"#10b981",color:"#ffffff"}},error:{icon:"❌",style:{...d.style,background:"#ef4444",color:"#ffffff"}}})},dismiss:function(e){e?s.dismiss(e):s.dismiss()}},c=o.bind(a);function g(){const{presetMode:a,applyPreset:o,getPresetTemperature:s}=function(){const[a,o]=e("none"),[s,n]=e({eco:18,comfort:22,away:16,sleep:19,boost:24}),[l,i]=e(!0),[d,u]=e(null),c=t(async e=>{try{const t=await fetch("/api/config",{signal:e});if(!t.ok)throw new Error(`HTTP ${t.status}: ${t.statusText}`);const r=await t.json();r.presets&&(o(r.presets.current||"none"),n({eco:r.presets.eco??18,comfort:r.presets.comfort??22,away:r.presets.away??16,sleep:r.presets.sleep??19,boost:r.presets.boost??24})),u(null)}catch(t){if("AbortError"===t.name)return;u(t.message)}finally{i(!1)}},[]),g=t(async e=>{const t=a;o(e);try{const t=await fetch("/api/preset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:e})});if(!t.ok)throw new Error(`HTTP ${t.status}: ${t.statusText}`);return u(null),!0}catch(r){return o(t),u(r.message),!1}},[a]),p=t(e=>"none"===e?null:s[e]??null,[s]);return r(()=>{const e=new AbortController;return c(e.signal),()=>{e.abort()}},[]),{presetMode:a,presetConfig:s,applyPreset:g,getPresetTemperature:p,loading:l,error:d,refetch:c}}(),{data:l}=n(5e3),[i,d]=e(22),[g,p]=e(!1),[b,f]=e(null),y=t(async e=>{const t=e.target.value;try{await o(t);const e=s(t);e&&d(e),u.success(`Preset changed to ${"none"===t?"Manual":t}`)}catch(r){u.error("Failed to change preset mode")}},[o,s]),m=t(async()=>{const e=(null==l?void 0:l.setpoint)||i;p(!0),f(null);try{if(!(await fetch("/api/temperature",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({temperature:i})})).ok)throw new Error("Failed to update setpoint");u.success(`Temperature set to ${i.toFixed(1)}°C`)}catch(t){d(e),f(t.message),u.error(`Failed to update setpoint: ${t.message}`)}finally{p(!1)}},[i,l]),v=s(a);return c`
+  `}const i={duration:3e3,position:"top-center",style:{borderRadius:"12px",padding:"12px 16px",fontSize:"14px",maxWidth:"500px"}},u={success:function(e){return s.success(e,{...i,icon:"✅",style:{...i.style,background:"#10b981",color:"#ffffff"}})},error:function(e){return s.error(e,{...i,duration:4e3,icon:"❌",style:{...i.style,background:"#ef4444",color:"#ffffff"}})},info:function(e){return s(e,{...i,icon:"ℹ️",style:{...i.style,background:"#3b82f6",color:"#ffffff"}})},warning:function(e){return s(e,{...i,icon:"⚠️",style:{...i.style,background:"#f59e0b",color:"#ffffff"}})},loading:function(e){return s.loading(e,{...i,duration:1/0,style:{...i.style,background:"#6b7280",color:"#ffffff"}})},promise:function(e,t){return s.promise(e,{loading:t.loading,success:t.success,error:t.error},{...i,success:{icon:"✅",style:{...i.style,background:"#10b981",color:"#ffffff"}},error:{icon:"❌",style:{...i.style,background:"#ef4444",color:"#ffffff"}}})},dismiss:function(e){e?s.dismiss(e):s.dismiss()}},c=o.bind(a);function p(){const{presetMode:a,applyPreset:o,getPresetTemperature:s}=function(){const[a,o]=e("none"),[s,n]=e({eco:18,comfort:22,away:16,sleep:19,boost:24}),[l,d]=e(!0),[i,u]=e(null),c=t(async e=>{try{const t=await fetch("/api/config",{signal:e});if(!t.ok)throw new Error(`HTTP ${t.status}: ${t.statusText}`);const r=await t.json();r.presets&&(o(r.presets.current||"none"),n({eco:r.presets.eco??18,comfort:r.presets.comfort??22,away:r.presets.away??16,sleep:r.presets.sleep??19,boost:r.presets.boost??24})),u(null)}catch(t){if("AbortError"===t.name)return;u(t.message)}finally{d(!1)}},[]),p=t(async e=>{const t=a;o(e);try{const t=s[e];if(null==t)throw new Error(`Invalid preset mode: ${e}`);const r=await fetch("/api/setpoint",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:`value=${t}`});if(!r.ok)throw new Error(`HTTP ${r.status}: ${r.statusText}`);return u(null),!0}catch(r){return o(t),u(r.message),!1}},[a,s]),g=t(e=>"none"===e?null:s[e]??null,[s]);return r(()=>{const e=new AbortController;return c(e.signal),()=>{e.abort()}},[]),{presetMode:a,presetConfig:s,applyPreset:p,getPresetTemperature:g,loading:l,error:i,refetch:c}}(),{data:l}=n(5e3),[d,i]=e(22),[p,g]=e(!1),[b,f]=e(null);r(()=>{null!=(null==l?void 0:l.setpoint)&&i(l.setpoint)},[null==l?void 0:l.setpoint]);const y=t(async e=>{const t=e.target.value;try{await o(t);const e=s(t);e&&i(e),u.success(`Preset changed to ${"none"===t?"Manual":t}`)}catch(r){u.error("Failed to change preset mode")}},[o,s]),m=t(async()=>{const e=(null==l?void 0:l.setpoint)||d;g(!0),f(null);try{if(!(await fetch("/api/setpoint",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:`value=${d}`})).ok)throw new Error("Failed to update setpoint");u.success(`Temperature set to ${d.toFixed(1)}°C`)}catch(t){i(e),f(t.message),u.error(`Failed to update setpoint: ${t.message}`)}finally{g(!1)}},[d,l]),v=s(a);return c`
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
         Controls
@@ -81,18 +81,18 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
             min="15"
             max="30"
             step="0.5"
-            value=${i}
-            onInput=${e=>d(parseFloat(e.target.value))}
+            value=${d}
+            onInput=${e=>i(parseFloat(e.target.value))}
             class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider-thumb"
-            style="background: linear-gradient(to right, #1e88e5 0%, #1e88e5 ${(i-15)/15*100}%, rgb(229 231 235) ${(i-15)/15*100}%, rgb(229 231 235) 100%)"
+            style="background: linear-gradient(to right, #1e88e5 0%, #1e88e5 ${(d-15)/15*100}%, rgb(229 231 235) ${(d-15)/15*100}%, rgb(229 231 235) 100%)"
           />
 
           <!-- Floating Value Display -->
           <div
             class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-primary-500 text-white px-3 py-1 rounded-lg text-lg font-bold shadow-lg"
-            style="left: ${(i-15)/15*100}%"
+            style="left: ${(d-15)/15*100}%"
           >
-            ${i.toFixed(1)}°C
+            ${d.toFixed(1)}°C
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-primary-500"></div>
           </div>
         </div>
@@ -107,10 +107,10 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
       <!-- Set Button -->
       <button
         onClick=${m}
-        disabled=${g}
+        disabled=${p}
         class="w-full px-4 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:cursor-not-allowed"
       >
-        ${g?"Updating...":"Set Temperature"}
+        ${p?"Updating...":"Set Temperature"}
       </button>
 
       <!-- Error Display -->
@@ -120,7 +120,7 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
         </div>
       `}
     </div>
-  `}const p=o.bind(a);function b(){const[a,o]=e(!1),[s,n]=e(0),[l,i]=e(!1),[d,c]=e(null),[g,b]=e(null);r(()=>{const e=async()=>{try{const e=await fetch("/api/override"),t=await e.json();o(t.enabled||!1),n(t.position||0),b(t.remainingSeconds||null)}catch(e){}};e();const t=setInterval(e,5e3);return()=>clearInterval(t)},[]),r(()=>{if(!a||!g)return;const e=setInterval(()=>{b(e=>e<=1?(o(!1),null):e-1)},1e3);return()=>clearInterval(e)},[a,g]);const f=t(async()=>{const e=!a,t=a;o(e),i(!0),c(null);try{if(!(await fetch("/api/override",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled:e,position:e?s:0})})).ok)throw new Error("Failed to toggle override");e?(b(1800),u.success("Manual override enabled")):(b(null),n(0),u.info("Manual override disabled"))}catch(r){o(t),c(r.message),u.error(`Failed to toggle override: ${r.message}`)}finally{i(!1)}},[a,s]),y=t(async()=>{i(!0),c(null);try{if(!(await fetch("/api/override",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled:!0,position:s})})).ok)throw new Error("Failed to update valve position");u.success(`Valve position set to ${s}%`)}catch(e){c(e.message),u.error(`Failed to update valve position: ${e.message}`)}finally{i(!1)}},[s]);return p`
+  `}const g=o.bind(a);function b(){const[a,o]=e(!1),[s,n]=e(0),[l,d]=e(!1),[i,c]=e(null),[p,b]=e(null);r(()=>{const e=async()=>{try{const e=await fetch("/api/manual-override"),t=await e.json();o(t.enabled||!1),n(t.position||0),b(t.remainingSeconds||null)}catch(e){}};e();const t=setInterval(e,5e3);return()=>clearInterval(t)},[]),r(()=>{if(!a||!p)return;const e=setInterval(()=>{b(e=>e<=1?(o(!1),null):e-1)},1e3);return()=>clearInterval(e)},[a,p]);const f=t(async()=>{const e=!a,t=a;o(e),d(!0),c(null);try{const t=new URLSearchParams;if(t.append("enabled",e),e&&t.append("position",s),!(await fetch("/api/manual-override",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:t.toString()})).ok)throw new Error("Failed to toggle override");e?(b(1800),u.success("Manual override enabled")):(b(null),n(0),u.info("Manual override disabled"))}catch(r){o(t),c(r.message),u.error(`Failed to toggle override: ${r.message}`)}finally{d(!1)}},[a,s]),y=t(async()=>{d(!0),c(null);try{const e=new URLSearchParams;if(e.append("enabled",!0),e.append("position",s),!(await fetch("/api/manual-override",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:e.toString()})).ok)throw new Error("Failed to update valve position");u.success(`Valve position set to ${s}%`)}catch(e){c(e.message),u.error(`Failed to update valve position: ${e.message}`)}finally{d(!1)}},[s]);return g`
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
         Manual Override
@@ -146,7 +146,7 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
           />
 
           <!-- Floating Value Display -->
-          ${a&&p`
+          ${a&&g`
             <div
               class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white px-3 py-1 rounded-lg text-lg font-bold shadow-lg"
               style="left: ${s}%"
@@ -174,7 +174,7 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
           ${a?"Disable Manual Control":"Enable Manual Control"}
         </button>
 
-        ${a&&p`
+        ${a&&g`
           <button
             onClick=${y}
             disabled=${l}
@@ -186,19 +186,19 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
       </div>
 
       <!-- Timer Display -->
-      ${a&&g&&p`
+      ${a&&p&&g`
         <div class="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
           <p class="text-sm text-orange-700 dark:text-orange-300 flex items-center gap-2">
             <span>⏱️</span>
-            <span>Override active for ${m=g,m?`${Math.floor(m/60)}:${(m%60).toString().padStart(2,"0")}`:""}</span>
+            <span>Override active for ${m=p,m?`${Math.floor(m/60)}:${(m%60).toString().padStart(2,"0")}`:""}</span>
           </p>
         </div>
       `}
 
       <!-- Error Display -->
-      ${d&&p`
+      ${i&&g`
         <div class="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p class="text-sm text-red-600 dark:text-red-400">${d}</p>
+          <p class="text-sm text-red-600 dark:text-red-400">${i}</p>
         </div>
       `}
     </div>
@@ -228,4 +228,4 @@ import{d as e,q as t,y as r,_ as a}from"./v-preact-BAP1wjwx.js";import{h as o}fr
         `)}
       </div>
     </div>
-  `}export{g as C,b as M,i as S,y as a,u as t};
+  `}export{p as C,b as M,d as S,y as a,u as t};
