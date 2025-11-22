@@ -262,11 +262,30 @@ void WebServerManager::setupDefaultRoutes() {
     auto spaRouteHandler = [](AsyncWebServerRequest *request) {
         // LittleFS.exists() and beginResponse() use filesystem-relative paths
         if (LittleFS.exists("/index.html.gz")) {
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
-            response->addHeader("Content-Encoding", "gzip");
-            request->send(response);
+            File file = LittleFS.open("/index.html.gz", "r");
+            if (file) {
+                size_t fileSize = file.size();
+                file.close();
+                AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
+                response->addHeader("Content-Encoding", "gzip");
+                response->addHeader("Content-Length", String(fileSize));
+                response->addHeader("Cache-Control", "no-cache"); // Don't cache HTML
+                request->send(response);
+            } else {
+                request->send(500, "text/plain", "Failed to open index.html.gz");
+            }
         } else if (LittleFS.exists("/index.html")) {
-            request->send(LittleFS, "/index.html", "text/html");
+            File file = LittleFS.open("/index.html", "r");
+            if (file) {
+                size_t fileSize = file.size();
+                file.close();
+                AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
+                response->addHeader("Content-Length", String(fileSize));
+                response->addHeader("Cache-Control", "no-cache"); // Don't cache HTML
+                request->send(response);
+            } else {
+                request->send(500, "text/plain", "Failed to open index.html");
+            }
         } else {
             request->send(404, "text/html",
                 "<html><body><h1>Frontend not found</h1>"
@@ -333,18 +352,37 @@ void WebServerManager::setupDefaultRoutes() {
         Serial.printf("[ASSET] Checking: %s\n", gzPath.c_str());
         if (LittleFS.exists(gzPath)) {
             Serial.printf("[ASSET] Found gzip: %s\n", gzPath.c_str());
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
-            response->addHeader("Content-Encoding", "gzip");
-            request->send(response);
-            return;
+            File file = LittleFS.open(gzPath, "r");
+            if (file) {
+                size_t fileSize = file.size();
+                file.close();
+                AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+                response->addHeader("Content-Encoding", "gzip");
+                response->addHeader("Content-Length", String(fileSize));
+                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+                request->send(response);
+                return;
+            } else {
+                Serial.printf("[ASSET] Failed to open gzip file: %s\n", gzPath.c_str());
+            }
         }
 
         // Try uncompressed file as fallback
         Serial.printf("[ASSET] Checking uncompressed: %s\n", fsPath.c_str());
         if (LittleFS.exists(fsPath)) {
             Serial.printf("[ASSET] Found uncompressed: %s\n", fsPath.c_str());
-            request->send(LittleFS, fsPath, contentType);
-            return;
+            File file = LittleFS.open(fsPath, "r");
+            if (file) {
+                size_t fileSize = file.size();
+                file.close();
+                AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
+                response->addHeader("Content-Length", String(fileSize));
+                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+                request->send(response);
+                return;
+            } else {
+                Serial.printf("[ASSET] Failed to open uncompressed file: %s\n", fsPath.c_str());
+            }
         }
 
         // File not found - log for debugging
@@ -397,16 +435,31 @@ void WebServerManager::setupDefaultRoutes() {
         // Try gzipped version first
         String gzPath = fsPath + ".gz";  // e.g., "/manifest.json.gz"
         if (LittleFS.exists(gzPath)) {
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
-            response->addHeader("Content-Encoding", "gzip");
-            request->send(response);
-            return;
+            File file = LittleFS.open(gzPath, "r");
+            if (file) {
+                size_t fileSize = file.size();
+                file.close();
+                AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+                response->addHeader("Content-Encoding", "gzip");
+                response->addHeader("Content-Length", String(fileSize));
+                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+                request->send(response);
+                return;
+            }
         }
         
         // Try uncompressed
         if (LittleFS.exists(fsPath)) {
-            request->send(LittleFS, fsPath, contentType);
-            return;
+            File file = LittleFS.open(fsPath, "r");
+            if (file) {
+                size_t fileSize = file.size();
+                file.close();
+                AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
+                response->addHeader("Content-Length", String(fileSize));
+                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+                request->send(response);
+                return;
+            }
         }
         
         request->send(404, "text/plain", "File not found: " + path);
