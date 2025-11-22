@@ -17,11 +17,11 @@ export function Layout({ children }) {
   const { isDark, toggle } = useDarkMode();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '🏠' },
-    { path: '/status', label: 'Status', icon: '📊' },
-    { path: '/config', label: 'Config', icon: '⚙️' },
-    { path: '/logs', label: 'Logs', icon: '📋' },
-    { path: '/serial', label: 'Serial', icon: '🖥️' },
+    { path: '/', label: 'Dashboard' },
+    { path: '/status', label: 'Status' },
+    { path: '/config', label: 'Config' },
+    { path: '/logs', label: 'Logs' },
+    { path: '/serial', label: 'Serial' },
   ];
 
   return html`
@@ -31,8 +31,7 @@ export function Layout({ children }) {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center py-4">
             <!-- Logo/Title -->
-            <div class="flex items-center gap-3">
-              <span class="text-3xl">🌡️</span>
+            <div class="flex items-center">
               <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 ESP32 Thermostat
               </h1>
@@ -41,15 +40,14 @@ export function Layout({ children }) {
             <!-- Desktop Navigation + Dark Mode -->
             <div class="hidden md:flex items-center gap-2">
               <nav class="flex gap-2">
-                ${navItems.map(({ path, label, icon }) => html`
+                ${navItems.map(({ path, label }) => html`
                   <${Link}
                     key=${path}
                     href=${path}
                     activeClassName="bg-primary-500 text-white"
-                    class="px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-primary-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center gap-2"
+                    class="px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-primary-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                   >
-                    <span>${icon}</span>
-                    <span>${label}</span>
+                    ${label}
                   <//>
                 `)}
               </nav>
@@ -94,15 +92,14 @@ export function Layout({ children }) {
 
           <!-- Mobile Navigation (Visible on small screens) -->
           <nav class="md:hidden flex overflow-x-auto pb-3 gap-2 -mx-4 px-4">
-            ${navItems.map(({ path, label, icon }) => html`
+            ${navItems.map(({ path, label }) => html`
               <${Link}
                 key=${path}
                 href=${path}
                 activeClassName="bg-primary-500 text-white"
-                class="flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 flex items-center gap-2 text-sm whitespace-nowrap"
+                class="flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 text-sm whitespace-nowrap"
               >
-                <span>${icon}</span>
-                <span>${label}</span>
+                ${label}
               <//>
             `)}
           </nav>

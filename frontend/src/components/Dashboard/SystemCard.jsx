@@ -13,11 +13,11 @@ export function SystemCard() {
   };
 
   const navItems = [
-    { label: 'Event Logs', href: '/logs', icon: '📋' },
-    { label: 'Serial Monitor', href: '/serial', icon: '🖥️' },
-    { label: 'Firmware Update', href: '/update', icon: '⬆️' },
-    { label: 'Configuration', href: '/config', icon: '⚙️' },
-    { label: 'System Status', href: '/status', icon: '📊' },
+    { label: 'Event Logs', href: '/logs' },
+    { label: 'Serial Monitor', href: '/serial' },
+    { label: 'Firmware Update', href: '/update' },
+    { label: 'Configuration', href: '/config' },
+    { label: 'System Status', href: '/status' },
   ];
 
   return html`
@@ -30,19 +30,17 @@ export function SystemCard() {
         <!-- Refresh Button -->
         <button
           onClick=${handleRefresh}
-          class="w-full px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+          class="w-full px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
         >
-          <span>🔄</span>
-          <span>Refresh Data</span>
+          Refresh Data
         </button>
 
         <!-- Navigation Links -->
-        ${navItems.map(({ label, href, icon }) => html`
+        ${navItems.map(({ label, href }) => html`
           <a
             href=${href}
             class="block w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium rounded-lg transition-all duration-200 text-center shadow-sm hover:shadow-md"
           >
-            <span class="mr-2">${icon}</span>
             ${label}
           </a>
         `)}

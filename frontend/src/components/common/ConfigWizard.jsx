@@ -44,10 +44,10 @@ export function ConfigWizard({ isOpen, onClose, onComplete }) {
   });
 
   const steps = [
-    { id: 'wifi', title: 'WiFi Setup', icon: '📡' },
-    { id: 'mqtt', title: 'MQTT Setup', icon: '📨' },
-    { id: 'sensors', title: 'Sensor Setup', icon: '🌡️' },
-    { id: 'review', title: 'Review & Save', icon: '✅' },
+    { id: 'wifi', title: 'WiFi Setup' },
+    { id: 'mqtt', title: 'MQTT Setup' },
+    { id: 'sensors', title: 'Sensor Setup' },
+    { id: 'review', title: 'Review & Save' },
   ];
 
   // Validation state for each step
@@ -188,8 +188,6 @@ export function ConfigWizard({ isOpen, onClose, onComplete }) {
                     >
                       ${index < currentStep
                         ? '✓'
-                        : index === currentStep
-                        ? step.icon
                         : index + 1}
                     </div>
                     <!-- Step Title -->
