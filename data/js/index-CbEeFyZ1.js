@@ -1,4 +1,4 @@
-var e=Object.defineProperty;import{_ as r,f as t,d as o,y as a,g as s,G as l,i}from"./v-preact-BAP1wjwx.js";import{h as n}from"./v-misc-CJ9EBB9u.js";import{F as d}from"./v-ui-BuZZnogH.js";import{D as c}from"./p-dashboard-BRzzCBHo.js";import{S as g}from"./p-status-CSMg8qM0.js";import{C as m}from"./p-config-DkR3-lzJ.js";import{L as p}from"./p-logs-BJWuevom.js";import{S as h}from"./p-serial-_8KRU5lh.js";import"./c-graph-DmDg74v6.js";import"./v-chart-D5ou7yDp.js";import"./c-dash-yfXJLQcn.js";!function(){const e=document.createElement("link").relList;if(!(e&&e.supports&&e.supports("modulepreload"))){for(const e of document.querySelectorAll('link[rel="modulepreload"]'))r(e);new MutationObserver(e=>{for(const t of e)if("childList"===t.type)for(const e of t.addedNodes)"LINK"===e.tagName&&"modulepreload"===e.rel&&r(e)}).observe(document,{childList:!0,subtree:!0})}function r(e){if(e.ep)return;e.ep=!0;const r=function(e){const r={};return e.integrity&&(r.integrity=e.integrity),e.referrerPolicy&&(r.referrerPolicy=e.referrerPolicy),"use-credentials"===e.crossOrigin?r.credentials="include":"anonymous"===e.crossOrigin?r.credentials="omit":r.credentials="same-origin",r}(e);fetch(e.href,r)}}();const u=n.bind(r);class x extends t{constructor(r){var t;super(r),((r,t,o)=>{t in r?e(r,t,{enumerable:!0,configurable:!0,writable:!0,value:o}):r[t]=o})(this,"symbol"!=typeof(t="resetError")?t+"":t,()=>{this.setState({hasError:!1,error:null,errorInfo:null})}),this.state={hasError:!1,error:null,errorInfo:null}}componentDidCatch(e,r){this.setState({hasError:!0,error:e,errorInfo:r})}render({children:e,fallback:r},{hasError:t,error:o,errorInfo:a}){return t?r?r({error:o,errorInfo:a,reset:this.resetError}):u`
+var e=Object.defineProperty;import{_ as r,f as t,d as o,y as a,g as s,G as l,i as n}from"./v-preact-BAP1wjwx.js";import{h as i}from"./v-misc-CJ9EBB9u.js";import{F as d}from"./v-ui-BuZZnogH.js";import{D as c}from"./p-dashboard-BRzzCBHo.js";import{S as g}from"./p-status-CSMg8qM0.js";import{C as m}from"./p-config-DkR3-lzJ.js";import{L as p}from"./p-logs-BJWuevom.js";import{S as u}from"./p-serial-_8KRU5lh.js";import"./c-graph-DmDg74v6.js";import"./v-chart-D5ou7yDp.js";import"./c-dash-yfXJLQcn.js";!function(){const e=document.createElement("link").relList;if(!(e&&e.supports&&e.supports("modulepreload"))){for(const e of document.querySelectorAll('link[rel="modulepreload"]'))r(e);new MutationObserver(e=>{for(const t of e)if("childList"===t.type)for(const e of t.addedNodes)"LINK"===e.tagName&&"modulepreload"===e.rel&&r(e)}).observe(document,{childList:!0,subtree:!0})}function r(e){if(e.ep)return;e.ep=!0;const r=function(e){const r={};return e.integrity&&(r.integrity=e.integrity),e.referrerPolicy&&(r.referrerPolicy=e.referrerPolicy),"use-credentials"===e.crossOrigin?r.credentials="include":"anonymous"===e.crossOrigin?r.credentials="omit":r.credentials="same-origin",r}(e);fetch(e.href,r)}}();const h=i.bind(r);class x extends t{constructor(r){var t;super(r),((r,t,o)=>{t in r?e(r,t,{enumerable:!0,configurable:!0,writable:!0,value:o}):r[t]=o})(this,"symbol"!=typeof(t="resetError")?t+"":t,()=>{this.setState({hasError:!1,error:null,errorInfo:null})}),this.state={hasError:!1,error:null,errorInfo:null}}componentDidCatch(e,r){this.setState({hasError:!0,error:e,errorInfo:r})}render({children:e,fallback:r},{hasError:t,error:o,errorInfo:a}){return t?r?r({error:o,errorInfo:a,reset:this.resetError}):h`
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
           <div class="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8">
             <!-- Error Icon -->
@@ -23,7 +23,7 @@ var e=Object.defineProperty;import{_ as r,f as t,d as o,y as a,g as s,G as l,i}f
                 ${(null==o?void 0:o.message)||"Unknown error"}
               </p>
 
-              ${(null==o?void 0:o.stack)&&u`
+              ${(null==o?void 0:o.stack)&&h`
                 <details class="mt-3">
                   <summary class="cursor-pointer text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     Show stack trace
@@ -71,7 +71,7 @@ ${o.stack}
             </div>
           </div>
         </div>
-      `:e}}const b=n.bind(r);function f({children:e}){const{isDark:r,toggle:t}=function(){const[e,r]=o(()=>{const e=localStorage.getItem("darkMode");return null!==e?"true"===e:!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches});return a(()=>{e?document.documentElement.classList.add("dark"):document.documentElement.classList.remove("dark"),localStorage.setItem("darkMode",e.toString())},[e]),{isDark:e,toggle:()=>r(!e)}}(),l=[{path:"/",label:"Dashboard"},{path:"/status",label:"Status"},{path:"/config",label:"Config"},{path:"/logs",label:"Logs"},{path:"/serial",label:"Serial"}];return b`
+      `:e}}const b=i.bind(r);function f({children:e}){const{isDark:r,toggle:t}=function(){const[e,r]=o(()=>{const e=localStorage.getItem("darkMode");return null!==e?"true"===e:!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches});return a(()=>{e?document.documentElement.classList.add("dark"):document.documentElement.classList.remove("dark"),localStorage.setItem("darkMode",e.toString())},[e]),{isDark:e,toggle:()=>r(!e)}}(),{version:l}=function(){const[e,r]=o(null),[t,s]=o(!0),[l,n]=o(null);return a(()=>{const e=new AbortController;return async function(){var t;try{const o=await fetch("/api/status",{signal:e.signal});if(!o.ok)throw new Error(`HTTP ${o.status}: ${o.statusText}`);const a=await o.json();r((null==(t=a.system)?void 0:t.firmware_version)??"Unknown"),n(null)}catch(o){if("AbortError"===o.name)return;n(o.message)}finally{s(!1)}}(),()=>{e.abort()}},[]),{version:e,loading:t,error:l}}(),n=[{path:"/",label:"Dashboard"},{path:"/status",label:"Status"},{path:"/config",label:"Config"},{path:"/logs",label:"Logs"},{path:"/serial",label:"Serial"}];return b`
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
       <!-- Header with Navigation -->
       <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -87,7 +87,7 @@ ${o.stack}
             <!-- Desktop Navigation + Dark Mode -->
             <div class="hidden md:flex items-center gap-2">
               <nav class="flex gap-2">
-                ${l.map(({path:e,label:r})=>b`
+                ${n.map(({path:e,label:r})=>b`
                   <${s}
                     key=${e}
                     href=${e}
@@ -139,7 +139,7 @@ ${o.stack}
 
           <!-- Mobile Navigation (Visible on small screens) -->
           <nav class="md:hidden flex overflow-x-auto pb-3 gap-2 -mx-4 px-4">
-            ${l.map(({path:e,label:r})=>b`
+            ${n.map(({path:e,label:r})=>b`
               <${s}
                 key=${e}
                 href=${e}
@@ -163,20 +163,21 @@ ${o.stack}
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p class="text-center text-sm text-gray-500 dark:text-gray-400">
             ESP32 KNX Thermostat © ${(new Date).getFullYear()}
+            ${l?b`<span class="ml-2">· v${l}</span>`:""}
           </p>
         </div>
       </footer>
     </div>
-  `}const v=n.bind(r);l(v`<${function(){return v`
+  `}const v=i.bind(r);l(v`<${function(){return v`
     <${x}>
       <div>
         <${f}>
-          <${i}>
+          <${n}>
             <${c} path="/" />
             <${g} path="/status" />
             <${m} path="/config" />
             <${p} path="/logs" />
-            <${h} path="/serial" />
+            <${u} path="/serial" />
           <//>
         <//>
         <${d}
