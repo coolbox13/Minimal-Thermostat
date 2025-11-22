@@ -45,14 +45,25 @@ export function useHistoryData(refreshInterval = 30000) {
   };
 
   useEffect(() => {
-    // Initial fetch
-    fetchData();
+    let isMounted = true;
+    let timerId = null;
 
-    // Set up polling interval
-    const interval = setInterval(fetchData, refreshInterval);
+    // Recursive polling pattern - only schedule next poll after current one completes
+    const poll = async () => {
+      await fetchData();
+      if (isMounted) {
+        timerId = setTimeout(poll, refreshInterval);
+      }
+    };
+
+    // Start initial poll
+    poll();
 
     // Cleanup on unmount
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
   }, [refreshInterval]);
 
   return {

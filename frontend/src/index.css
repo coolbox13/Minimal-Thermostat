@@ -6,8 +6,8 @@
 @layer components {
   .slider-thumb::-webkit-slider-thumb {
     appearance: none;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #1e88e5;
     cursor: pointer;
@@ -21,8 +21,8 @@
   }
 
   .slider-thumb::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: #1e88e5;
     cursor: pointer;

@@ -12,8 +12,8 @@ const html = htm.bind(h);
 export function SensorCard() {
   const { data, loading, error } = useSensorData(5000); // Poll every 5 seconds
 
-  // Skeleton Loading State
-  if (loading) {
+  // Skeleton Loading State (show if loading OR data is null)
+  if (loading || !data) {
     return html`
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
         <div class="animate-pulse">

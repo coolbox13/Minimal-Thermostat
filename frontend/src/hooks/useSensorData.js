@@ -8,13 +8,7 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
  * @returns {Object} { data, loading, error, refetch }
  */
 export function useSensorData(refreshInterval = 5000) {
-  const [data, setData] = useState({
-    temperature: 0,
-    humidity: 0,
-    pressure: 0,
-    valve: 0,
-    setpoint: 22.0,
-  });
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,15 +39,26 @@ export function useSensorData(refreshInterval = 5000) {
   }, []);
 
   useEffect(() => {
-    // Initial fetch
-    fetchData();
+    let isMounted = true;
+    let timerId = null;
 
-    // Set up polling interval
-    const interval = setInterval(fetchData, refreshInterval);
+    // Recursive polling pattern - only schedule next poll after current one completes
+    const poll = async () => {
+      await fetchData();
+      if (isMounted) {
+        timerId = setTimeout(poll, refreshInterval);
+      }
+    };
+
+    // Start initial poll
+    poll();
 
     // Cleanup on unmount
-    return () => clearInterval(interval);
-  }, [fetchData, refreshInterval]);
+    return () => {
+      isMounted = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [refreshInterval]);
 
   return {
     data,
