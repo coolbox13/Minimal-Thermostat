@@ -31,6 +31,7 @@ export function Config() {
     kd: '1.0',
     setpoint: '22.0',
     deadband: '0.5',
+    adaptation_enabled: true,
     adaptation_interval: '60',
   });
   const [pidValid, setPidValid] = useState({
@@ -101,6 +102,7 @@ export function Config() {
           kd: config.pid.kd?.toString() || '1.0',
           setpoint: config.pid.setpoint?.toString() || '22.0',
           deadband: config.pid.deadband?.toString() || '0.5',
+          adaptation_enabled: config.pid.adaptation_enabled ?? true,
           adaptation_interval: config.pid.adaptation_interval?.toString() || '60',
         });
       }
@@ -167,6 +169,7 @@ export function Config() {
       kd: parseFloat(pidValues.kd),
       setpoint: parseFloat(pidValues.setpoint),
       deadband: parseFloat(pidValues.deadband),
+      adaptation_enabled: pidValues.adaptation_enabled,
       adaptation_interval: parseFloat(pidValues.adaptation_interval),
     });
   };
@@ -851,21 +854,52 @@ export function Config() {
                 class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Adaptation Interval (seconds)
-              </label>
-              <input
-                type="number"
-                step="1"
-                min="10"
-                max="600"
-                value=${pidValues.adaptation_interval}
-                onInput=${(e) => handlePidChange('adaptation_interval', e.target.value)}
-                class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
           </div>
+
+          <!-- Adaptation Settings -->
+          <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Auto-Tuning & Adaptation</h4>
+
+            <div class="mb-4">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked=${pidValues.adaptation_enabled}
+                  onChange=${(e) => setPidValues({ ...pidValues, adaptation_enabled: e.target.checked })}
+                  class="w-5 h-5 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">
+                    Enable Continuous Adaptation
+                  </span>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Automatically adjusts PID parameters based on system performance. Disable for manual calibration.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            ${pidValues.adaptation_enabled && html`
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Adaptation Interval (seconds)
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="10"
+                  max="600"
+                  value=${pidValues.adaptation_interval}
+                  onInput=${(e) => handlePidChange('adaptation_interval', e.target.value)}
+                  class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  How often the system re-evaluates and adjusts PID parameters (10-600 seconds)
+                </p>
+              </div>
+            `}
+          </div>
+
           <div class="flex items-center gap-3">
             <button
               onClick=${savePidConfig}

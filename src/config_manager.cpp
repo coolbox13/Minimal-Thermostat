@@ -338,10 +338,10 @@ void ConfigManager::setPidAdaptationInterval(float interval) {
 }
 
 bool ConfigManager::getAdaptationEnabled() {
-    return PersistenceManager::getAdaptationEnabled();
+    return _preferences.getBool("adapt_en", true);  // Default to true for backwards compatibility
 }
 void ConfigManager::setAdaptationEnabled(bool enabled) {
-    PersistenceManager::setAdaptationEnabled(enabled);
+    _preferences.putBool("adapt_en", enabled);
 }
 
 // Preset mode settings
