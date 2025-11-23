@@ -337,6 +337,13 @@ void ConfigManager::setPidAdaptationInterval(float interval) {
     _preferences.putFloat("pid_adapt", roundToPrecision(interval, 1));
 }
 
+bool ConfigManager::getAdaptationEnabled() {
+    return PersistenceManager::getAdaptationEnabled();
+}
+void ConfigManager::setAdaptationEnabled(bool enabled) {
+    PersistenceManager::setAdaptationEnabled(enabled);
+}
+
 // Preset mode settings
 String ConfigManager::getCurrentPreset() {
     return _preferences.getString("preset_cur", "none");
@@ -483,6 +490,7 @@ void ConfigManager::getJson(JsonDocument& doc) {
     doc["pid"]["kd"] = getPidKd();
     doc["pid"]["setpoint"] = getSetpoint();
     doc["pid"]["deadband"] = getPidDeadband();
+    doc["pid"]["adaptation_enabled"] = getAdaptationEnabled();
     doc["pid"]["adaptation_interval"] = getPidAdaptationInterval();
 
     // Add preset configuration
@@ -834,6 +842,11 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
             return false;
         }
         setPidAdaptationInterval(interval);
+    }
+    if (doc["pid"].containsKey("adaptation_enabled")) {
+        bool enabled = doc["pid"]["adaptation_enabled"].as<bool>();
+        setAdaptationEnabled(enabled);
+        LOG_D(TAG, "Adaptation enabled set to: %s", enabled ? "true" : "false");
     }
     return true;
 }

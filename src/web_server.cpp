@@ -637,7 +637,8 @@ void WebServerManager::setupDefaultRoutes() {
         doc["timing"]["system_watchdog_timeout"] = configManager->getSystemWatchdogTimeout();
         doc["timing"]["wifi_watchdog_timeout"] = configManager->getWifiWatchdogTimeout();
 
-        // PID configuration - adaptation interval only (no enabled flag exists)
+        // PID configuration
+        doc["pid"]["adaptation_enabled"] = configManager->getAdaptationEnabled();
         doc["pid"]["adaptation_interval"] = configManager->getPidAdaptationInterval();
 
         // Presets

@@ -396,6 +396,9 @@ public:
     float getPidAdaptationInterval();
     void setPidAdaptationInterval(float interval);
 
+    bool getAdaptationEnabled();
+    void setAdaptationEnabled(bool enabled);
+
     // Preset mode settings
     /**
      * @brief Get the current active preset mode

@@ -70,8 +70,8 @@ void initializePIDController(void) {
     // Load adaptation interval from config
     adaptation_interval_sec = configManager->getPidAdaptationInterval();
 
-    // Adaptation parameters - enable by default
-    g_pid_input.adaptation_enabled = 1;   // Enable self-learning
+    // Load adaptation enabled flag from config
+    g_pid_input.adaptation_enabled = configManager->getAdaptationEnabled() ? 1 : 0;
     g_pid_input.adaptation_rate = 0.05f;  // Conservative adaptation rate (0.05 = 5%)
     
     // Initialize the controller
