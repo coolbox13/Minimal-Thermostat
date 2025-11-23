@@ -1,4 +1,4 @@
-import{_ as e,d as a,y as r}from"./v-preact-BAP1wjwx.js";import{h as t}from"./v-misc-CJ9EBB9u.js";const d=t.bind(e);function s(){const[e,t]=a([]),[s,l]=a(!0),[o,i]=a(null),[n,g]=a("all");r(()=>{c();const e=setInterval(c,5e3);return()=>clearInterval(e)},[]);const c=async()=>{try{const e=await fetch("/api/logs"),a=await e.json();t(a.logs||[]),l(!1)}catch(e){i(e.message),l(!1)}},b="all"===n?e:e.filter(e=>e.level===n);return s?d`
+import{_ as e,d as a,y as r}from"./v-preact-DZQM6r13.js";import{h as t}from"./v-misc-DwoQrUSZ.js";const d=t.bind(e);function s(){const[e,t]=a([]),[s,l]=a(!0),[o,i]=a(null),[n,g]=a("all");r(()=>{c();const e=setInterval(c,5e3);return()=>clearInterval(e)},[]);const c=async()=>{try{const e=await fetch("/api/logs"),a=await e.json();t(a.logs||[]),l(!1)}catch(e){i(e.message),l(!1)}},b="all"===n?e:e.filter(e=>e.level===n);return s?d`
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
         <div class="animate-pulse space-y-4">
           <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>

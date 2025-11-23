@@ -1,4 +1,4 @@
-var e=Object.defineProperty;import{_ as r,f as t,d as o,y as a,g as s,G as l,i as n}from"./v-preact-BAP1wjwx.js";import{h as i}from"./v-misc-CJ9EBB9u.js";import{F as d}from"./v-ui-BuZZnogH.js";import{D as c}from"./p-dashboard-BRzzCBHo.js";import{S as g}from"./p-status-CSMg8qM0.js";import{C as m}from"./p-config-DkR3-lzJ.js";import{L as p}from"./p-logs-BJWuevom.js";import{S as u}from"./p-serial-_8KRU5lh.js";import"./c-graph-DmDg74v6.js";import"./v-chart-D5ou7yDp.js";import"./c-dash-yfXJLQcn.js";!function(){const e=document.createElement("link").relList;if(!(e&&e.supports&&e.supports("modulepreload"))){for(const e of document.querySelectorAll('link[rel="modulepreload"]'))r(e);new MutationObserver(e=>{for(const t of e)if("childList"===t.type)for(const e of t.addedNodes)"LINK"===e.tagName&&"modulepreload"===e.rel&&r(e)}).observe(document,{childList:!0,subtree:!0})}function r(e){if(e.ep)return;e.ep=!0;const r=function(e){const r={};return e.integrity&&(r.integrity=e.integrity),e.referrerPolicy&&(r.referrerPolicy=e.referrerPolicy),"use-credentials"===e.crossOrigin?r.credentials="include":"anonymous"===e.crossOrigin?r.credentials="omit":r.credentials="same-origin",r}(e);fetch(e.href,r)}}();const h=i.bind(r);class x extends t{constructor(r){var t;super(r),((r,t,o)=>{t in r?e(r,t,{enumerable:!0,configurable:!0,writable:!0,value:o}):r[t]=o})(this,"symbol"!=typeof(t="resetError")?t+"":t,()=>{this.setState({hasError:!1,error:null,errorInfo:null})}),this.state={hasError:!1,error:null,errorInfo:null}}componentDidCatch(e,r){this.setState({hasError:!0,error:e,errorInfo:r})}render({children:e,fallback:r},{hasError:t,error:o,errorInfo:a}){return t?r?r({error:o,errorInfo:a,reset:this.resetError}):h`
+import{_ as e,e as r,d as t,y as o,f as a,G as s,i as l}from"./v-preact-DZQM6r13.js";import{h as n}from"./v-misc-DwoQrUSZ.js";import{F as i}from"./v-ui-Dc9lvtut.js";import{D as d}from"./p-dashboard-CJOYF0AY.js";import{S as c}from"./p-status-W22TEzqr.js";import{C as g}from"./p-config-B9OGIP_m.js";import{L as m}from"./p-logs-Bq68aE-0.js";import{S as p}from"./p-serial-DvkoOnod.js";import"./c-graph-D3JNq64r.js";import"./v-chart-DPNv4Fgr.js";import"./c-dash-B4aQbblM.js";!function(){const e=document.createElement("link").relList;if(!(e&&e.supports&&e.supports("modulepreload"))){for(const e of document.querySelectorAll('link[rel="modulepreload"]'))r(e);new MutationObserver(e=>{for(const t of e)if("childList"===t.type)for(const e of t.addedNodes)"LINK"===e.tagName&&"modulepreload"===e.rel&&r(e)}).observe(document,{childList:!0,subtree:!0})}function r(e){if(e.ep)return;e.ep=!0;const r=function(e){const r={};return e.integrity&&(r.integrity=e.integrity),e.referrerPolicy&&(r.referrerPolicy=e.referrerPolicy),"use-credentials"===e.crossOrigin?r.credentials="include":"anonymous"===e.crossOrigin?r.credentials="omit":r.credentials="same-origin",r}(e);fetch(e.href,r)}}();const u=n.bind(e);class h extends r{constructor(e){super(e),this.state={hasError:!1,error:null,errorInfo:null}}componentDidCatch(e,r){this.setState({hasError:!0,error:e,errorInfo:r})}resetError=()=>{this.setState({hasError:!1,error:null,errorInfo:null})};render({children:e,fallback:r},{hasError:t,error:o,errorInfo:a}){return t?r?r({error:o,errorInfo:a,reset:this.resetError}):u`
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
           <div class="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8">
             <!-- Error Icon -->
@@ -20,10 +20,10 @@ var e=Object.defineProperty;import{_ as r,f as t,d as o,y as a,g as s,G as l,i a
                 Error Details:
               </h3>
               <p class="text-sm text-red-700 dark:text-red-400 font-mono break-all">
-                ${(null==o?void 0:o.message)||"Unknown error"}
+                ${o?.message||"Unknown error"}
               </p>
 
-              ${(null==o?void 0:o.stack)&&h`
+              ${o?.stack&&u`
                 <details class="mt-3">
                   <summary class="cursor-pointer text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     Show stack trace
@@ -71,7 +71,7 @@ ${o.stack}
             </div>
           </div>
         </div>
-      `:e}}const b=i.bind(r);function f({children:e}){const{isDark:r,toggle:t}=function(){const[e,r]=o(()=>{const e=localStorage.getItem("darkMode");return null!==e?"true"===e:!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches});return a(()=>{e?document.documentElement.classList.add("dark"):document.documentElement.classList.remove("dark"),localStorage.setItem("darkMode",e.toString())},[e]),{isDark:e,toggle:()=>r(!e)}}(),{version:l}=function(){const[e,r]=o(null),[t,s]=o(!0),[l,n]=o(null);return a(()=>{const e=new AbortController;return async function(){var t;try{const o=await fetch("/api/status",{signal:e.signal});if(!o.ok)throw new Error(`HTTP ${o.status}: ${o.statusText}`);const a=await o.json();r((null==(t=a.system)?void 0:t.firmware_version)??"Unknown"),n(null)}catch(o){if("AbortError"===o.name)return;n(o.message)}finally{s(!1)}}(),()=>{e.abort()}},[]),{version:e,loading:t,error:l}}(),n=[{path:"/",label:"Dashboard"},{path:"/status",label:"Status"},{path:"/config",label:"Config"},{path:"/logs",label:"Logs"},{path:"/serial",label:"Serial"}];return b`
+      `:e}}const x=n.bind(e);function b({children:e}){const{isDark:r,toggle:s}=function(){const[e,r]=t(()=>{const e=localStorage.getItem("darkMode");return null!==e?"true"===e:!!window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches});return o(()=>{e?document.documentElement.classList.add("dark"):document.documentElement.classList.remove("dark"),localStorage.setItem("darkMode",e.toString())},[e]),{isDark:e,toggle:()=>r(!e)}}(),{version:l}=function(){const[e,r]=t(null),[a,s]=t(!0),[l,n]=t(null);return o(()=>{const e=new AbortController;return async function(){try{const t=await fetch("/api/status",{signal:e.signal});if(!t.ok)throw new Error(`HTTP ${t.status}: ${t.statusText}`);const o=await t.json();r(o.system?.firmware_version??"Unknown"),n(null)}catch(t){if("AbortError"===t.name)return;n(t.message)}finally{s(!1)}}(),()=>{e.abort()}},[]),{version:e,loading:a,error:l}}(),n=[{path:"/",label:"Dashboard"},{path:"/status",label:"Status"},{path:"/config",label:"Config"},{path:"/logs",label:"Logs"},{path:"/serial",label:"Serial"}];return x`
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
       <!-- Header with Navigation -->
       <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -87,8 +87,8 @@ ${o.stack}
             <!-- Desktop Navigation + Dark Mode -->
             <div class="hidden md:flex items-center gap-2">
               <nav class="flex gap-2">
-                ${n.map(({path:e,label:r})=>b`
-                  <${s}
+                ${n.map(({path:e,label:r})=>x`
+                  <${a}
                     key=${e}
                     href=${e}
                     activeClassName="bg-primary-500 text-white"
@@ -101,15 +101,15 @@ ${o.stack}
 
               <!-- Dark Mode Toggle -->
               <button
-                onClick=${t}
+                onClick=${s}
                 class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all ml-2"
                 title=${r?"Switch to light mode":"Switch to dark mode"}
               >
-                ${r?b`
+                ${r?x`
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
                   </svg>
-                `:b`
+                `:x`
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
                   </svg>
@@ -120,15 +120,15 @@ ${o.stack}
             <!-- Mobile Dark Mode Toggle -->
             <div class="md:hidden">
               <button
-                onClick=${t}
+                onClick=${s}
                 class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
                 title=${r?"Switch to light mode":"Switch to dark mode"}
               >
-                ${r?b`
+                ${r?x`
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
                   </svg>
-                `:b`
+                `:x`
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
                   </svg>
@@ -139,8 +139,8 @@ ${o.stack}
 
           <!-- Mobile Navigation (Visible on small screens) -->
           <nav class="md:hidden flex overflow-x-auto pb-3 gap-2 -mx-4 px-4">
-            ${n.map(({path:e,label:r})=>b`
-              <${s}
+            ${n.map(({path:e,label:r})=>x`
+              <${a}
                 key=${e}
                 href=${e}
                 activeClassName="bg-primary-500 text-white"
@@ -163,24 +163,24 @@ ${o.stack}
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p class="text-center text-sm text-gray-500 dark:text-gray-400">
             ESP32 KNX Thermostat © ${(new Date).getFullYear()}
-            ${l?b`<span class="ml-2">· v${l}</span>`:""}
+            ${l?x`<span class="ml-2">· v${l}</span>`:""}
           </p>
         </div>
       </footer>
     </div>
-  `}const v=i.bind(r);l(v`<${function(){return v`
-    <${x}>
+  `}const f=n.bind(e);s(f`<${function(){return f`
+    <${h}>
       <div>
-        <${f}>
-          <${n}>
-            <${c} path="/" />
-            <${g} path="/status" />
-            <${m} path="/config" />
-            <${p} path="/logs" />
-            <${u} path="/serial" />
+        <${b}>
+          <${l}>
+            <${d} path="/" />
+            <${c} path="/status" />
+            <${g} path="/config" />
+            <${m} path="/logs" />
+            <${p} path="/serial" />
           <//>
         <//>
-        <${d}
+        <${i}
           position="top-center"
           reverseOrder=${!1}
           gutter=${8}

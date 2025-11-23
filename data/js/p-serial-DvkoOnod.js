@@ -1,4 +1,4 @@
-import{_ as e,d as t,A as a,y as r}from"./v-preact-BAP1wjwx.js";import{h as s}from"./v-misc-CJ9EBB9u.js";const l=s.bind(e);function i(){const[e,s]=t([]),[i,o]=t(!1),[n,d]=t(!0),c=a(null),g=a(null);return r(()=>{const e=`${"https:"===window.location.protocol?"wss:":"ws:"}//${window.location.host}/ws/serial`,t=new WebSocket(e);return g.current=t,t.onopen=()=>{o(!0),s([])},t.onmessage=e=>{const t=e.data;t&&t.trim()&&s(e=>[...e,t].slice(-500))},t.onerror=e=>{o(!1)},t.onclose=()=>{o(!1),setTimeout(()=>{var e;null==(e=g.current)||e.readyState,WebSocket.CLOSED},3e3)},()=>{t.readyState!==WebSocket.OPEN&&t.readyState!==WebSocket.CONNECTING||t.close()}},[]),r(()=>{n&&c.current&&(c.current.scrollTop=c.current.scrollHeight)},[e,n]),l`
+import{_ as e,d as t,A as a,y as s}from"./v-preact-DZQM6r13.js";import{h as r}from"./v-misc-DwoQrUSZ.js";const l=r.bind(e);function i(){const[e,r]=t([]),[i,o]=t(!1),[n,d]=t(!0),c=a(null),g=a(null);return s(()=>{const e=`${"https:"===window.location.protocol?"wss:":"ws:"}//${window.location.host}/ws/serial`,t=new WebSocket(e);return g.current=t,t.onopen=()=>{o(!0),r([])},t.onmessage=e=>{const t=e.data;t&&t.trim()&&r(e=>[...e,t].slice(-500))},t.onerror=e=>{o(!1)},t.onclose=()=>{o(!1),setTimeout(()=>{g.current,WebSocket.CLOSED},3e3)},()=>{t.readyState!==WebSocket.OPEN&&t.readyState!==WebSocket.CONNECTING||t.close()}},[]),s(()=>{n&&c.current&&(c.current.scrollTop=c.current.scrollHeight)},[e,n]),l`
     <div class="space-y-4">
       <!-- Header with Controls -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
@@ -26,7 +26,7 @@ import{_ as e,d as t,A as a,y as r}from"./v-preact-BAP1wjwx.js";import{h as s}fr
               <span>Auto-scroll</span>
             </label>
             <button
-              onClick=${()=>{s([])}}
+              onClick=${()=>{r([])}}
               class="px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-all"
             >
               🗑️ Clear

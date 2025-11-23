@@ -1,5 +1,5 @@
-import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-misc-CJ9EBB9u.js";import{t as d}from"./c-dash-yfXJLQcn.js";import{_ as l}from"./v-ui-BuZZnogH.js";const s=r.bind(e),i="RESET";function o({isOpen:e,onClose:r,onConfirm:o}){const[n,g]=t(""),[p,b]=t(10),[c,u]=t(!1);a(()=>{e&&(g(""),b(10),u(!1))},[e]),a(()=>{if(!e||0===p)return;const t=setInterval(()=>{b(e=>Math.max(0,e-1))},1e3);return()=>clearInterval(t)},[e,p]);const m=n===i&&0===p&&!c;return s`
-    <${l}
+import{_ as e,d as t,y as a}from"./v-preact-DZQM6r13.js";import{h as r}from"./v-misc-DwoQrUSZ.js";import{t as s}from"./c-dash-B4aQbblM.js";import{h as d}from"./v-ui-Dc9lvtut.js";const i=r.bind(e),l="RESET";function o({isOpen:e,onClose:r,onConfirm:o}){const[n,g]=t(""),[p,b]=t(10),[c,m]=t(!1);a(()=>{e&&(g(""),b(10),m(!1))},[e]),a(()=>{if(!e||0===p)return;const t=setInterval(()=>{b(e=>Math.max(0,e-1))},1e3);return()=>clearInterval(t)},[e,p]);const u=n===l&&0===p&&!c;return i`
+    <${d}
       open=${e}
       onClose=${()=>!c&&r()}
       class="relative z-50"
@@ -10,14 +10,14 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
       <!-- Full-screen container -->
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <!-- Modal panel -->
-        <${l.Panel} class="mx-auto max-w-lg w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 animate-fade-in">
+        <${d.Panel} class="mx-auto max-w-lg w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 animate-fade-in">
           <!-- Warning Icon -->
           <div class="bg-red-100 dark:bg-red-900/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto">
             <span class="text-4xl">🚨</span>
           </div>
 
           <!-- Title -->
-          <${l.Title} class="text-2xl font-bold text-center text-gray-900 dark:text-white mb-3">
+          <${d.Title} class="text-2xl font-bold text-center text-gray-900 dark:text-white mb-3">
             Factory Reset
           <//>
 
@@ -39,7 +39,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           </div>
 
           <!-- Countdown Timer -->
-          ${p>0&&s`
+          ${p>0&&i`
             <div class="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 text-center">
               <p class="text-orange-700 dark:text-orange-300 font-medium">
                 Please wait ${p} second${1!==p?"s":""} before confirming...
@@ -56,22 +56,22 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           <!-- Type-to-Confirm Input -->
           <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Type <span class="font-mono font-bold text-red-600 dark:text-red-400">${i}</span> to confirm:
+              Type <span class="font-mono font-bold text-red-600 dark:text-red-400">${l}</span> to confirm:
             </label>
             <input
               type="text"
               value=${n}
               onInput=${e=>g(e.target.value.toUpperCase())}
               disabled=${c||p>0}
-              placeholder=${p>0?"Waiting for countdown...":`Type "${i}"`}
-              class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border-2 ${n===i?"border-red-500 dark:border-red-400":"border-gray-300 dark:border-gray-600"} rounded-lg text-gray-900 dark:text-white font-mono font-bold text-center text-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              placeholder=${p>0?"Waiting for countdown...":`Type "${l}"`}
+              class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border-2 ${n===l?"border-red-500 dark:border-red-400":"border-gray-300 dark:border-gray-600"} rounded-lg text-gray-900 dark:text-white font-mono font-bold text-center text-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             />
-            ${n&&n!==i&&s`
+            ${n&&n!==l&&i`
               <p class="mt-2 text-sm text-red-600 dark:text-red-400">
-                Text does not match. Please type exactly: ${i}
+                Text does not match. Please type exactly: ${l}
               </p>
             `}
-            ${n===i&&0===p&&s`
+            ${n===l&&0===p&&i`
               <p class="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
                 <span>✓</span>
                 <span>Confirmed. You may now proceed.</span>
@@ -89,9 +89,9 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
               Cancel
             </button>
             <button
-              onClick=${async()=>{if(m){u(!0);try{await o(),d.success("Factory reset completed successfully"),r()}catch(e){d.error(`Factory reset failed: ${e.message}`)}finally{u(!1)}}}}
-              disabled=${!m}
-              class="flex-1 px-4 py-3 ${m?"bg-red-500 hover:bg-red-600":"bg-gray-400 dark:bg-gray-600"} text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+              onClick=${async()=>{if(u){m(!0);try{await o(),s.success("Factory reset completed successfully"),r()}catch(e){s.error(`Factory reset failed: ${e.message}`)}finally{m(!1)}}}}
+              disabled=${!u}
+              class="flex-1 px-4 py-3 ${u?"bg-red-500 hover:bg-red-600":"bg-gray-400 dark:bg-gray-600"} text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
             >
               ${c?"Resetting...":"Factory Reset"}
             </button>
@@ -99,7 +99,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         <//>
       </div>
     <//>
-  `}const n=r.bind(e);function g({label:e,value:r,onChange:d,validator:l,type:s="text",step:i,placeholder:o,required:g=!1,helpText:p}){const[b,c]=t(!1),[u,m]=t({isValid:!0,error:null});a(()=>{if(l&&""!==r&&null!=r){const e=l(r);m(e)}else g||""!==r&&null!=r||m({isValid:!0,error:null})},[r,l,g]);const y=b&&!u.isValid,x=b&&u.isValid&&""!==r&&null!==r;return n`
+  `}const n=r.bind(e);function g({label:e,value:r,onChange:s,validator:d,type:i="text",step:l,placeholder:o,required:g=!1,helpText:p}){const[b,c]=t(!1),[m,u]=t({isValid:!0,error:null});a(()=>{if(d&&""!==r&&null!=r){const e=d(r);u(e)}else g||""!==r&&null!=r||u({isValid:!0,error:null})},[r,d,g]);const y=b&&!m.isValid,x=b&&m.isValid&&""!==r&&null!==r;return n`
     <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         ${e}
@@ -108,10 +108,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
 
       <div class="relative">
         <input
-          type=${s}
-          step=${i}
+          type=${i}
+          step=${l}
           value=${r}
-          onInput=${e=>d(e.target.value)}
+          onInput=${e=>s(e.target.value)}
           onBlur=${()=>{c(!0)}}
           placeholder=${o}
           class="${y?"border-red-500 focus:ring-red-500":x?"border-green-500 focus:ring-green-500":"border-gray-300 dark:border-gray-600 focus:ring-primary-500"} w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 transition-all"
@@ -138,7 +138,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
       ${y&&n`
         <p class="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
           <span>⚠️</span>
-          <span>${u.error}</span>
+          <span>${m.error}</span>
         </p>
       `}
 
@@ -149,7 +149,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         </p>
       `}
     </div>
-  `}const p=r.bind(e);function b({size:e="md",color:t="primary",label:a,fullscreen:r=!1}){const d=p`
+  `}const p=r.bind(e);function b({size:e="md",color:t="primary",label:a,fullscreen:r=!1}){const s=p`
     <div
       class="${{sm:"w-4 h-4 border-2",md:"w-8 h-8 border-2",lg:"w-12 h-12 border-3",xl:"w-16 h-16 border-4"}[e]} ${{primary:"border-primary-500 border-t-transparent",white:"border-white border-t-transparent",gray:"border-gray-400 dark:border-gray-600 border-t-transparent"}[t]} rounded-full animate-spin"
       role="status"
@@ -158,7 +158,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
   `;return r?p`
       <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 flex flex-col items-center gap-4">
-          ${d}
+          ${s}
           ${a&&p`
             <p class="text-gray-700 dark:text-gray-300 font-medium">${a}</p>
           `}
@@ -166,10 +166,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
       </div>
     `:a?p`
       <div class="flex items-center gap-3">
-        ${d}
+        ${s}
         <span class="text-gray-700 dark:text-gray-300">${a}</span>
       </div>
-    `:d}function c(e,t){const a=parseFloat(e);if(isNaN(a))return{isValid:!1,error:"Must be a valid number"};switch(t.toLowerCase()){case"kp":if(a<.1||a>100)return{isValid:!1,error:"Kp must be between 0.1 and 100"};break;case"ki":if(a<0||a>10)return{isValid:!1,error:"Ki must be between 0 and 10"};break;case"kd":if(a<0||a>10)return{isValid:!1,error:"Kd must be between 0 and 10"};break;default:return{isValid:!1,error:"Unknown PID parameter"}}return{isValid:!0,error:null}}function u(e){return e&&0!==e.trim().length?e.length>32?{isValid:!1,error:"SSID cannot exceed 32 characters"}:{isValid:!0,error:null}:{isValid:!1,error:"SSID cannot be empty"}}function m(e){return e&&0!==e.trim().length?/^[a-zA-Z0-9.-]+$/.test(e)?{isValid:!0,error:null}:{isValid:!1,error:"Invalid broker address format"}:{isValid:!1,error:"Broker address cannot be empty"}}function y(e){const t=parseInt(e);return isNaN(t)?{isValid:!1,error:"Must be a valid number"}:t<1||t>65535?{isValid:!1,error:"Port must be between 1 and 65535"}:{isValid:!0,error:null}}const x=r.bind(e);function v({isOpen:e,onClose:a,onComplete:r}){const[l,s]=t(0),[i,o]=t(!1),[n,p]=t({ssid:"",password:""}),[v,k]=t({broker:"",port:"1883",username:"",password:""}),[h,f]=t({kp:"2.0",ki:"0.5",kd:"1.0"}),w=[{id:"wifi",title:"WiFi Setup"},{id:"mqtt",title:"MQTT Setup"},{id:"sensors",title:"Sensor Setup"},{id:"review",title:"Review & Save"}];return e?x`
+    `:s}function c(e,t){const a=parseFloat(e);if(isNaN(a))return{isValid:!1,error:"Must be a valid number"};switch(t.toLowerCase()){case"kp":if(a<.1||a>100)return{isValid:!1,error:"Kp must be between 0.1 and 100"};break;case"ki":if(a<0||a>10)return{isValid:!1,error:"Ki must be between 0 and 10"};break;case"kd":if(a<0||a>10)return{isValid:!1,error:"Kd must be between 0 and 10"};break;default:return{isValid:!1,error:"Unknown PID parameter"}}return{isValid:!0,error:null}}function m(e){return e&&0!==e.trim().length?e.length>32?{isValid:!1,error:"SSID cannot exceed 32 characters"}:{isValid:!0,error:null}:{isValid:!1,error:"SSID cannot be empty"}}function u(e){return e&&0!==e.trim().length?/^[a-zA-Z0-9.-]+$/.test(e)?{isValid:!0,error:null}:{isValid:!1,error:"Invalid broker address format"}:{isValid:!1,error:"Broker address cannot be empty"}}function y(e){const t=parseInt(e);return isNaN(t)?{isValid:!1,error:"Must be a valid number"}:t<1||t>65535?{isValid:!1,error:"Port must be between 1 and 65535"}:{isValid:!0,error:null}}const x=r.bind(e);function v({isOpen:e,onClose:a,onComplete:r}){const[d,i]=t(0),[l,o]=t(!1),[n,p]=t({ssid:"",password:""}),[v,k]=t({broker:"",port:"1883",username:"",password:""}),[h,f]=t({kp:"2.0",ki:"0.5",kd:"1.0"}),w=[{id:"wifi",title:"WiFi Setup"},{id:"mqtt",title:"MQTT Setup"},{id:"sensors",title:"Sensor Setup"},{id:"review",title:"Review & Save"}];return e?x`
     <div class="fixed inset-0 z-50 overflow-y-auto">
       <!-- Backdrop -->
       <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"></div>
@@ -197,14 +197,14 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
                   >
                     <!-- Step Icon -->
                     <div
-                      class="${t<=l?"bg-primary-500 text-white":"bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}
+                      class="${t<=d?"bg-primary-500 text-white":"bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}
                       w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold transition-all duration-300 mb-2"
                     >
-                      ${t<l?"✓":t+1}
+                      ${t<d?"✓":t+1}
                     </div>
                     <!-- Step Title -->
                     <span
-                      class="${t<=l?"text-gray-900 dark:text-white font-semibold":"text-gray-500 dark:text-gray-400"}
+                      class="${t<=d?"text-gray-900 dark:text-white font-semibold":"text-gray-500 dark:text-gray-400"}
                       text-sm text-center"
                     >
                       ${e.title}
@@ -212,7 +212,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
                     <!-- Connector Line -->
                     ${t<w.length-1&&x`
                       <div
-                        class="${t<l?"bg-primary-500":"bg-gray-200 dark:bg-gray-700"}
+                        class="${t<d?"bg-primary-500":"bg-gray-200 dark:bg-gray-700"}
                         h-1 w-full absolute top-6 left-1/2 -z-10 transition-all duration-300"
                         style="width: calc(100% / ${w.length} - 3rem)"
                       ></div>
@@ -224,7 +224,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
 
           <!-- Step Content -->
           <div class="mb-8 min-h-[400px]">
-            ${0===l&&x`
+            ${0===d&&x`
       <div class="space-y-6 animate-fadeIn">
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p class="text-sm text-blue-700 dark:text-blue-300">
@@ -239,7 +239,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           type="text"
           value=${n.ssid}
           onChange=${e=>p({...n,ssid:e})}
-          validator=${u}
+          validator=${m}
           placeholder="Enter your WiFi network name"
           required=${!0}
           helpText="Maximum 32 characters"
@@ -269,7 +269,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         </div>
       </div>
     `}
-            ${1===l&&x`
+            ${1===d&&x`
       <div class="space-y-6 animate-fadeIn">
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p class="text-sm text-blue-700 dark:text-blue-300">
@@ -286,7 +286,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
               type="text"
               value=${v.broker}
               onChange=${e=>k({...v,broker:e})}
-              validator=${m}
+              validator=${u}
               placeholder="mqtt.example.com or 192.168.1.100"
               required=${!0}
               helpText="Hostname or IP address of your MQTT broker"
@@ -335,7 +335,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         </div>
       </div>
     `}
-            ${2===l&&x`
+            ${2===d&&x`
       <div class="space-y-6 animate-fadeIn">
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p class="text-sm text-blue-700 dark:text-blue-300">
@@ -390,7 +390,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         </div>
       </div>
     `}
-            ${3===l&&x`
+            ${3===d&&x`
       <div class="space-y-6 animate-fadeIn">
         <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
           <p class="text-sm text-green-700 dark:text-green-300">
@@ -492,10 +492,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           <!-- Navigation Buttons -->
           <div class="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
             <div>
-              ${l>0&&x`
+              ${d>0&&x`
                 <button
-                  onClick=${()=>{l>0&&s(l-1)}}
-                  disabled=${i}
+                  onClick=${()=>{d>0&&i(d-1)}}
+                  disabled=${l}
                   class="px-6 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-all disabled:opacity-50"
                 >
                   ← Back
@@ -505,28 +505,28 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
 
             <div class="flex gap-3">
               <button
-                onClick=${()=>{null==a||a()}}
-                disabled=${i}
+                onClick=${()=>{a?.()}}
+                disabled=${l}
                 class="px-6 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium transition-all disabled:opacity-50"
               >
                 Skip Setup
               </button>
 
-              ${l<w.length-1?x`
+              ${d<w.length-1?x`
                     <button
-                      onClick=${()=>{l<w.length-1&&s(l+1)}}
-                      disabled=${!(()=>{switch(l){case 0:return(()=>{const e=u(n.ssid).isValid,t=n.password.length>=8;return e&&t})();case 1:return(()=>{const e=m(v.broker).isValid,t=y(v.port).isValid;return e&&t})();case 2:return(()=>{const e=c(h.kp,"kp").isValid,t=c(h.ki,"ki").isValid,a=c(h.kd,"kd").isValid;return e&&t&&a})();case 3:return!0;default:return!1}})()||i}
+                      onClick=${()=>{d<w.length-1&&i(d+1)}}
+                      disabled=${!(()=>{switch(d){case 0:return(()=>{const e=m(n.ssid).isValid,t=n.password.length>=8;return e&&t})();case 1:return(()=>{const e=u(v.broker).isValid,t=y(v.port).isValid;return e&&t})();case 2:return(()=>{const e=c(h.kp,"kp").isValid,t=c(h.ki,"ki").isValid,a=c(h.kd,"kd").isValid;return e&&t&&a})();case 3:return!0;default:return!1}})()||l}
                       class="px-6 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all"
                     >
                       Next →
                     </button>
                   `:x`
                     <button
-                      onClick=${async()=>{o(!0);try{await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:"wifi",ssid:n.ssid,password:n.password})}),await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:"mqtt",broker:v.broker,port:parseInt(v.port),username:v.username,password:v.password})}),await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:"pid",kp:parseFloat(h.kp),ki:parseFloat(h.ki),kd:parseFloat(h.kd)})}),d.success("Configuration saved successfully!"),o(!1),null==r||r(),null==a||a()}catch(e){d.error(`Failed to save configuration: ${e.message}`),o(!1)}}}
-                      disabled=${i}
+                      onClick=${async()=>{o(!0);try{await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:"wifi",ssid:n.ssid,password:n.password})}),await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:"mqtt",broker:v.broker,port:parseInt(v.port),username:v.username,password:v.password})}),await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section:"pid",kp:parseFloat(h.kp),ki:parseFloat(h.ki),kd:parseFloat(h.kd)})}),s.success("Configuration saved successfully!"),o(!1),r?.(),a?.()}catch(e){s.error(`Failed to save configuration: ${e.message}`),o(!1)}}}
+                      disabled=${l}
                       class="px-6 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all flex items-center gap-2"
                     >
-                      ${i?x`<${b} size="sm" color="white" />
+                      ${l?x`<${b} size="sm" color="white" />
                             <span>Saving...</span>`:x`<span>Save Configuration</span>`}
                     </button>
                   `}
@@ -535,7 +535,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         </div>
       </div>
     </div>
-  `:null}const k=r.bind(e);function h(){const[e,r]=t(null),[l,s]=t(!0),[i,n]=t(!1),[p,b]=t("network"),[u,m]=t(!1),[y,x]=t(!1),[h,f]=t({}),[w,_]=t({kp:"2.0",ki:"0.5",kd:"1.0",setpoint:"22.0",deadband:"0.5",adaptation_interval:"60"}),[$,T]=t({kp:!0,ki:!0,kd:!0,setpoint:!0,deadband:!0,adaptation_interval:!0});a(()=>{C()},[]),a(()=>{var t,a,r,d,l,s,i,o,n,g,p,b,c,u,m,y,x,v,k,h,w,$,T,C,I,S,P,F,j,q,M,W,D,N,O,V,E,R,z,A,K,L,U,Q,B,H,J,Y,G,X,Z,ee;e&&(f({wifi_ssid:(null==(t=e.network)?void 0:t.wifi_ssid)||"",wifi_pass:"",ntp_server:(null==(a=e.network)?void 0:a.ntp_server)||"pool.ntp.org",ntp_timezone_offset:(null==(r=e.network)?void 0:r.ntp_timezone_offset)||0,ntp_daylight_offset:(null==(d=e.network)?void 0:d.ntp_daylight_offset)||0,mqtt_server:(null==(l=e.mqtt)?void 0:l.server)||"",mqtt_port:(null==(s=e.mqtt)?void 0:s.port)||1883,mqtt_username:(null==(i=e.mqtt)?void 0:i.username)||"",mqtt_password:"",mqtt_json_aggregate_enabled:(null==(o=e.mqtt)?void 0:o.json_aggregate_enabled)||!1,knx_area:(null==(n=e.knx)?void 0:n.area)||0,knx_line:(null==(g=e.knx)?void 0:g.line)||0,knx_member:(null==(p=e.knx)?void 0:p.member)||0,knx_test:(null==(b=e.knx)?void 0:b.use_test)||!1,knx_valve_cmd_area:(null==(u=null==(c=e.knx)?void 0:c.valve_command)?void 0:u.area)||0,knx_valve_cmd_line:(null==(y=null==(m=e.knx)?void 0:m.valve_command)?void 0:y.line)||0,knx_valve_cmd_member:(null==(v=null==(x=e.knx)?void 0:x.valve_command)?void 0:v.member)||0,knx_valve_fb_area:(null==(h=null==(k=e.knx)?void 0:k.valve_feedback)?void 0:h.area)||0,knx_valve_fb_line:(null==($=null==(w=e.knx)?void 0:w.valve_feedback)?void 0:$.line)||0,knx_valve_fb_member:(null==(C=null==(T=e.knx)?void 0:T.valve_feedback)?void 0:C.member)||0,bme280_address:(null==(I=e.bme280)?void 0:I.address)||"0x76",bme280_sda:(null==(S=e.bme280)?void 0:S.sda_pin)||21,bme280_scl:(null==(P=e.bme280)?void 0:P.scl_pin)||22,bme280_interval:(null==(F=e.bme280)?void 0:F.interval)||30,preset_eco:(null==(j=e.presets)?void 0:j.eco)||18,preset_comfort:(null==(q=e.presets)?void 0:q.comfort)||22,preset_away:(null==(M=e.presets)?void 0:M.away)||16,preset_sleep:(null==(W=e.presets)?void 0:W.sleep)||19,preset_boost:(null==(D=e.presets)?void 0:D.boost)||24,sensor_update_interval:(null==(N=e.timing)?void 0:N.sensor_update_interval)||3e4,history_update_interval:(null==(O=e.timing)?void 0:O.history_update_interval)||3e4,pid_update_interval:(null==(V=e.timing)?void 0:V.pid_update_interval)||1e4,connectivity_check_interval:(null==(E=e.timing)?void 0:E.connectivity_check_interval)||3e5,pid_config_write_interval:(null==(R=e.timing)?void 0:R.pid_config_write_interval)||3e5,wifi_connect_timeout:(null==(z=e.timing)?void 0:z.wifi_connect_timeout)||180,system_watchdog_timeout:(null==(A=e.timing)?void 0:A.system_watchdog_timeout)||27e5,wifi_watchdog_timeout:(null==(K=e.timing)?void 0:K.wifi_watchdog_timeout)||18e5,max_reconnect_attempts:(null==(L=e.timing)?void 0:L.max_reconnect_attempts)||10,webhook_enabled:(null==(U=e.webhook)?void 0:U.enabled)||!1,webhook_url:(null==(Q=e.webhook)?void 0:Q.url)||"",webhook_temp_low:(null==(B=e.webhook)?void 0:B.temp_low_threshold)||15,webhook_temp_high:(null==(H=e.webhook)?void 0:H.temp_high_threshold)||30}),e.pid&&_({kp:(null==(J=e.pid.kp)?void 0:J.toString())||"2.0",ki:(null==(Y=e.pid.ki)?void 0:Y.toString())||"0.5",kd:(null==(G=e.pid.kd)?void 0:G.toString())||"1.0",setpoint:(null==(X=e.pid.setpoint)?void 0:X.toString())||"22.0",deadband:(null==(Z=e.pid.deadband)?void 0:Z.toString())||"0.5",adaptation_interval:(null==(ee=e.pid.adaptation_interval)?void 0:ee.toString())||"60"}))},[e]);const C=async()=>{try{const e=await fetch("/api/config"),t=await e.json();r(t),s(!1)}catch(e){d.error(`Failed to load config: ${e.message}`),s(!1)}},I=(e,t)=>{f(a=>({...a,[e]:t}))},S=async(e,t)=>{n(!0);try{const a=await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({[e]:t})});if(!a.ok){const e=await a.json();throw new Error(e.message||"Failed to save configuration")}d.success("Configuration saved successfully"),await C()}catch(a){d.error(`Failed to save config: ${a.message}`)}finally{n(!1)}},P=(e,t)=>{_(a=>({...a,[e]:t}));const a=c(t,e);T(t=>({...t,[e]:a.isValid}))},F=Object.values($).every(e=>e);return l?k`
+  `:null}const k=r.bind(e);function h(){const[e,r]=t(null),[d,i]=t(!0),[l,n]=t(!1),[p,b]=t("network"),[m,u]=t(!1),[y,x]=t(!1),[h,f]=t({}),[w,_]=t({kp:"2.0",ki:"0.5",kd:"1.0",setpoint:"22.0",deadband:"0.5",adaptation_interval:"60"}),[$,T]=t({kp:!0,ki:!0,kd:!0,setpoint:!0,deadband:!0,adaptation_interval:!0});a(()=>{C()},[]),a(()=>{e&&(f({wifi_ssid:e.network?.wifi_ssid||"",wifi_pass:"",ntp_server:e.network?.ntp_server||"pool.ntp.org",ntp_timezone_offset:e.network?.ntp_timezone_offset||0,ntp_daylight_offset:e.network?.ntp_daylight_offset||0,mqtt_server:e.mqtt?.server||"",mqtt_port:e.mqtt?.port||1883,mqtt_username:e.mqtt?.username||"",mqtt_password:"",mqtt_json_aggregate_enabled:e.mqtt?.json_aggregate_enabled||!1,knx_area:e.knx?.area||0,knx_line:e.knx?.line||0,knx_member:e.knx?.member||0,knx_test:e.knx?.use_test||!1,knx_valve_cmd_area:e.knx?.valve_command?.area||0,knx_valve_cmd_line:e.knx?.valve_command?.line||0,knx_valve_cmd_member:e.knx?.valve_command?.member||0,knx_valve_fb_area:e.knx?.valve_feedback?.area||0,knx_valve_fb_line:e.knx?.valve_feedback?.line||0,knx_valve_fb_member:e.knx?.valve_feedback?.member||0,bme280_address:e.bme280?.address||"0x76",bme280_sda:e.bme280?.sda_pin||21,bme280_scl:e.bme280?.scl_pin||22,bme280_interval:e.bme280?.interval||30,preset_eco:e.presets?.eco||18,preset_comfort:e.presets?.comfort||22,preset_away:e.presets?.away||16,preset_sleep:e.presets?.sleep||19,preset_boost:e.presets?.boost||24,sensor_update_interval:e.timing?.sensor_update_interval||3e4,history_update_interval:e.timing?.history_update_interval||3e4,pid_update_interval:e.timing?.pid_update_interval||1e4,connectivity_check_interval:e.timing?.connectivity_check_interval||3e5,pid_config_write_interval:e.timing?.pid_config_write_interval||3e5,wifi_connect_timeout:e.timing?.wifi_connect_timeout||180,system_watchdog_timeout:e.timing?.system_watchdog_timeout||27e5,wifi_watchdog_timeout:e.timing?.wifi_watchdog_timeout||18e5,max_reconnect_attempts:e.timing?.max_reconnect_attempts||10,webhook_enabled:e.webhook?.enabled||!1,webhook_url:e.webhook?.url||"",webhook_temp_low:e.webhook?.temp_low_threshold||15,webhook_temp_high:e.webhook?.temp_high_threshold||30}),e.pid&&_({kp:e.pid.kp?.toString()||"2.0",ki:e.pid.ki?.toString()||"0.5",kd:e.pid.kd?.toString()||"1.0",setpoint:e.pid.setpoint?.toString()||"22.0",deadband:e.pid.deadband?.toString()||"0.5",adaptation_interval:e.pid.adaptation_interval?.toString()||"60"}))},[e]);const C=async()=>{try{const e=await fetch("/api/config"),t=await e.json();r(t),i(!1)}catch(e){s.error(`Failed to load config: ${e.message}`),i(!1)}},I=(e,t)=>{f(a=>({...a,[e]:t}))},S=async(e,t)=>{n(!0);try{const a=await fetch("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({[e]:t})});if(!a.ok){const e=await a.json();throw new Error(e.message||"Failed to save configuration")}s.success("Configuration saved successfully"),await C()}catch(a){s.error(`Failed to save config: ${a.message}`)}finally{n(!1)}},P=(e,t)=>{_(a=>({...a,[e]:t}));const a=c(t,e);T(t=>({...t,[e]:a.isValid}))},F=Object.values($).every(e=>e);return d?k`
       <div class="space-y-6">
         ${[...Array(4)].map(()=>k`
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 animate-pulse">
@@ -672,10 +672,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
             </div>
             <button
               onClick=${()=>S("network",{wifi_ssid:h.wifi_ssid,wifi_pass:h.wifi_pass||void 0,ntp_server:h.ntp_server,ntp_timezone_offset:h.ntp_timezone_offset,ntp_daylight_offset:h.ntp_daylight_offset})}
-              disabled=${i}
+              disabled=${l}
               class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
             >
-              ${i?"Saving...":"Save Network Settings"}
+              ${l?"Saving...":"Save Network Settings"}
             </button>
           </div>
         </div>
@@ -757,10 +757,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           </div>
           <button
             onClick=${()=>S("mqtt",{server:h.mqtt_server,port:h.mqtt_port,username:h.mqtt_username||void 0,password:h.mqtt_password||void 0,json_aggregate_enabled:h.mqtt_json_aggregate_enabled})}
-            disabled=${i}
+            disabled=${l}
             class="mt-4 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
           >
-            ${i?"Saving...":"Save MQTT Settings"}
+            ${l?"Saving...":"Save MQTT Settings"}
           </button>
         </div>
       `}
@@ -914,10 +914,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
             </div>
             <button
               onClick=${()=>S("knx",{area:h.knx_area,line:h.knx_line,member:h.knx_member,use_test:h.knx_test,valve_command:{area:h.knx_valve_cmd_area,line:h.knx_valve_cmd_line,member:h.knx_valve_cmd_member},valve_feedback:{area:h.knx_valve_fb_area,line:h.knx_valve_fb_line,member:h.knx_valve_fb_member}})}
-              disabled=${i}
+              disabled=${l}
               class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
             >
-              ${i?"Saving...":"Save KNX Settings"}
+              ${l?"Saving...":"Save KNX Settings"}
             </button>
           </div>
         </div>
@@ -990,10 +990,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
             </div>
             <button
               onClick=${()=>S("bme280",{address:h.bme280_address,sda_pin:h.bme280_sda,scl_pin:h.bme280_scl,interval:h.bme280_interval})}
-              disabled=${i}
+              disabled=${l}
               class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
             >
-              ${i?"Saving...":"Save BME280 Settings"}
+              ${l?"Saving...":"Save BME280 Settings"}
             </button>
           </div>
         </div>
@@ -1089,11 +1089,11 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           </div>
           <div class="flex items-center gap-3">
             <button
-              onClick=${async()=>{Object.values($).every(e=>e)?await S("pid",{kp:parseFloat(w.kp),ki:parseFloat(w.ki),kd:parseFloat(w.kd),setpoint:parseFloat(w.setpoint),deadband:parseFloat(w.deadband),adaptation_interval:parseFloat(w.adaptation_interval)}):d.error("Please fix validation errors before saving")}}
-              disabled=${i||!F}
+              onClick=${async()=>{Object.values($).every(e=>e)?await S("pid",{kp:parseFloat(w.kp),ki:parseFloat(w.ki),kd:parseFloat(w.kd),setpoint:parseFloat(w.setpoint),deadband:parseFloat(w.deadband),adaptation_interval:parseFloat(w.adaptation_interval)}):s.error("Please fix validation errors before saving")}}
+              disabled=${l||!F}
               class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all"
             >
-              ${i?"Saving...":"Save PID Settings"}
+              ${l?"Saving...":"Save PID Settings"}
             </button>
             ${!F&&k`
               <span class="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
@@ -1136,10 +1136,10 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
           </div>
           <button
             onClick=${()=>S("presets",{eco:h.preset_eco,comfort:h.preset_comfort,away:h.preset_away,sleep:h.preset_sleep,boost:h.preset_boost})}
-            disabled=${i}
+            disabled=${l}
             class="mt-4 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
           >
-            ${i?"Saving...":"Save Preset Settings"}
+            ${l?"Saving...":"Save Preset Settings"}
           </button>
         </div>
       `}
@@ -1155,7 +1155,7 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
             Configure how often the system updates sensor data, history, PID calculations, and performs connectivity checks.
           </p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            ${[{key:"sensor_update_interval",label:"Sensor Update Interval",unit:"ms",min:1e3,max:3e5,hint:"How often to read sensor (1s - 5min)"},{key:"history_update_interval",label:"History Update Interval",unit:"ms",min:1e3,max:3e5,hint:"How often to save history (1s - 5min)"},{key:"pid_update_interval",label:"PID Update Interval",unit:"ms",min:1e3,max:6e4,hint:"How often to calculate PID (1s - 1min)"},{key:"connectivity_check_interval",label:"Connectivity Check Interval",unit:"ms",min:6e4,max:36e5,hint:"How often to check connectivity (1min - 1hr)"},{key:"pid_config_write_interval",label:"PID Config Write Interval",unit:"ms",min:6e4,max:36e5,hint:"How often to save PID config (1min - 1hr)"},{key:"wifi_connect_timeout",label:"WiFi Connect Timeout",unit:"s",min:10,max:600,hint:"WiFi connection timeout (10s - 10min)"},{key:"system_watchdog_timeout",label:"System Watchdog Timeout",unit:"ms",min:6e4,max:72e5,hint:"System watchdog timeout (1min - 2hr)"},{key:"wifi_watchdog_timeout",label:"WiFi Watchdog Timeout",unit:"ms",min:6e4,max:72e5,hint:"WiFi watchdog timeout (1min - 2hr)"},{key:"max_reconnect_attempts",label:"Max Reconnect Attempts",unit:"",min:1,max:100,hint:"Maximum WiFi reconnection attempts"}].map(({key:e,label:t,unit:a,min:r,max:d,hint:l})=>k`
+            ${[{key:"sensor_update_interval",label:"Sensor Update Interval",unit:"ms",min:1e3,max:3e5,hint:"How often to read sensor (1s - 5min)"},{key:"history_update_interval",label:"History Update Interval",unit:"ms",min:1e3,max:3e5,hint:"How often to save history (1s - 5min)"},{key:"pid_update_interval",label:"PID Update Interval",unit:"ms",min:1e3,max:6e4,hint:"How often to calculate PID (1s - 1min)"},{key:"connectivity_check_interval",label:"Connectivity Check Interval",unit:"ms",min:6e4,max:36e5,hint:"How often to check connectivity (1min - 1hr)"},{key:"pid_config_write_interval",label:"PID Config Write Interval",unit:"ms",min:6e4,max:36e5,hint:"How often to save PID config (1min - 1hr)"},{key:"wifi_connect_timeout",label:"WiFi Connect Timeout",unit:"s",min:10,max:600,hint:"WiFi connection timeout (10s - 10min)"},{key:"system_watchdog_timeout",label:"System Watchdog Timeout",unit:"ms",min:6e4,max:72e5,hint:"System watchdog timeout (1min - 2hr)"},{key:"wifi_watchdog_timeout",label:"WiFi Watchdog Timeout",unit:"ms",min:6e4,max:72e5,hint:"WiFi watchdog timeout (1min - 2hr)"},{key:"max_reconnect_attempts",label:"Max Reconnect Attempts",unit:"",min:1,max:100,hint:"Maximum WiFi reconnection attempts"}].map(({key:e,label:t,unit:a,min:r,max:s,hint:d})=>k`
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   ${t}${a?` (${a})`:""}
@@ -1165,19 +1165,19 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
                   value=${h[e]||""}
                   onInput=${t=>I(e,parseInt(t.target.value))}
                   min=${r}
-                  max=${d}
+                  max=${s}
                   class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${l}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${d}</p>
               </div>
             `)}
           </div>
           <button
             onClick=${()=>S("timing",{sensor_update_interval:h.sensor_update_interval,history_update_interval:h.history_update_interval,pid_update_interval:h.pid_update_interval,connectivity_check_interval:h.connectivity_check_interval,pid_config_write_interval:h.pid_config_write_interval,wifi_connect_timeout:h.wifi_connect_timeout,system_watchdog_timeout:h.system_watchdog_timeout,wifi_watchdog_timeout:h.wifi_watchdog_timeout,max_reconnect_attempts:h.max_reconnect_attempts})}
-            disabled=${i}
+            disabled=${l}
             class="mt-4 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
           >
-            ${i?"Saving...":"Save Timing Settings"}
+            ${l?"Saving...":"Save Timing Settings"}
           </button>
         </div>
       `}
@@ -1247,13 +1247,13 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
             <div class="flex gap-3">
               <button
                 onClick=${()=>S("webhook",{enabled:h.webhook_enabled,url:h.webhook_url,temp_low_threshold:h.webhook_temp_low,temp_high_threshold:h.webhook_temp_high})}
-                disabled=${i}
+                disabled=${l}
                 class="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
               >
-                ${i?"Saving...":"Save Webhook Settings"}
+                ${l?"Saving...":"Save Webhook Settings"}
               </button>
               <button
-                onClick=${async()=>{try{if(!(await fetch("/api/webhook/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:h.webhook_url,temp_low:h.webhook_temp_low,temp_high:h.webhook_temp_high})})).ok)throw new Error("Webhook test failed");d.success("Webhook test sent successfully")}catch(e){d.error(`Webhook test failed: ${e.message}`)}}}
+                onClick=${async()=>{try{if(!(await fetch("/api/webhook/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:h.webhook_url,temp_low:h.webhook_temp_low,temp_high:h.webhook_temp_high})})).ok)throw new Error("Webhook test failed");s.success("Webhook test sent successfully")}catch(e){s.error(`Webhook test failed: ${e.message}`)}}}
                 disabled=${!h.webhook_url}
                 class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-400 text-white rounded-lg font-medium transition-all"
               >
@@ -1272,28 +1272,28 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
-            onClick=${async()=>{try{const e=await fetch("/api/config/export"),t=await e.blob(),a=window.URL.createObjectURL(t),r=document.createElement("a");r.href=a,r.download=`thermostat-config-${(new Date).toISOString().split("T")[0]}.json`,document.body.appendChild(r),r.click(),document.body.removeChild(r),window.URL.revokeObjectURL(a),d.success("Configuration exported")}catch(e){d.error(`Export failed: ${e.message}`)}}}
+            onClick=${async()=>{try{const e=await fetch("/api/config/export"),t=await e.blob(),a=window.URL.createObjectURL(t),r=document.createElement("a");r.href=a,r.download=`thermostat-config-${(new Date).toISOString().split("T")[0]}.json`,document.body.appendChild(r),r.click(),document.body.removeChild(r),window.URL.revokeObjectURL(a),s.success("Configuration exported")}catch(e){s.error(`Export failed: ${e.message}`)}}}
             class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
           >
             <span>📥</span>
             <span>Export Configuration</span>
           </button>
           <button
-            onClick=${()=>{const e=document.createElement("input");e.type="file",e.accept=".json",e.onchange=async e=>{const t=e.target.files[0];if(t)try{const e=await t.text();if(JSON.parse(e),!(await fetch("/api/config/import",{method:"POST",headers:{"Content-Type":"application/json"},body:e})).ok)throw new Error("Import failed");d.success("Configuration imported successfully"),await C()}catch(a){d.error(`Import failed: ${a.message}`)}},e.click()}}
+            onClick=${()=>{const e=document.createElement("input");e.type="file",e.accept=".json",e.onchange=async e=>{const t=e.target.files[0];if(t)try{const e=await t.text();if(JSON.parse(e),!(await fetch("/api/config/import",{method:"POST",headers:{"Content-Type":"application/json"},body:e})).ok)throw new Error("Import failed");s.success("Configuration imported successfully"),await C()}catch(a){s.error(`Import failed: ${a.message}`)}},e.click()}}
             class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
           >
             <span>📤</span>
             <span>Import Configuration</span>
           </button>
           <button
-            onClick=${async()=>{try{if(!(await fetch("/api/reboot",{method:"POST"})).ok)throw new Error("Reboot failed");d.info("Device is rebooting... Please wait."),setTimeout(()=>{window.location.reload()},5e3)}catch(e){d.error(`Reboot failed: ${e.message}`)}}}
+            onClick=${async()=>{try{if(!(await fetch("/api/reboot",{method:"POST"})).ok)throw new Error("Reboot failed");s.info("Device is rebooting... Please wait."),setTimeout(()=>{window.location.reload()},5e3)}catch(e){s.error(`Reboot failed: ${e.message}`)}}}
             class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
           >
             <span>🔄</span>
             <span>Reboot Device</span>
           </button>
           <button
-            onClick=${()=>m(!0)}
+            onClick=${()=>u(!0)}
             class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
           >
             <span>⚠️</span>
@@ -1304,9 +1304,9 @@ import{_ as e,d as t,y as a}from"./v-preact-BAP1wjwx.js";import{h as r}from"./v-
 
       <!-- Factory Reset Modal -->
       <${o}
-        isOpen=${u}
-        onClose=${()=>m(!1)}
-        onConfirm=${async()=>{try{if(!(await fetch("/api/factory-reset",{method:"POST"})).ok)throw new Error("Factory reset failed");d.info("Device is resetting... Please wait."),setTimeout(()=>{window.location.reload()},5e3)}catch(e){d.error(`Factory reset failed: ${e.message}`)}}}
+        isOpen=${m}
+        onClose=${()=>u(!1)}
+        onConfirm=${async()=>{try{if(!(await fetch("/api/factory-reset",{method:"POST"})).ok)throw new Error("Factory reset failed");s.info("Device is resetting... Please wait."),setTimeout(()=>{window.location.reload()},5e3)}catch(e){s.error(`Factory reset failed: ${e.message}`)}}}
       />
 
       <!-- Configuration Wizard -->
