@@ -12,9 +12,9 @@ export function useSensorData(refreshInterval = 5000) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal) => {
     try {
-      const response = await fetch('/api/sensor');
+      const response = await fetch('/api/sensor', { signal });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -31,6 +31,10 @@ export function useSensorData(refreshInterval = 5000) {
       });
       setError(null);
     } catch (err) {
+      // Don't log AbortError as it's expected on unmount
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to fetch sensor data:', err);
       setError(err.message);
     } finally {
@@ -41,10 +45,11 @@ export function useSensorData(refreshInterval = 5000) {
   useEffect(() => {
     let isMounted = true;
     let timerId = null;
+    let abortController = new AbortController();
 
     // Recursive polling pattern - only schedule next poll after current one completes
     const poll = async () => {
-      await fetchData();
+      await fetchData(abortController.signal);
       if (isMounted) {
         timerId = setTimeout(poll, refreshInterval);
       }
@@ -56,9 +61,10 @@ export function useSensorData(refreshInterval = 5000) {
     // Cleanup on unmount
     return () => {
       isMounted = false;
+      abortController.abort();
       if (timerId) clearTimeout(timerId);
     };
-  }, [refreshInterval]);
+  }, [refreshInterval, fetchData]);
 
   return {
     data,

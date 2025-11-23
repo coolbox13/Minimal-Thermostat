@@ -1,5 +1,5 @@
 import { h } from 'preact';
-import { useState, useCallback } from 'preact/hooks';
+import { useState, useCallback, useEffect } from 'preact/hooks';
 import htm from 'htm';
 import { usePresets } from '../../hooks/usePresets.js';
 import { useSensorData } from '../../hooks/useSensorData.js';
@@ -19,6 +19,13 @@ export function ControlCard() {
   const [setpoint, setSetpoint] = useState(22.0);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState(null);
+
+  // Sync setpoint with backend when sensorData updates
+  useEffect(() => {
+    if (sensorData?.setpoint != null) {
+      setSetpoint(sensorData.setpoint);
+    }
+  }, [sensorData?.setpoint]);
 
   // Optimistic preset change
   const handlePresetChange = useCallback(async (e) => {
@@ -46,10 +53,10 @@ export function ControlCard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/temperature', {
+      const response = await fetch('/api/setpoint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ temperature: setpoint }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `value=${setpoint}`,
       });
 
       if (!response.ok) {

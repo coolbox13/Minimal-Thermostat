@@ -281,14 +281,14 @@ export function Config() {
   }
 
   const tabs = [
-    { id: 'network', label: 'Network', icon: '📡' },
-    { id: 'mqtt', label: 'MQTT', icon: '📨' },
-    { id: 'knx', label: 'KNX', icon: '🏠' },
-    { id: 'bme280', label: 'BME280', icon: '🌡️' },
-    { id: 'pid', label: 'PID', icon: '🎛️' },
-    { id: 'presets', label: 'Presets', icon: '🌡️' },
-    { id: 'timing', label: 'Timing', icon: '⏱️' },
-    { id: 'webhook', label: 'Webhook', icon: '🔔' },
+    { id: 'network', label: 'Network' },
+    { id: 'mqtt', label: 'MQTT' },
+    { id: 'knx', label: 'KNX' },
+    { id: 'bme280', label: 'BME280' },
+    { id: 'pid', label: 'PID' },
+    { id: 'presets', label: 'Presets' },
+    { id: 'timing', label: 'Timing' },
+    { id: 'webhook', label: 'Webhook' },
   ];
 
   return html`
@@ -321,14 +321,13 @@ export function Config() {
           ${tabs.map(tab => html`
             <button
               onClick=${() => setActiveTab(tab.id)}
-              class="px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+              class="px-4 py-2 rounded-lg font-medium transition-all ${
                 activeTab === tab.id
                   ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }"
             >
-              <span>${tab.icon}</span>
-              <span>${tab.label}</span>
+              ${tab.label}
             </button>
           `)}
         </div>
@@ -360,6 +359,7 @@ export function Config() {
               </label>
               <input
                 type="password"
+                autocomplete="current-password"
                 value=${formData.wifi_pass || ''}
                 onInput=${(e) => updateFormData('wifi_pass', e.target.value)}
                 class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
@@ -485,6 +485,7 @@ export function Config() {
               </label>
               <input
                 type="password"
+                autocomplete="current-password"
                 value=${formData.mqtt_password || ''}
                 onInput=${(e) => updateFormData('mqtt_password', e.target.value)}
                 class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
@@ -895,15 +896,15 @@ export function Config() {
           </p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             ${[
-              { key: 'preset_eco', label: 'Eco Temperature', icon: '🌱', hint: 'Energy-saving temperature (typically 16-18°C)' },
-              { key: 'preset_comfort', label: 'Comfort Temperature', icon: '😊', hint: 'Comfortable temperature (typically 20-22°C)' },
-              { key: 'preset_away', label: 'Away Temperature', icon: '🏠', hint: 'Temperature when away (typically 16-17°C)' },
-              { key: 'preset_sleep', label: 'Sleep Temperature', icon: '😴', hint: 'Nighttime temperature (typically 18-19°C)' },
-              { key: 'preset_boost', label: 'Boost Temperature', icon: '🔥', hint: 'Quick heating temperature (typically 23-24°C)' },
-            ].map(({ key, label, icon, hint }) => html`
+              { key: 'preset_eco', label: 'Eco Temperature', hint: 'Energy-saving temperature (typically 16-18°C)' },
+              { key: 'preset_comfort', label: 'Comfort Temperature', hint: 'Comfortable temperature (typically 20-22°C)' },
+              { key: 'preset_away', label: 'Away Temperature', hint: 'Temperature when away (typically 16-17°C)' },
+              { key: 'preset_sleep', label: 'Sleep Temperature', hint: 'Nighttime temperature (typically 18-19°C)' },
+              { key: 'preset_boost', label: 'Boost Temperature', hint: 'Quick heating temperature (typically 23-24°C)' },
+            ].map(({ key, label, hint }) => html`
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <span>${icon}</span> ${label} (°C)
+                  ${label} (°C)
                 </label>
                 <input
                   type="number"

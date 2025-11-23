@@ -20,9 +20,9 @@ export function usePresets() {
   const [error, setError] = useState(null);
 
   // Fetch preset configuration from API
-  const fetchPresetConfig = useCallback(async () => {
+  const fetchPresetConfig = useCallback(async (signal) => {
     try {
-      const response = await fetch('/api/config');
+      const response = await fetch('/api/config', { signal });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -42,6 +42,10 @@ export function usePresets() {
       }
       setError(null);
     } catch (err) {
+      // Don't log AbortError as it's expected on unmount
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to fetch preset config:', err);
       setError(err.message);
     } finally {
@@ -57,12 +61,19 @@ export function usePresets() {
     setPresetMode(mode);
 
     try {
-      const response = await fetch('/api/preset', {
+      // Get the temperature for this preset
+      const temperature = presetConfig[mode];
+      if (temperature == null) {
+        throw new Error(`Invalid preset mode: ${mode}`);
+      }
+
+      // Use the /api/setpoint endpoint to set the temperature
+      const response = await fetch('/api/setpoint', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({ mode }),
+        body: `value=${temperature}`,
       });
 
       if (!response.ok) {
@@ -80,7 +91,7 @@ export function usePresets() {
 
       return false;
     }
-  }, [presetMode]);
+  }, [presetMode, presetConfig]);
 
   // Get temperature for a specific preset
   const getPresetTemperature = useCallback((mode) => {
@@ -89,8 +100,13 @@ export function usePresets() {
   }, [presetConfig]);
 
   useEffect(() => {
-    fetchPresetConfig();
-  }, [fetchPresetConfig]);
+    const abortController = new AbortController();
+    fetchPresetConfig(abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   return {
     presetMode,

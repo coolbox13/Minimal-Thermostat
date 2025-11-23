@@ -21,7 +21,7 @@ export function ManualOverrideCard() {
   useEffect(() => {
     const fetchOverrideState = async () => {
       try {
-        const response = await fetch('/api/override');
+        const response = await fetch('/api/manual-override');
         const data = await response.json();
         setOverrideEnabled(data.enabled || false);
         setValvePosition(data.position || 0);
@@ -64,13 +64,16 @@ export function ManualOverrideCard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/override', {
+      const params = new URLSearchParams();
+      params.append('enabled', newState);
+      if (newState) {
+        params.append('position', valvePosition);
+      }
+
+      const response = await fetch('/api/manual-override', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enabled: newState,
-          position: newState ? valvePosition : 0,
-        }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
       });
 
       if (!response.ok) {
@@ -101,13 +104,14 @@ export function ManualOverrideCard() {
     setError(null);
 
     try {
-      const response = await fetch('/api/override', {
+      const params = new URLSearchParams();
+      params.append('enabled', true);
+      params.append('position', valvePosition);
+
+      const response = await fetch('/api/manual-override', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          enabled: true,
-          position: valvePosition,
-        }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
       });
 
       if (!response.ok) {
