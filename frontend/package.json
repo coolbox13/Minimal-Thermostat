@@ -11,21 +11,22 @@
     "copy-to-data": "cp -r dist/* ../data/"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.17",
-    "framer-motion": "^10.16.16",
-    "htm": "^3.1.1",
-    "preact": "^10.19.3",
-    "preact-router": "^4.1.2",
-    "react-hot-toast": "^2.4.1",
-    "uplot": "^1.6.28"
+    "@headlessui/react": "latest",
+    "framer-motion": "latest",
+    "htm": "latest",
+    "preact": "latest",
+    "preact-router": "latest",
+    "react-hot-toast": "latest",
+    "uplot": "latest"
   },
   "devDependencies": {
-    "@preact/preset-vite": "^2.7.0",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.4.0",
-    "terser": "^5.44.1",
-    "vite": "^5.0.8",
-    "vite-plugin-compression": "^0.5.1"
+    "@preact/preset-vite": "latest",
+    "@tailwindcss/postcss": "latest",
+    "autoprefixer": "latest",
+    "postcss": "latest",
+    "tailwindcss": "latest",
+    "terser": "latest",
+    "vite": "latest",
+    "vite-plugin-compression": "latest"
   }
 }
