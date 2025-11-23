@@ -325,6 +325,28 @@ sequenceDiagram
    platformio run --target uploadfs
    ```
 
+### Version Management
+
+The project uses semantic versioning (MAJOR.MINOR.PATCH) stored in `include/config.h`:
+
+```cpp
+#define FIRMWARE_VERSION "2.0.0"
+```
+
+**Updating the Version:**
+
+1. Edit `include/config.h` and update the `FIRMWARE_VERSION` define
+2. Rebuild and upload the firmware
+3. The version is displayed in:
+   - Web interface footer (all pages)
+   - `/api/status` endpoint
+   - System logs at startup
+
+**Version Numbering Guidelines:**
+- **MAJOR**: Breaking changes, incompatible API changes
+- **MINOR**: New features, backward-compatible functionality
+- **PATCH**: Bug fixes, minor improvements
+
 ### Initial Configuration
 
 After uploading, the thermostat creates a WiFi access point named "ESP32-Thermostat-AP" if it can't connect to a saved network. Connect to this network to configure:
