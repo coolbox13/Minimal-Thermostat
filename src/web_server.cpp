@@ -52,10 +52,7 @@ void WebServerManager::begin(AsyncWebServer* server) {
     SerialMonitor::getInstance().println("TEST 3: Another direct call");
     Serial.println("TEST 4: Another Serial call");
 
-    // Enable CORS
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+    // CORS disabled for testing - all requests are same-origin
 
     // Initialize LittleFS with format_if_failed=true and partition name "spiffs"
     // Note: Partition table uses "spiffs" name (required by PlatformIO buildfs tool)
@@ -268,7 +265,7 @@ void WebServerManager::setupDefaultRoutes() {
                 file.close();
                 AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
                 response->addHeader("Content-Encoding", "gzip");
-                response->addHeader("Content-Length", String(fileSize));
+                // Don't set Content-Length manually - causes ERR_CONTENT_LENGTH_MISMATCH
                 response->addHeader("Cache-Control", "no-cache"); // Don't cache HTML
                 request->send(response);
             } else {
@@ -277,10 +274,9 @@ void WebServerManager::setupDefaultRoutes() {
         } else if (LittleFS.exists("/index.html")) {
             File file = LittleFS.open("/index.html", "r");
             if (file) {
-                size_t fileSize = file.size();
                 file.close();
                 AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
-                response->addHeader("Content-Length", String(fileSize));
+                // Don't set Content-Length manually - causes ERR_CONTENT_LENGTH_MISMATCH
                 response->addHeader("Cache-Control", "no-cache"); // Don't cache HTML
                 request->send(response);
             } else {
@@ -299,8 +295,9 @@ void WebServerManager::setupDefaultRoutes() {
     auto assetHandler = [](AsyncWebServerRequest *request) {
         String path = request->url();
         
-        // Debug: log the request
-        Serial.printf("[ASSET HANDLER] Request URL: %s\n", path.c_str());
+        // Debug: log the request with method and headers
+        Serial.printf("[ASSET HANDLER] Method: %s, URL: %s\n", request->methodToString(), path.c_str());
+        Serial.printf("[ASSET HANDLER] Headers: Origin=%s\n", request->header("Origin").c_str());
         
         // Sanitize path: remove query strings and fragments
         int queryIndex = path.indexOf('?');
@@ -356,11 +353,14 @@ void WebServerManager::setupDefaultRoutes() {
             if (file) {
                 size_t fileSize = file.size();
                 file.close();
-                AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
-                response->addHeader("Content-Encoding", "gzip");
-                response->addHeader("Content-Length", String(fileSize));
-                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-                request->send(response);
+            // Don't set Content-Length manually - let AsyncWebServer handle it
+            // Setting it manually can cause ERR_CONTENT_LENGTH_MISMATCH
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+            response->addHeader("Content-Encoding", "gzip");
+            // Removed Content-Length - let server calculate it automatically
+            response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+            Serial.printf("[ASSET] Sending gzipped file: %s, Size: %d, Content-Type: %s\n", gzPath.c_str(), fileSize, contentType.c_str());
+            request->send(response);
                 return;
             } else {
                 Serial.printf("[ASSET] Failed to open gzip file: %s\n", gzPath.c_str());
@@ -375,12 +375,13 @@ void WebServerManager::setupDefaultRoutes() {
             if (file) {
                 size_t fileSize = file.size();
                 file.close();
-                Serial.printf("[ASSET] Serving with Content-Type: %s, Size: %d bytes\n", contentType.c_str(), fileSize);
-                AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
-                response->addHeader("Content-Length", String(fileSize));
-                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-                request->send(response);
-                return;
+            Serial.printf("[ASSET] Serving uncompressed file: %s, Size: %d, Content-Type: %s\n", fsPath.c_str(), fileSize, contentType.c_str());
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
+            // Removed Content-Length - let server calculate it automatically
+            response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+            Serial.printf("[ASSET] Sending uncompressed file\n");
+            request->send(response);
+            return;
             } else {
                 Serial.printf("[ASSET] Failed to open uncompressed file: %s\n", fsPath.c_str());
             }
@@ -442,7 +443,7 @@ void WebServerManager::setupDefaultRoutes() {
                 file.close();
                 AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
                 response->addHeader("Content-Encoding", "gzip");
-                response->addHeader("Content-Length", String(fileSize));
+                // Don't set Content-Length manually - causes ERR_CONTENT_LENGTH_MISMATCH
                 response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
                 request->send(response);
                 return;
@@ -456,7 +457,7 @@ void WebServerManager::setupDefaultRoutes() {
                 size_t fileSize = file.size();
                 file.close();
                 AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
-                response->addHeader("Content-Length", String(fileSize));
+                // Don't set Content-Length manually - causes ERR_CONTENT_LENGTH_MISMATCH
                 response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
                 request->send(response);
                 return;
