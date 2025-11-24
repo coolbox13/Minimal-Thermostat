@@ -375,6 +375,7 @@ void WebServerManager::setupDefaultRoutes() {
             if (file) {
                 size_t fileSize = file.size();
                 file.close();
+                Serial.printf("[ASSET] Serving with Content-Type: %s, Size: %d bytes\n", contentType.c_str(), fileSize);
                 AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
                 response->addHeader("Content-Length", String(fileSize));
                 response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year

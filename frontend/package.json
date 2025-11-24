@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:esp32": "vite build && npm run copy-to-data",
+    "build:esp32": "vite build && find dist -name '*.gz' -delete",
     "copy-to-data": "cp -r dist/* ../data/"
   },
   "dependencies": {
