@@ -349,42 +349,25 @@ void WebServerManager::setupDefaultRoutes() {
         Serial.printf("[ASSET] Checking: %s\n", gzPath.c_str());
         if (LittleFS.exists(gzPath)) {
             Serial.printf("[ASSET] Found gzip: %s\n", gzPath.c_str());
-            File file = LittleFS.open(gzPath, "r");
-            if (file) {
-                size_t fileSize = file.size();
-                file.close();
-            // Don't set Content-Length manually - let AsyncWebServer handle it
-            // Setting it manually can cause ERR_CONTENT_LENGTH_MISMATCH
+            // Don't open file manually - let beginResponse handle it
+            // Opening and closing the file before beginResponse causes ERR_CONTENT_LENGTH_MISMATCH
             AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
             response->addHeader("Content-Encoding", "gzip");
-            // Removed Content-Length - let server calculate it automatically
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-            Serial.printf("[ASSET] Sending gzipped file: %s, Size: %d, Content-Type: %s\n", gzPath.c_str(), fileSize, contentType.c_str());
+            Serial.printf("[ASSET] Sending gzipped file: %s, Content-Type: %s\n", gzPath.c_str(), contentType.c_str());
             request->send(response);
-                return;
-            } else {
-                Serial.printf("[ASSET] Failed to open gzip file: %s\n", gzPath.c_str());
-            }
+            return;
         }
 
         // Try uncompressed file as fallback
         Serial.printf("[ASSET] Checking uncompressed: %s\n", fsPath.c_str());
         if (LittleFS.exists(fsPath)) {
             Serial.printf("[ASSET] Found uncompressed: %s\n", fsPath.c_str());
-            File file = LittleFS.open(fsPath, "r");
-            if (file) {
-                size_t fileSize = file.size();
-                file.close();
-            Serial.printf("[ASSET] Serving uncompressed file: %s, Size: %d, Content-Type: %s\n", fsPath.c_str(), fileSize, contentType.c_str());
             AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
-            // Removed Content-Length - let server calculate it automatically
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-            Serial.printf("[ASSET] Sending uncompressed file\n");
+            Serial.printf("[ASSET] Sending uncompressed file: %s, Content-Type: %s\n", fsPath.c_str(), contentType.c_str());
             request->send(response);
             return;
-            } else {
-                Serial.printf("[ASSET] Failed to open uncompressed file: %s\n", fsPath.c_str());
-            }
         }
 
         // File not found - log for debugging
@@ -437,31 +420,19 @@ void WebServerManager::setupDefaultRoutes() {
         // Try gzipped version first
         String gzPath = fsPath + ".gz";  // e.g., "/manifest.json.gz"
         if (LittleFS.exists(gzPath)) {
-            File file = LittleFS.open(gzPath, "r");
-            if (file) {
-                size_t fileSize = file.size();
-                file.close();
-                AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
-                response->addHeader("Content-Encoding", "gzip");
-                // Don't set Content-Length manually - causes ERR_CONTENT_LENGTH_MISMATCH
-                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-                request->send(response);
-                return;
-            }
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+            response->addHeader("Content-Encoding", "gzip");
+            response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+            request->send(response);
+            return;
         }
-        
+
         // Try uncompressed
         if (LittleFS.exists(fsPath)) {
-            File file = LittleFS.open(fsPath, "r");
-            if (file) {
-                size_t fileSize = file.size();
-                file.close();
-                AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
-                // Don't set Content-Length manually - causes ERR_CONTENT_LENGTH_MISMATCH
-                response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-                request->send(response);
-                return;
-            }
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
+            response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+            request->send(response);
+            return;
         }
         
         request->send(404, "text/plain", "File not found: " + path);

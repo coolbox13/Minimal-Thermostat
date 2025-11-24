@@ -16,7 +16,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    minify: false, // Disable all minification - rely on gzip for size reduction
+    minify: 'esbuild', // Use esbuild for fast minification
     rollupOptions: {
       output: {
         // Optimize chunk splitting for better caching
