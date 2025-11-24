@@ -16,18 +16,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug'],
-        passes: 2, // Multiple passes for better minification
-      },
-      mangle: {
-        safari10: true, // Safari 10 compatibility
-      },
-    },
+    minify: false, // Disable all minification - rely on gzip for size reduction
     rollupOptions: {
       output: {
         // Optimize chunk splitting for better caching
@@ -46,6 +35,14 @@ export default defineConfig({
             if (id.includes('headlessui') || id.includes('react-hot-toast')) {
               return 'v-ui';      // Was 'vendor-ui' (9) -> now 3 chars
             }
+            // Split goober separately - it has circular dependency issues
+            if (id.includes('goober')) {
+              return 'v-css';     // Goober CSS-in-JS library
+            }
+            // Split zustand and use-sync-external-store separately to avoid circular deps
+            if (id.includes('zustand') || id.includes('use-sync-external-store')) {
+              return 'v-state';   // State management libraries
+            }
             // Other node_modules go to vendor-misc
             return 'v-misc';      // Was 'vendor-misc' (11) -> now 5 chars
           }
@@ -53,6 +50,10 @@ export default defineConfig({
           // Page-based chunking for lazy loading - shortened names
           if (id.includes('/pages/')) {
             const name = id.split('/pages/')[1].split('.')[0];
+            // Merge tiny dashboard with status page to avoid sub-1KB files
+            if (name === 'Dashboard') {
+              return 'p-status';  // Merge with status page
+            }
             // Use single letter prefix: p-config, p-dashboard, etc.
             return `p-${name.toLowerCase()}`;  // Was 'page-...' -> now 'p-...'
           }

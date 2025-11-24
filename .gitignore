@@ -4,6 +4,7 @@
 *.bak
 *.swp
 *.swo
+/data/
 
 # Ignore PlatformIO specific files
 .pioenvs/
