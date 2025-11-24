@@ -344,17 +344,17 @@ void WebServerManager::setupDefaultRoutes() {
         String fsPath = path;  // Already filesystem-relative (e.g., "/assets/js/file.js")
         
         // Try gzipped version first (consistent with root route, space-optimized)
-        String gzPath = fsPath + ".gz";  // e.g., "/assets/js/file.js.gz"
-        
+        String gzPath = fsPath + ".gz";  // e.g., "/js/file.js.gz"
+
         Serial.printf("[ASSET] Checking: %s\n", gzPath.c_str());
         if (LittleFS.exists(gzPath)) {
             Serial.printf("[ASSET] Found gzip: %s\n", gzPath.c_str());
-            // Don't open file manually - let beginResponse handle it
-            // Opening and closing the file before beginResponse causes ERR_CONTENT_LENGTH_MISMATCH
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
-            response->addHeader("Content-Encoding", "gzip");
+            // IMPORTANT: Pass the ORIGINAL path (without .gz) to beginResponse
+            // ESPAsyncWebServer will automatically look for .gz version and set Content-Encoding
+            // See: https://github.com/me-no-dev/ESPAsyncWebServer#serve-static-gzipped-files
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-            Serial.printf("[ASSET] Sending gzipped file: %s, Content-Type: %s\n", gzPath.c_str(), contentType.c_str());
+            Serial.printf("[ASSET] Sending file (gzip auto-detected): %s, Content-Type: %s\n", fsPath.c_str(), contentType.c_str());
             request->send(response);
             return;
         }
@@ -417,11 +417,11 @@ void WebServerManager::setupDefaultRoutes() {
         // LittleFS.exists() and beginResponse() use filesystem-relative paths
         String fsPath = path;  // Already filesystem-relative (e.g., "/manifest.json")
         
-        // Try gzipped version first
+        // Try gzipped version first - let ESPAsyncWebServer auto-detect
         String gzPath = fsPath + ".gz";  // e.g., "/manifest.json.gz"
         if (LittleFS.exists(gzPath)) {
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
-            response->addHeader("Content-Encoding", "gzip");
+            // Pass original path - library will find .gz and set Content-Encoding automatically
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
             request->send(response);
             return;
