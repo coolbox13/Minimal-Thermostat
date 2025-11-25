@@ -404,6 +404,10 @@ void updateSensorReadings() {
 
     // Publish sensor data to MQTT
     mqttManager.publishSensorData(temperature, humidity, pressure);
+
+    // HA FIX #5: Sync climate state periodically (with sensor updates)
+    // This ensures HA stays in sync if mode/preset changes via web interface
+    mqttManager.syncClimateState();
 }
 
 // Modified updatePIDControl function for main.cpp

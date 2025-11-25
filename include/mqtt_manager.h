@@ -52,6 +52,10 @@ public:
     // Reconnect to MQTT if disconnected
     void reconnect();
 
+    // HA FIX #5: Sync climate state to HA (mode, preset, setpoint)
+    // Call this periodically to keep HA in sync with local state
+    void syncClimateState();
+
 private:
     PubSubClient& _mqttClient;
     KNXManager* _knxManager;

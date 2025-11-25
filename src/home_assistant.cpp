@@ -489,3 +489,23 @@ void HomeAssistant::updateMode(const char* mode) {
 void HomeAssistant::updatePresetMode(const char* preset) {
     _mqttClient.publish("esp32_thermostat/preset/state", preset, true);
 }
+
+// HA FIX #5: Sync all climate state to HA
+// This ensures HA stays in sync even if mode/preset/setpoint changes via web interface
+void HomeAssistant::syncClimateState() {
+    extern ConfigManager* configManager;
+    if (!configManager) return;
+
+    // Sync mode state
+    const char* mode = configManager->getThermostatEnabled() ? "heat" : "off";
+    _mqttClient.publish("esp32_thermostat/mode/state", mode, true);
+
+    // Sync preset state
+    String preset = configManager->getCurrentPreset();
+    _mqttClient.publish("esp32_thermostat/preset/state", preset.c_str(), true);
+
+    // Sync setpoint
+    char setpointStr[8];
+    dtostrf(configManager->getSetpoint(), 1, 1, setpointStr);
+    _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+}

@@ -348,6 +348,9 @@ void MQTTManager::reconnect() {
                 int rssi = WiFi.RSSI();
                 unsigned long uptime = millis() / 1000;
                 _homeAssistant->updateDiagnostics(rssi, uptime);
+
+                // HA FIX #5: Sync climate state after reconnection
+                _homeAssistant->syncClimateState();
             }
         } else {
             Serial.print("MQTT connection failed, rc=");
@@ -356,5 +359,14 @@ void MQTTManager::reconnect() {
             delay(5000);
             attempts++;
         }
+    }
+}
+
+// HA FIX #5: Sync climate state to Home Assistant
+void MQTTManager::syncClimateState() {
+    if (!_mqttClient.connected()) return;
+
+    if (_homeAssistant) {
+        _homeAssistant->syncClimateState();
     }
 }

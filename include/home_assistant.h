@@ -38,6 +38,10 @@ public:
     // Update manual valve override status
     void updateManualOverride(bool enabled, int position);
 
+    // HA FIX #5: Sync all climate state to HA (mode, preset, setpoint, action)
+    // Call this periodically or after any state change to keep HA in sync
+    void syncClimateState();
+
 private:
     PubSubClient& _mqttClient;
     String _nodeId;
