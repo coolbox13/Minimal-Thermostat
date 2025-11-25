@@ -275,23 +275,8 @@ void HomeAssistant::registerEntities() {
     // Add restart command option
     _mqttClient.subscribe("esp32_thermostat/restart");
 
-    // Binary sensor for heating status
-    String heatingTopic = String(HA_DISCOVERY_PREFIX) + "/binary_sensor/" + _nodeId + "/heating/config";
-    String heatingPayload = "{";
-    heatingPayload += "\"name\":\"Heating Status\",";
-    heatingPayload += "\"unique_id\":\"" + String(_nodeId) + "_heating_status\",";
-    heatingPayload += "\"device_class\":\"running\",";
-    heatingPayload += "\"state_topic\":\"esp32_thermostat/heating/state\",";
-    heatingPayload += "\"payload_on\":\"ON\",";
-    heatingPayload += "\"payload_off\":\"OFF\",";
-    heatingPayload += "\"availability_topic\":\"" + _availabilityTopic + "\",";
-    heatingPayload += "\"icon\":\"mdi:radiator\",";
-    heatingPayload += "\"origin\":" + originInfo + ",";
-    heatingPayload += "\"device\":" + deviceInfo;
-    heatingPayload += "}";
-    bool heatingSuccess = _mqttClient.publish(heatingTopic.c_str(), heatingPayload.c_str(), true);
-    Serial.print("Published heating status config: ");
-    Serial.println(heatingSuccess ? "Success" : "FAILED");
+    // NOTE: Removed redundant "Heating Status" binary sensor
+    // The climate entity's "action" attribute already shows heating/idle/off state
 
     // PID Kp parameter sensor
     String kpTopic = String(HA_DISCOVERY_PREFIX) + "/sensor/" + _nodeId + "/pid_kp/config";
@@ -412,7 +397,6 @@ void HomeAssistant::updateStates(float temperature, float humidity, float pressu
         action = "idle";
     }
     _mqttClient.publish("esp32_thermostat/action", action);
-    _mqttClient.publish("esp32_thermostat/heating/state", (valvePosition > 0) ? "ON" : "OFF");
 
     // Also publish a general "online" status message
     _mqttClient.publish(_availabilityTopic.c_str(), "online", true);
