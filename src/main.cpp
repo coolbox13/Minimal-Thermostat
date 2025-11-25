@@ -450,6 +450,16 @@ void updatePIDControl() {
         EventLog::getInstance().addEntry(LOG_INFO, TAG_SENSOR, "Sensor recovered");
     }
 
+    // HA FIX #1/#4: Check thermostat mode BEFORE running PID
+    // When mode is "off", ensure valve is closed and skip PID control
+    if (!configManager->getThermostatEnabled()) {
+        // Mode is OFF - ensure valve stays closed
+        knxManager.setValvePosition(0);
+        mqttManager.setValvePosition(0);
+        LOG_D(TAG_PID, "Thermostat OFF - valve closed, PID skipped");
+        return;  // Don't run PID when thermostat is off
+    }
+
     // Get current valve position from KNX (feedback)
     float valvePosition = knxManager.getValvePosition();
 
