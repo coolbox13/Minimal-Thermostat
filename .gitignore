@@ -41,3 +41,6 @@ docs_not_included/
 
 # Ignore Claude Code documentation
 CLAUDE.md
+
+# Ignore Claude Code local settings
+.claude/settings.local.json
