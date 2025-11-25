@@ -17,12 +17,19 @@ export function filterByTimeRange(data, hours) {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const cutoffTime = nowSeconds - (hours * 3600);
 
+  // Debug: log time range info
+  console.log(`[filterByTimeRange] hours=${hours}, now=${nowSeconds}, cutoff=${cutoffTime}`);
+  console.log(`[filterByTimeRange] data range: ${data.timestamps[0]} - ${data.timestamps[data.timestamps.length-1]}`);
+  console.log(`[filterByTimeRange] oldest data age: ${(nowSeconds - data.timestamps[0]) / 3600} hours`);
+
   const indices = [];
   for (let i = 0; i < data.timestamps.length; i++) {
     if (data.timestamps[i] >= cutoffTime) {
       indices.push(i);
     }
   }
+
+  console.log(`[filterByTimeRange] found ${indices.length} points within ${hours}h range`);
 
   if (indices.length === 0) {
     return null;

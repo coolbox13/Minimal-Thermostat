@@ -98,6 +98,12 @@ export function HistoryChart({
       scales: {
         x: {
           time: true,
+          // Fix X-axis to show full selected time range
+          range: (self, dataMin, dataMax) => {
+            const now = Math.floor(Date.now() / 1000);
+            const rangeStart = now - (timeRange * 3600);
+            return [rangeStart, now];
+          },
         },
         y: {
           auto: true,
@@ -114,25 +120,15 @@ export function HistoryChart({
       },
       axes: [
         {
-          // X-axis (time)
+          // X-axis (time) - always show 24h clock format, no dates
           space: 60,
           values: (self, ticks) => {
             return ticks.map(t => {
               const date = new Date(t * 1000);
-              if (timeRange <= 4) {
-                // Short range: show time only
-                return date.toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-              } else {
-                // Long range: show date + time
-                return date.toLocaleString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                });
-              }
+              // Always use 24h clock format (HH:MM), no dates
+              const hours = date.getHours().toString().padStart(2, '0');
+              const minutes = date.getMinutes().toString().padStart(2, '0');
+              return `${hours}:${minutes}`;
             });
           },
         },

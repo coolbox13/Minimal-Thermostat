@@ -107,10 +107,20 @@ export function GraphContainer() {
     `;
   }
 
-  // No data state
+  // No data state - still show time range selector
   if (!processedData) {
     return html`
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          Historical Data
+        </h2>
+
+        <!-- Time Range Selector - always visible -->
+        <${TimeRangeSelector}
+          selected=${timeRange}
+          onChange=${setTimeRange}
+        />
+
         <div class="text-center py-8">
           <div class="text-gray-400 text-5xl mb-4">📊</div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
