@@ -226,7 +226,8 @@ void HomeAssistant::registerEntities() {
     // Preset modes (abbreviated) - verified working with HA
     climatePayload += "\"pr_mode_cmd_t\":\"" + String(_nodeId) + "/preset/set\",";
     climatePayload += "\"pr_mode_stat_t\":\"" + String(_nodeId) + "/preset/state\",";
-    climatePayload += "\"pr_modes\":[\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
+    // HA FIX #3: Include "none" in preset modes so users can clear preset via HA
+    climatePayload += "\"pr_modes\":[\"none\",\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
     // Availability (abbreviated)
     climatePayload += "\"avty_t\":\"" + _availabilityTopic + "\",";
     climatePayload += "\"pl_avail\":\"online\",";
