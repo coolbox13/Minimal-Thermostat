@@ -18,6 +18,10 @@
 #include "sensor_health_monitor.h"
 #include "valve_health_monitor.h"
 #include "serial_monitor.h"
+#include "mqtt_manager.h"
+
+// External MQTT manager for syncing climate state to Home Assistant
+extern MQTTManager mqttManager;
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -697,10 +701,60 @@ void WebServerManager::setupDefaultRoutes() {
                 return;
             }
 
+            // Update PID controller setpoint
             setTemperatureSetpoint(setpoint);
+
+            // Also save to ConfigManager so it persists and syncs
+            ConfigManager* configManager = ConfigManager::getInstance();
+            if (configManager) {
+                configManager->setSetpoint(setpoint);
+            }
+
+            // Sync to Home Assistant via MQTT
+            mqttManager.syncClimateState();
+
             request->send(200, "application/json", "{\"success\":true,\"setpoint\":" + String(setpoint) + "}");
         } else {
             request->send(400, "application/json", "{\"success\":false,\"message\":\"Missing value parameter\"}");
+        }
+    });
+
+    // Set preset mode - syncs to both ESP and HA
+    _server->on("/api/preset", HTTP_POST, [](AsyncWebServerRequest *request) {
+        if (request->hasParam("mode", true)) {
+            String preset = request->getParam("mode", true)->value();
+
+            // Validate preset is valid
+            if (preset != "eco" && preset != "comfort" && preset != "away" &&
+                preset != "sleep" && preset != "boost") {
+                request->send(400, "application/json",
+                    "{\"success\":false,\"message\":\"Invalid preset mode\"}");
+                return;
+            }
+
+            ConfigManager* configManager = ConfigManager::getInstance();
+            if (configManager) {
+                // Get the temperature for this preset
+                float presetTemp = configManager->getPresetTemperature(preset);
+
+                // Save the current preset
+                configManager->setCurrentPreset(preset);
+
+                // Update setpoint to match preset temperature
+                configManager->setSetpoint(presetTemp);
+                setTemperatureSetpoint(presetTemp);
+
+                // Sync to Home Assistant via MQTT
+                mqttManager.syncClimateState();
+
+                request->send(200, "application/json",
+                    "{\"success\":true,\"preset\":\"" + preset + "\",\"temperature\":" + String(presetTemp) + "}");
+            } else {
+                request->send(500, "application/json",
+                    "{\"success\":false,\"message\":\"ConfigManager not available\"}");
+            }
+        } else {
+            request->send(400, "application/json", "{\"success\":false,\"message\":\"Missing mode parameter\"}");
         }
     });
 

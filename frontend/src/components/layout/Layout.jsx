@@ -24,6 +24,7 @@ export function Layout({ children }) {
     { path: '/config', label: 'Config' },
     { path: '/logs', label: 'Logs' },
     { path: '/serial', label: 'Serial' },
+    { path: '/update', label: 'Firmware' },
   ];
 
   return html`

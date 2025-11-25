@@ -40,7 +40,7 @@ export function ControlCard() {
         setSetpoint(presetTemp);
       }
 
-      toast.success(`Preset changed to ${newMode === 'none' ? 'Manual' : newMode}`);
+      toast.success(`Preset changed to ${newMode}`);
     } catch (err) {
       toast.error('Failed to change preset mode');
     }
@@ -94,7 +94,6 @@ export function ControlCard() {
             onChange=${handlePresetChange}
             class="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
           >
-            <option value="none">None (Manual)</option>
             <option value="eco">🌱 Eco</option>
             <option value="comfort">🏠 Comfort</option>
             <option value="away">✈️ Away</option>

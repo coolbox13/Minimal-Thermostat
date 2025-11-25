@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
  * @returns {Object} { presetMode, presetConfig, applyPreset, loading, error }
  */
 export function usePresets() {
-  const [presetMode, setPresetMode] = useState('none');
+  const [presetMode, setPresetMode] = useState('comfort');
   const [presetConfig, setPresetConfig] = useState({
     eco: 18.0,
     comfort: 22.0,
@@ -31,7 +31,7 @@ export function usePresets() {
       const data = await response.json();
 
       if (data.presets) {
-        setPresetMode(data.presets.current || 'none');
+        setPresetMode(data.presets.current || 'comfort');
         setPresetConfig({
           eco: data.presets.eco ?? 18.0,
           comfort: data.presets.comfort ?? 22.0,
@@ -61,19 +61,13 @@ export function usePresets() {
     setPresetMode(mode);
 
     try {
-      // Get the temperature for this preset
-      const temperature = presetConfig[mode];
-      if (temperature == null) {
-        throw new Error(`Invalid preset mode: ${mode}`);
-      }
-
-      // Use the /api/setpoint endpoint to set the temperature
-      const response = await fetch('/api/setpoint', {
+      // Use the /api/preset endpoint to set preset AND sync to HA
+      const response = await fetch('/api/preset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `value=${temperature}`,
+        body: `mode=${mode}`,
       });
 
       if (!response.ok) {
@@ -91,11 +85,10 @@ export function usePresets() {
 
       return false;
     }
-  }, [presetMode, presetConfig]);
+  }, [presetMode]);
 
   // Get temperature for a specific preset
   const getPresetTemperature = useCallback((mode) => {
-    if (mode === 'none') return null;
     return presetConfig[mode] ?? null;
   }, [presetConfig]);
 

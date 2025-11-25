@@ -4,7 +4,6 @@ import { GraphContainer } from '../components/Graph/GraphContainer.jsx';
 import { SensorCard } from '../components/Dashboard/SensorCard.jsx';
 import { ControlCard } from '../components/Dashboard/ControlCard.jsx';
 import { ManualOverrideCard } from '../components/Dashboard/ManualOverrideCard.jsx';
-import { SystemCard } from '../components/Dashboard/SystemCard.jsx';
 
 const html = htm.bind(h);
 
@@ -27,7 +26,6 @@ export function Dashboard() {
         <div class="space-y-6">
           <${ControlCard} />
           <${ManualOverrideCard} />
-          <${SystemCard} />
         </div>
       </div>
 
