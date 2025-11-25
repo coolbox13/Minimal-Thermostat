@@ -154,7 +154,7 @@ void HomeAssistant::registerEntities() {
 
     // 3. Publish initial preset state with validation
     extern ConfigManager* configManager;
-    String currentPreset = "none";  // Default fallback
+    String currentPreset = "comfort";  // Default fallback
 
     if (configManager) {
         currentPreset = configManager->getCurrentPreset();
@@ -162,10 +162,10 @@ void HomeAssistant::registerEntities() {
         Serial.print(currentPreset);
         Serial.println("'");
 
-        // Validate preset is in the allowed list
-        const char* validPresets[] = {"none", "eco", "comfort", "away", "sleep", "boost"};
+        // Validate preset is in the allowed list (note: "none" is not a valid preset in HA)
+        const char* validPresets[] = {"eco", "comfort", "away", "sleep", "boost"};
         bool isValid = false;
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 5; i++) {
             if (currentPreset.equals(validPresets[i])) {
                 isValid = true;
                 break;
@@ -175,12 +175,13 @@ void HomeAssistant::registerEntities() {
         if (!isValid) {
             Serial.print("        WARNING: Invalid preset '");
             Serial.print(currentPreset);
-            Serial.println("' - resetting to 'none'");
-            currentPreset = "none";
-            configManager->setCurrentPreset("none");
+            Serial.println("' - resetting to 'comfort'");
+            currentPreset = "comfort";
+            configManager->setCurrentPreset("comfort");
         }
     } else {
-        Serial.println("  [3/4] WARNING: ConfigManager is NULL - using default 'none'");
+        Serial.println("  [3/4] WARNING: ConfigManager is NULL - using default 'comfort'");
+        currentPreset = "comfort";
     }
 
     bool presetSuccess = _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
@@ -223,11 +224,11 @@ void HomeAssistant::registerEntities() {
     climatePayload += "\"max_temp\":30,";
     climatePayload += "\"temp_step\":0.5,";
     climatePayload += "\"temp_unit\":\"C\",";
-    // Preset modes (abbreviated) - verified working with HA
+    // Preset modes (abbreviated)
     climatePayload += "\"pr_mode_cmd_t\":\"" + String(_nodeId) + "/preset/set\",";
     climatePayload += "\"pr_mode_stat_t\":\"" + String(_nodeId) + "/preset/state\",";
-    // HA FIX #3: Include "none" in preset modes so users can clear preset via HA
-    climatePayload += "\"pr_modes\":[\"none\",\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
+    // Note: Do NOT include "none" - HA handles "no preset" internally
+    climatePayload += "\"pr_modes\":[\"eco\",\"comfort\",\"away\",\"sleep\",\"boost\"],";
     // Availability (abbreviated)
     climatePayload += "\"avty_t\":\"" + _availabilityTopic + "\",";
     climatePayload += "\"pl_avail\":\"online\",";

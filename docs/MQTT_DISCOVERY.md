@@ -102,7 +102,7 @@ Device info groups multiple entities under a single device in Home Assistant.
     "name": "ESP32 KNX Thermostat",
     "mf": "DIY",
     "mdl": "ESP32-KNX-Thermostat",
-    "sw": "1.5"
+    "sw": "1.8.1"
   }
 }
 ```
@@ -155,7 +155,7 @@ Discovery messages MUST be retained (`retain: true` or `"ret": true`) so Home As
 
 ### Climate Entity Discovery (ESP32-KNX-Thermostat)
 
-**Current Implementation (v1.5):**
+**Current Implementation (v1.8.1):**
 
 ```cpp
 String climatePayload = "{";
@@ -368,6 +368,8 @@ if len(payload_json) > 1536:
 
 ## Version History
 
+- **v1.8.1** (2025-11-25): Removed 'none' from preset_modes (HA handles "no preset" internally)
+- **v1.8.0** (2025-11-25): Fixed HA integration issues (mode check, action reporting, state sync)
 - **v1.5** (2025-11-14): Added preset mode support with abbreviated keys
 - **v1.4** (2025-11-14): Initial MQTT discovery implementation without presets
 - **v1.3** (2025-11-13): Pre-discovery version (manual YAML only)
@@ -415,5 +417,5 @@ mqttClient.publish("my_device/status", "online", true);
 ---
 
 **Document maintained by:** Claude Code
-**Last updated:** 2025-11-14
+**Last updated:** 2025-11-25
 **Project:** ESP32-KNX-Thermostat
