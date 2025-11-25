@@ -399,14 +399,19 @@ void HomeAssistant::updateStates(float temperature, float humidity, float pressu
     itoa(valvePosition, valveStr, 10);
     _mqttClient.publish("esp32_thermostat/valve/position", valveStr);
     
-    // Update action state based on valve position
-    if (valvePosition > 0) {
-        _mqttClient.publish("esp32_thermostat/action", "heating");
-        _mqttClient.publish("esp32_thermostat/heating/state", "ON");
+    // HA FIX #2: Update action state based on mode AND valve position
+    // When mode is "off", action should be "off", not "idle"
+    extern ConfigManager* configManager;
+    const char* action;
+    if (configManager && !configManager->getThermostatEnabled()) {
+        action = "off";
+    } else if (valvePosition > 0) {
+        action = "heating";
     } else {
-        _mqttClient.publish("esp32_thermostat/action", "idle");
-        _mqttClient.publish("esp32_thermostat/heating/state", "OFF");
+        action = "idle";
     }
+    _mqttClient.publish("esp32_thermostat/action", action);
+    _mqttClient.publish("esp32_thermostat/heating/state", (valvePosition > 0) ? "ON" : "OFF");
 
     // Also publish a general "online" status message
     _mqttClient.publish(_availabilityTopic.c_str(), "online", true);

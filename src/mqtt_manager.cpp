@@ -147,27 +147,33 @@ void MQTTManager::publishJsonAggregate(float temperature, float humidity, float 
 void MQTTManager::setValvePosition(int position) {
     // Constrain position to 0-100%
     position = constrain(position, 0, 100);
-    
+
     if (position != _valvePosition) {
         _valvePosition = position;
-        
+
         // Update Home Assistant if connected
         if (_mqttClient.connected() && _homeAssistant) {
             // For the valve position, create both a plain value
             char valveStr[4];
             itoa(_valvePosition, valveStr, 10);
-            
+
             // Publish to valve position topic
             _mqttClient.publish("esp32_thermostat/valve/position", valveStr);
 
-            // Update action state immediately when valve position changes
-            if (_valvePosition > 0) {
-                _mqttClient.publish("esp32_thermostat/action", "heating", true);
-                Serial.println("Action: heating");
+            // HA FIX #2: Determine action based on mode AND valve position
+            // When mode is "off", action should be "off", not "idle"
+            ConfigManager* configManager = ConfigManager::getInstance();
+            const char* action;
+            if (!configManager->getThermostatEnabled()) {
+                action = "off";
+            } else if (_valvePosition > 0) {
+                action = "heating";
             } else {
-                _mqttClient.publish("esp32_thermostat/action", "idle", true);
-                Serial.println("Action: idle");
+                action = "idle";
             }
+            _mqttClient.publish("esp32_thermostat/action", action, true);
+            Serial.print("Action: ");
+            Serial.println(action);
 
             Serial.print("Published valve position to MQTT: ");
             Serial.println(_valvePosition);

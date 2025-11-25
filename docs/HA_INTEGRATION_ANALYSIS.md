@@ -228,7 +228,7 @@ HA allows setting an `initial` temperature for the climate entity. Without this,
 | # | Severity | Issue | Impact | Status |
 |---|----------|-------|--------|--------|
 | 1 | 🔴 Critical | PID runs regardless of mode="off" | Heating may continue when user thinks it's off | ✅ FIXED |
-| 2 | ⚠️ Medium | Action reports "idle" when mode is "off" | Incorrect state display in HA | ⏳ Pending |
+| 2 | ⚠️ Medium | Action reports "idle" when mode is "off" | Incorrect state display in HA | ✅ FIXED |
 | 3 | ⚠️ Medium | "none" preset not available in HA | User can't clear preset via HA | ⏳ Pending |
 | 4 | 🔴 Critical | Same as #1 - no mode check in control loop | System ignores off command | ✅ FIXED |
 | 5 | ⚠️ Medium | Mode changes via web UI not published to HA | HA shows stale mode | ⏳ Pending |
