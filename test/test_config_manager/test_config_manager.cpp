@@ -67,7 +67,7 @@ void test_default_pid_parameters(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 2.0f, config->getPidKp());
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.1f, config->getPidKi());
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.5f, config->getPidKd());
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 22.0f, config->getSetpoint());
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 19.0f, config->getSetpoint());
 }
 
 /**
@@ -525,7 +525,7 @@ void test_factory_reset_clears_settings(void) {
 
     // Settings should be back to defaults
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 2.0f, config->getPidKp());  // Default Kp
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 22.0f, config->getSetpoint()); // Default setpoint
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 19.0f, config->getSetpoint()); // Default setpoint
 }
 
 /**

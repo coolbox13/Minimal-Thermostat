@@ -118,11 +118,64 @@ public:
         return !(*this == other);
     }
 
+    // Arduino String equals() method
+    bool equals(const char* str) const {
+        return (*this == str);
+    }
+
+    bool equals(const String& other) const {
+        return (*this == other);
+    }
+
+    // Concatenation operators (String + String)
+    String operator+(const String& other) const {
+        String result(*this);
+        result.concat(other);
+        return result;
+    }
+
+    // Concatenation operators (String + const char*)
+    String operator+(const char* str) const {
+        String result(*this);
+        result.concat(str);
+        return result;
+    }
+
+    // Concatenation operators (String + char)
+    String operator+(char c) const {
+        String result(*this);
+        result.concat(c);
+        return result;
+    }
+
+    // Compound assignment
+    String& operator+=(const String& other) {
+        concat(other);
+        return *this;
+    }
+
+    String& operator+=(const char* str) {
+        concat(str);
+        return *this;
+    }
+
+    String& operator+=(char c) {
+        concat(c);
+        return *this;
+    }
+
 private:
     char* data;
     size_t len;
     size_t capacity;
 };
+
+// Non-member operator+ for (const char* + String)
+inline String operator+(const char* lhs, const String& rhs) {
+    String result(lhs);
+    result.concat(rhs);
+    return result;
+}
 
 // Arduino types
 typedef bool boolean;
