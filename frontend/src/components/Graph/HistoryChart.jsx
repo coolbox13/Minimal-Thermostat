@@ -36,6 +36,26 @@ export function HistoryChart({
     return 400;                   // Desktop: 400px
   };
 
+  // Separate effect for resize listener - only added once on mount
+  useEffect(() => {
+    const handleResize = () => {
+      if (plotRef.current && chartRef.current) {
+        plotRef.current.setSize({
+          width: chartRef.current.offsetWidth,
+          height: getResponsiveHeight(),
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup on unmount only
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []); // Empty deps = only run once
+
+  // Separate effect for chart creation/update - runs when data changes
   useEffect(() => {
     if (!chartRef.current || !timestamps || timestamps.length === 0) {
       return;
@@ -209,30 +229,19 @@ export function HistoryChart({
 
     // Create or update plot
     if (plotRef.current) {
+      // Update existing plot with new data
       plotRef.current.setData(data);
       plotRef.current.setSize({
         width: chartRef.current.offsetWidth,
         height: getResponsiveHeight(),
       });
     } else {
+      // Create new plot
       plotRef.current = new uPlot(opts, data, chartRef.current);
     }
 
-    // Handle window resize
-    const handleResize = () => {
-      if (plotRef.current && chartRef.current) {
-        plotRef.current.setSize({
-          width: chartRef.current.offsetWidth,
-          height: getResponsiveHeight(),
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
+    // Cleanup: destroy plot on unmount
     return () => {
-      window.removeEventListener('resize', handleResize);
       if (plotRef.current) {
         plotRef.current.destroy();
         plotRef.current = null;
