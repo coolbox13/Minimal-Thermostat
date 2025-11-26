@@ -136,24 +136,30 @@ void HomeAssistant::registerEntities() {
     // This ensures Home Assistant finds retained messages when it subscribes
     // ========================================================================
 
+    // Get ConfigManager instance early for all state publishing
+    extern ConfigManager* configManager;
+
     Serial.println("\n=== Publishing Climate State Topics (BEFORE Discovery) ===");
 
-    // 1. Publish mode state
-    bool modeSuccess = _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
-    Serial.print("  [1/4] Mode state: heat - ");
+    // 1. Publish mode state from ConfigManager (not hardcoded "heat")
+    const char* initMode = (configManager && configManager->getThermostatEnabled()) ? "heat" : "off";
+    bool modeSuccess = _mqttClient.publish("esp32_thermostat/mode/state", initMode, true);
+    Serial.print("  [1/4] Mode state: ");
+    Serial.print(initMode);
+    Serial.print(" - ");
     Serial.println(modeSuccess ? "OK" : "FAILED");
 
-    // 2. Publish initial setpoint from PID config
+    // 2. Publish initial setpoint from ConfigManager (not hardcoded PID_SETPOINT)
     char setpointStr[8];
-    dtostrf(PID_SETPOINT, 1, 1, setpointStr);
+    float initialSetpoint = configManager ? configManager->getSetpoint() : PID_SETPOINT;
+    dtostrf(initialSetpoint, 1, 1, setpointStr);
     bool setpointSuccess = _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
-    Serial.print("  [2/4] Setpoint: ");
+    Serial.print("  [2/4] Setpoint from ConfigManager: ");
     Serial.print(setpointStr);
     Serial.print("°C - ");
     Serial.println(setpointSuccess ? "OK" : "FAILED");
 
     // 3. Publish initial preset state with validation
-    extern ConfigManager* configManager;
     String currentPreset = "comfort";  // Default fallback
 
     if (configManager) {
@@ -266,7 +272,8 @@ void HomeAssistant::registerEntities() {
     // (Some sources suggest this helps with initialization)
     // Note: No delay needed - publishing happens immediately
     Serial.println("\n=== Re-publishing States After Discovery ===");
-    _mqttClient.publish("esp32_thermostat/mode/state", "heat", true);
+    const char* modeState = (configManager && configManager->getThermostatEnabled()) ? "heat" : "off";
+    _mqttClient.publish("esp32_thermostat/mode/state", modeState, true);
     _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
     _mqttClient.publish("esp32_thermostat/preset/state", currentPreset.c_str(), true);
     _mqttClient.publish("esp32_thermostat/action", "idle", true);
@@ -489,8 +496,24 @@ void HomeAssistant::syncClimateState() {
     String preset = configManager->getCurrentPreset();
     _mqttClient.publish("esp32_thermostat/preset/state", preset.c_str(), true);
 
-    // Sync setpoint
+    // Sync setpoint - use preset temperature if a valid preset is active
+    float setpoint;
+    if (preset == "eco" || preset == "comfort" || preset == "away" ||
+        preset == "sleep" || preset == "boost") {
+        // Get temperature from the active preset
+        setpoint = configManager->getPresetTemperature(preset);
+    } else {
+        // Fallback to stored setpoint
+        setpoint = configManager->getSetpoint();
+    }
+
     char setpointStr[8];
-    dtostrf(configManager->getSetpoint(), 1, 1, setpointStr);
+    dtostrf(setpoint, 1, 1, setpointStr);
     _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
+
+    // Debug logging
+    Serial.print("syncClimateState: preset=");
+    Serial.print(preset);
+    Serial.print(", setpoint=");
+    Serial.println(setpointStr);
 }

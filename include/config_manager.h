@@ -567,7 +567,7 @@ private:
     static constexpr float DEFAULT_KP = 2.0f;
     static constexpr float DEFAULT_KI = 0.1f;
     static constexpr float DEFAULT_KD = 0.5f;
-    static constexpr float DEFAULT_SETPOINT = 22.0f;
+    static constexpr float DEFAULT_SETPOINT = 19.0f;
     static constexpr uint16_t DEFAULT_MQTT_PORT = 1883;
     static constexpr uint8_t DEFAULT_KNX_AREA = 1;
     static constexpr uint8_t DEFAULT_KNX_LINE = 1;
@@ -592,10 +592,10 @@ private:
 
     // Default preset temperatures
     static constexpr float DEFAULT_PRESET_ECO = 18.0f;
-    static constexpr float DEFAULT_PRESET_COMFORT = 22.0f;
+    static constexpr float DEFAULT_PRESET_COMFORT = 19.0f;
     static constexpr float DEFAULT_PRESET_AWAY = 16.0f;
-    static constexpr float DEFAULT_PRESET_SLEEP = 19.0f;
-    static constexpr float DEFAULT_PRESET_BOOST = 24.0f;
+    static constexpr float DEFAULT_PRESET_SLEEP = 17.0f;
+    static constexpr float DEFAULT_PRESET_BOOST = 22.0f;
 
     // Validation helper functions
     bool validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage);
