@@ -2,6 +2,7 @@
 #define MOCK_PREFERENCES_H
 
 #include <stdint.h>
+#include <cstring>
 #include <map>
 #include <string>
 
