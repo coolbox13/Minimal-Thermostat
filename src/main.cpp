@@ -340,15 +340,21 @@ void loop() {
     // Update sensor readings and publish status
     static unsigned long lastSensorUpdate = 0;
     static unsigned long lastHistoryUpdate = 0;
-    if (millis() - lastSensorUpdate > configManager->getSensorUpdateInterval()) {
+    unsigned long currentMillis = millis();
+
+    if (currentMillis - lastSensorUpdate > configManager->getSensorUpdateInterval()) {
         updateSensorReadings();
-        lastSensorUpdate = millis();
+        lastSensorUpdate = currentMillis;
 
         // Only add to history at the configured history interval
-        if (millis() - lastHistoryUpdate > configManager->getHistoryUpdateInterval()) {
+        unsigned long historyElapsed = currentMillis - lastHistoryUpdate;
+        uint32_t historyInterval = configManager->getHistoryUpdateInterval();
+        if (historyElapsed > historyInterval) {
             HistoryManager* historyManager = HistoryManager::getInstance();
             historyManager->addDataPoint(temperature, humidity, pressure, knxManager.getValvePosition());
-            lastHistoryUpdate = millis();
+            lastHistoryUpdate = currentMillis;
+            LOG_I(TAG_SENSOR, "History point added (count=%d, elapsed=%lu ms)",
+                  historyManager->getDataPointCount(), historyElapsed);
         }
     }
 
