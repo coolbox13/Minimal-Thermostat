@@ -76,6 +76,13 @@ const unsigned long WIFI_CHECK_INTERVAL = 60000; // Check WiFi every minute
 unsigned long lastConnectedTime = 0;
 int reconnectAttempts = 0;
 
+// History timing diagnostics (made global for debugging)
+unsigned long g_lastSensorUpdate = 0;
+unsigned long g_lastHistoryUpdate = 0;
+unsigned long g_historyUpdateCount = 0;
+unsigned long g_sensorUpdateCount = 0;
+unsigned long g_lastHistoryDiagnostic = 0;
+
 // Function declarations
 void setupWiFi();
 void checkWiFiConnection();
@@ -338,24 +345,38 @@ void loop() {
     mqttManager.loop();
     
     // Update sensor readings and publish status
-    static unsigned long lastSensorUpdate = 0;
-    static unsigned long lastHistoryUpdate = 0;
     unsigned long currentMillis = millis();
 
-    if (currentMillis - lastSensorUpdate > configManager->getSensorUpdateInterval()) {
+    uint32_t sensorInterval = configManager->getSensorUpdateInterval();
+    if (currentMillis - g_lastSensorUpdate > sensorInterval) {
         updateSensorReadings();
-        lastSensorUpdate = currentMillis;
+        g_lastSensorUpdate = currentMillis;
+        g_sensorUpdateCount++;
 
         // Only add to history at the configured history interval
-        unsigned long historyElapsed = currentMillis - lastHistoryUpdate;
+        unsigned long historyElapsed = currentMillis - g_lastHistoryUpdate;
         uint32_t historyInterval = configManager->getHistoryUpdateInterval();
         if (historyElapsed > historyInterval) {
             HistoryManager* historyManager = HistoryManager::getInstance();
             historyManager->addDataPoint(temperature, humidity, pressure, knxManager.getValvePosition());
-            lastHistoryUpdate = currentMillis;
+            g_lastHistoryUpdate = currentMillis;
+            g_historyUpdateCount++;
             LOG_I(TAG_SENSOR, "History point added (count=%d, elapsed=%lu ms)",
                   historyManager->getDataPointCount(), historyElapsed);
         }
+    }
+
+    // Periodic history diagnostic (every 5 minutes, logged as WARNING to persist in EventLog)
+    if (currentMillis - g_lastHistoryDiagnostic > 300000) {  // 5 minutes
+        g_lastHistoryDiagnostic = currentMillis;
+        HistoryManager* historyManager = HistoryManager::getInstance();
+        char diagMsg[256];
+        snprintf(diagMsg, sizeof(diagMsg),
+            "HISTORY DIAG: count=%d, updates=%lu, sensor_updates=%lu, millis=%lu, lastHist=%lu, lastSensor=%lu",
+            historyManager->getDataPointCount(), g_historyUpdateCount, g_sensorUpdateCount,
+            currentMillis, g_lastHistoryUpdate, g_lastSensorUpdate);
+        // Use WARNING level so it persists in EventLog
+        LOG_W("HIST_DIAG", "%s", diagMsg);
     }
 
     // Update PID controller at specified interval

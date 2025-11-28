@@ -688,6 +688,62 @@ void WebServerManager::setupDefaultRoutes() {
         request->send(200, "application/json", response);
     });
 
+    // History timing diagnostics endpoint
+    // Extern declarations for global diagnostic variables from main.cpp
+    extern unsigned long g_lastSensorUpdate;
+    extern unsigned long g_lastHistoryUpdate;
+    extern unsigned long g_historyUpdateCount;
+    extern unsigned long g_sensorUpdateCount;
+    extern unsigned long g_lastHistoryDiagnostic;
+
+    _server->on("/api/history-debug", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // Need to re-declare extern inside lambda since they're not captured
+        extern unsigned long g_lastSensorUpdate;
+        extern unsigned long g_lastHistoryUpdate;
+        extern unsigned long g_historyUpdateCount;
+        extern unsigned long g_sensorUpdateCount;
+        extern unsigned long g_lastHistoryDiagnostic;
+
+        HistoryManager* historyManager = HistoryManager::getInstance();
+        ConfigManager* configManager = ConfigManager::getInstance();
+
+        DynamicJsonDocument doc(1024);
+
+        unsigned long now = millis();
+
+        doc["current_millis"] = now;
+        doc["uptime_seconds"] = now / 1000;
+        doc["uptime_hours"] = (float)(now / 1000) / 3600.0f;
+
+        doc["history"]["data_point_count"] = historyManager->getDataPointCount();
+        doc["history"]["buffer_size"] = 2880;  // From HistoryManager::BUFFER_SIZE
+        doc["history"]["update_count"] = g_historyUpdateCount;
+        doc["history"]["last_update_millis"] = g_lastHistoryUpdate;
+        doc["history"]["time_since_last_update_ms"] = now - g_lastHistoryUpdate;
+        doc["history"]["configured_interval_ms"] = configManager->getHistoryUpdateInterval();
+
+        doc["sensor"]["update_count"] = g_sensorUpdateCount;
+        doc["sensor"]["last_update_millis"] = g_lastSensorUpdate;
+        doc["sensor"]["time_since_last_update_ms"] = now - g_lastSensorUpdate;
+        doc["sensor"]["configured_interval_ms"] = configManager->getSensorUpdateInterval();
+
+        doc["diagnostic"]["last_diagnostic_millis"] = g_lastHistoryDiagnostic;
+
+        // Calculate expected vs actual counts
+        unsigned long expectedHistoryCount = (now / configManager->getHistoryUpdateInterval());
+        unsigned long expectedSensorCount = (now / configManager->getSensorUpdateInterval());
+        doc["analysis"]["expected_history_updates"] = expectedHistoryCount;
+        doc["analysis"]["expected_sensor_updates"] = expectedSensorCount;
+        doc["analysis"]["history_update_ratio"] = (expectedHistoryCount > 0) ?
+            ((float)g_historyUpdateCount / expectedHistoryCount) : 0.0f;
+        doc["analysis"]["sensor_update_ratio"] = (expectedSensorCount > 0) ?
+            ((float)g_sensorUpdateCount / expectedSensorCount) : 0.0f;
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
     // Set temperature setpoint
     _server->on("/api/setpoint", HTTP_POST, [](AsyncWebServerRequest *request) {
         if (request->hasParam("value", true)) {
