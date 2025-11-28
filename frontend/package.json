@@ -1,6 +1,6 @@
 {
   "name": "esp32-thermostat-frontend",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "description": "Preact-based frontend for ESP32 KNX Thermostat",
   "type": "module",
   "scripts": {

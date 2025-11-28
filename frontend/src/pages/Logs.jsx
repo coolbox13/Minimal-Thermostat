@@ -24,7 +24,12 @@ export function Logs() {
     try {
       const response = await fetch('/api/logs');
       const data = await response.json();
-      setLogs(data.logs || []);
+      // API returns flat array, normalize level to lowercase for filtering
+      const normalizedLogs = (Array.isArray(data) ? data : data.logs || []).map(log => ({
+        ...log,
+        level: log.level?.toLowerCase() || 'info'
+      }));
+      setLogs(normalizedLogs);
       setLoading(false);
     } catch (err) {
       setError(err.message);
@@ -34,7 +39,7 @@ export function Logs() {
 
   const clearLogs = async () => {
     try {
-      await fetch('/api/logs', { method: 'DELETE' });
+      await fetch('/api/logs/clear', { method: 'POST' });
       setLogs([]);
     } catch (err) {
       setError(err.message);
@@ -44,6 +49,15 @@ export function Logs() {
   const filteredLogs = filter === 'all'
     ? logs
     : logs.filter(log => log.level === filter);
+
+  const formatTimestamp = (timestamp) => {
+    // Timestamp is in milliseconds since boot
+    const totalSeconds = Math.floor(timestamp / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
 
   const getLevelStyle = (level) => {
     switch (level) {
@@ -161,7 +175,7 @@ export function Logs() {
                     <div class="flex-1 min-w-0">
                       <p class="font-mono text-sm break-words">${log.message}</p>
                       <p class="text-xs opacity-70 mt-1">
-                        ${log.timestamp || new Date().toLocaleString()}
+                        <span class="font-medium">[${log.tag || 'SYSTEM'}]</span> at ${formatTimestamp(log.timestamp)}
                       </p>
                     </div>
                   </div>

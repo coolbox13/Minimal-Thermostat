@@ -509,14 +509,35 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
         HistoryManager* historyManager = HistoryManager::getInstance();
 
-        // Check for maxPoints parameter
-        int maxPoints = 0;
+        // Check for maxPoints parameter - limit to avoid memory issues
+        // Default to 500 points max to stay within heap constraints
+        // ~50 bytes per point × 500 = 25KB which is safe
+        int maxPoints = 500;  // Default limit
         if (request->hasParam("maxPoints")) {
-            maxPoints = request->getParam("maxPoints")->value().toInt();
+            int requested = request->getParam("maxPoints")->value().toInt();
+            if (requested > 0 && requested < maxPoints) {
+                maxPoints = requested;
+            }
         }
 
-        DynamicJsonDocument doc(8192);  // Large buffer for history data
+        // Buffer size: ~50 bytes per data point × maxPoints + overhead
+        // 500 points × 50 bytes = 25KB, use 32KB for safety
+        const size_t bufferSize = 32768;  // 32KB buffer for history data
+        DynamicJsonDocument doc(bufferSize);
         historyManager->getHistoryJson(doc, maxPoints);
+
+        // Add debug info about JSON buffer usage
+        size_t usedMemory = doc.memoryUsage();
+        size_t capacity = doc.capacity();
+        bool overflowed = doc.overflowed();
+
+        doc["_debug"]["buffer_size"] = bufferSize;
+        doc["_debug"]["memory_used"] = usedMemory;
+        doc["_debug"]["capacity"] = capacity;
+        doc["_debug"]["overflowed"] = overflowed;
+        doc["_debug"]["data_points_stored"] = historyManager->getDataPointCount();
+        doc["_debug"]["max_points_limit"] = maxPoints;
+        doc["_debug"]["free_heap"] = ESP.getFreeHeap();
 
         String response;
         serializeJson(doc, response);
