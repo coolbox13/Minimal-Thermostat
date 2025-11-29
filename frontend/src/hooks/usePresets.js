@@ -96,10 +96,16 @@ export function usePresets() {
     const abortController = new AbortController();
     fetchPresetConfig(abortController.signal);
 
+    // Poll every 5 seconds to catch external changes (e.g., from HA schedule)
+    const interval = setInterval(() => {
+      fetchPresetConfig(abortController.signal);
+    }, 5000);
+
     return () => {
+      clearInterval(interval);
       abortController.abort();
     };
-  }, []);
+  }, [fetchPresetConfig]);
 
   return {
     presetMode,
