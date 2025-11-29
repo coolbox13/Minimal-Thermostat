@@ -52,6 +52,9 @@ export function Logs() {
 
   const formatTimestamp = (timestamp) => {
     // Timestamp is in milliseconds since boot
+    if (timestamp === undefined || timestamp === null || isNaN(timestamp)) {
+      return 'Unknown';
+    }
     const totalSeconds = Math.floor(timestamp / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);

@@ -510,20 +510,25 @@ void WebServerManager::setupDefaultRoutes() {
         HistoryManager* historyManager = HistoryManager::getInstance();
 
         // Check for maxPoints parameter - limit to avoid memory issues
-        // Default to 500 points max to stay within heap constraints
-        // ~50 bytes per point × 500 = 25KB which is safe
-        int maxPoints = 500;  // Default limit
+        // Each data point uses ~80 bytes in JSON (5 arrays with numbers)
+        // Default to 300 points max = ~24KB JSON data
+        int maxPoints = 300;  // Default limit for safe memory usage
         if (request->hasParam("maxPoints")) {
             int requested = request->getParam("maxPoints")->value().toInt();
-            if (requested > 0 && requested < maxPoints) {
+            if (requested > 0 && requested <= 500) {
                 maxPoints = requested;
             }
         }
 
-        // Buffer size: ~50 bytes per data point × maxPoints + overhead
-        // 500 points × 50 bytes = 25KB, use 32KB for safety
-        const size_t bufferSize = 32768;  // 32KB buffer for history data
+        // Buffer size: ~80 bytes per data point × maxPoints + overhead
+        // 300 points × 80 bytes = 24KB, use 28KB for safety
+        const size_t bufferSize = 28672;  // 28KB buffer for history data
         DynamicJsonDocument doc(bufferSize);
+
+        // Log before serialization for debugging
+        int storedPoints = historyManager->getDataPointCount();
+        size_t freeHeapBefore = ESP.getFreeHeap();
+
         historyManager->getHistoryJson(doc, maxPoints);
 
         // Add debug info about JSON buffer usage
@@ -535,9 +540,10 @@ void WebServerManager::setupDefaultRoutes() {
         doc["_debug"]["memory_used"] = usedMemory;
         doc["_debug"]["capacity"] = capacity;
         doc["_debug"]["overflowed"] = overflowed;
-        doc["_debug"]["data_points_stored"] = historyManager->getDataPointCount();
+        doc["_debug"]["data_points_stored"] = storedPoints;
         doc["_debug"]["max_points_limit"] = maxPoints;
-        doc["_debug"]["free_heap"] = ESP.getFreeHeap();
+        doc["_debug"]["free_heap_before"] = freeHeapBefore;
+        doc["_debug"]["free_heap_after"] = ESP.getFreeHeap();
 
         String response;
         serializeJson(doc, response);

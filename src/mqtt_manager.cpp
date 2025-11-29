@@ -243,15 +243,17 @@ void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length
         _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
     }
 
-    // Handle preset mode
+    // Handle preset mode from Home Assistant
     if (strcmp(topic, "esp32_thermostat/preset/set") == 0) {
         String preset = String(message);
-        Serial.print("Setting preset mode to: ");
+        Serial.println("=== MQTT PRESET RECEIVED ===");
+        Serial.print("  Preset: ");
         Serial.println(preset);
 
         // Get the temperature for this preset
         extern ConfigManager* configManager;
         if (configManager) {
+            String oldPreset = configManager->getCurrentPreset();
             float presetTemp = configManager->getPresetTemperature(preset);
             configManager->setCurrentPreset(preset);
 
@@ -269,35 +271,50 @@ void MQTTManager::processMessage(char* topic, byte* payload, unsigned int length
             dtostrf(presetTemp, 1, 1, setpointStr);
             _mqttClient.publish("esp32_thermostat/temperature/setpoint", setpointStr, true);
 
-            Serial.print("Preset applied with temperature: ");
-            Serial.println(presetTemp);
+            Serial.print("  Changed: ");
+            Serial.print(oldPreset);
+            Serial.print(" -> ");
+            Serial.print(preset);
+            Serial.print(" (");
+            Serial.print(presetTemp);
+            Serial.println("°C)");
+            Serial.println("=== PRESET CHANGE COMPLETE ===");
+        } else {
+            Serial.println("  ERROR: ConfigManager not available!");
         }
     }
 
-    // Handle mode command (heat/off)
+    // Handle mode command (heat/off) from Home Assistant
     if (strcmp(topic, "esp32_thermostat/mode/set") == 0) {
         String mode = String(message);
-        Serial.print("Setting mode to: ");
+        Serial.println("=== MQTT MODE RECEIVED ===");
+        Serial.print("  Mode: ");
         Serial.println(mode);
 
         extern ConfigManager* configManager;
         if (configManager) {
             bool enabled = (mode == "heat");
+            bool wasEnabled = configManager->getThermostatEnabled();
             configManager->setThermostatEnabled(enabled);
 
-            Serial.print("Thermostat ");
-            Serial.println(enabled ? "enabled (heat mode)" : "disabled (off mode)");
+            Serial.print("  Changed: ");
+            Serial.print(wasEnabled ? "heat" : "off");
+            Serial.print(" -> ");
+            Serial.println(enabled ? "heat" : "off");
 
             // If disabling, set valve to 0
             if (!enabled && _knxManager) {
                 _knxManager->setValvePosition(0);
-                Serial.println("Valve set to 0% (off mode)");
+                Serial.println("  Valve set to 0% (off mode)");
             }
 
             // Publish mode state confirmation
             if (_homeAssistant) {
                 _homeAssistant->updateMode(mode.c_str());
             }
+            Serial.println("=== MODE CHANGE COMPLETE ===");
+        } else {
+            Serial.println("  ERROR: ConfigManager not available!");
         }
     }
 
@@ -332,11 +349,13 @@ void MQTTManager::reconnect() {
         
         if (_mqttClient.connect(clientId.c_str(), username, password)) {
             Serial.println("MQTT connected");
-            
-            // Subscribe to topics
+
+            // Subscribe to topics - include ALL topics that have callbacks in this manager
             _mqttClient.subscribe(MQTT_TOPIC_VALVE_COMMAND);
             _mqttClient.subscribe("esp32_thermostat/valve/set");
             _mqttClient.subscribe("esp32_thermostat/temperature/set");
+            _mqttClient.subscribe("esp32_thermostat/preset/set");  // HA preset mode control
+            _mqttClient.subscribe("esp32_thermostat/mode/set");    // HA heat/off mode control
             _mqttClient.subscribe("esp32_thermostat/restart");
             
             // Update availability
