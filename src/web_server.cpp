@@ -6,6 +6,8 @@
 
 #include "LittleFS.h"
 #include <Update.h>
+#include <AsyncJson.h>  // For AsyncJsonResponse - eliminates double buffering
+#include <esp_heap_caps.h>  // For heap_caps_get_largest_free_block diagnostic
 #include "bme280_sensor.h"
 #include "valve_control.h"
 #include "adaptive_pid_controller.h"
@@ -22,6 +24,11 @@
 
 // External MQTT manager for syncing climate state to Home Assistant
 extern MQTTManager mqttManager;
+
+// Static JSON document for history - reused to reduce heap fragmentation
+// Allocated once at first use, never freed
+static DynamicJsonDocument* g_historyDoc = nullptr;
+static const size_t HISTORY_JSON_SIZE = 24576;  // 24KB buffer
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -505,65 +512,83 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/sensor", HTTP_GET, sensorDataHandler);  // Frontend uses this
     _server->on("/api/sensor-data", HTTP_GET, sensorDataHandler);  // Legacy endpoint
 
-    // Historical data endpoint - limit to 200 points to prevent memory issues
+    // Historical data endpoint - uses AsyncJsonResponse to eliminate double buffering
+    // and reuses a static DynamicJsonDocument to reduce heap fragmentation
     _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
         HistoryManager* historyManager = HistoryManager::getInstance();
 
-        // Limit to 200 points max to stay well under memory limits
-        // 200 points × ~50 bytes = ~10KB JSON, safe for ESP32
-        int maxPoints = 200;
+        // Allow up to 300 points now that we're using proper memory management
+        int maxPoints = 300;
         if (request->hasParam("maxPoints")) {
             int requested = request->getParam("maxPoints")->value().toInt();
-            if (requested > 0 && requested <= 200) {
+            if (requested > 0 && requested <= 500) {
                 maxPoints = requested;
             }
         }
 
-        size_t freeHeapStart = ESP.getFreeHeap();
+        // Diagnostic: check heap fragmentation
+        size_t freeHeap = ESP.getFreeHeap();
+        size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
         int storedPoints = historyManager->getDataPointCount();
-        Serial.printf("[HISTORY API] maxPoints=%d, stored=%d, heap=%u\n",
-                      maxPoints, storedPoints, freeHeapStart);
 
-        // Smaller buffer: 200 points × 50 bytes = 10KB, use 16KB for safety
-        const size_t bufferSize = 16384;
-        DynamicJsonDocument doc(bufferSize);
+        Serial.printf("[HISTORY] pts=%d/%d, heap=%u, largest_block=%u, frag=%.1f%%\n",
+                      storedPoints, maxPoints, freeHeap, largestBlock,
+                      100.0f * (1.0f - (float)largestBlock / freeHeap));
 
-        historyManager->getHistoryJson(doc, maxPoints);
+        // Initialize static document on first use (never freed, reduces fragmentation)
+        if (g_historyDoc == nullptr) {
+            g_historyDoc = new DynamicJsonDocument(HISTORY_JSON_SIZE);
+            if (!g_historyDoc) {
+                Serial.println("[HISTORY] ERROR: Failed to allocate static JSON doc!");
+                request->send(503, "application/json", "{\"error\":\"JSON buffer allocation failed\"}");
+                return;
+            }
+            Serial.printf("[HISTORY] Allocated static JSON doc: %u bytes\n", HISTORY_JSON_SIZE);
+        }
+
+        // Clear and reuse the static document
+        g_historyDoc->clear();
+
+        // Check if we have enough contiguous memory for the response
+        // AsyncJsonResponse needs ~JSON_size for its internal buffer
+        if (largestBlock < HISTORY_JSON_SIZE + 4096) {
+            Serial.printf("[HISTORY] ERROR: Fragmented! need=%u, largest=%u\n",
+                          HISTORY_JSON_SIZE + 4096, largestBlock);
+            request->send(503, "application/json",
+                "{\"error\":\"Memory fragmented\",\"largest_block\":" + String(largestBlock) +
+                ",\"needed\":" + String(HISTORY_JSON_SIZE) + "}");
+            return;
+        }
+
+        // Fill the static document with history data
+        historyManager->getHistoryJson(*g_historyDoc, maxPoints);
 
         // Add debug info
-        doc["_debug"]["memory_used"] = doc.memoryUsage();
-        doc["_debug"]["data_points_stored"] = storedPoints;
-        doc["_debug"]["free_heap"] = freeHeapStart;
+        (*g_historyDoc)["_debug"]["memory_used"] = g_historyDoc->memoryUsage();
+        (*g_historyDoc)["_debug"]["data_points_stored"] = storedPoints;
+        (*g_historyDoc)["_debug"]["free_heap"] = freeHeap;
+        (*g_historyDoc)["_debug"]["largest_block"] = largestBlock;
+        (*g_historyDoc)["_debug"]["fragmentation_pct"] = 100.0f * (1.0f - (float)largestBlock / freeHeap);
 
-        // Measure and allocate String with exact size needed
-        size_t jsonLength = measureJson(doc);
-
-        // Check if we have enough heap for the String (need ~2x for safety during copy)
-        size_t freeNow = ESP.getFreeHeap();
-        if (freeNow < jsonLength * 2 + 10000) {
-            Serial.printf("[HISTORY API] Low memory! need=%u, have=%u\n", jsonLength * 2, freeNow);
-            request->send(503, "application/json",
-                "{\"error\":\"Insufficient memory\",\"free\":" + String(freeNow) + "}");
+        // Use AsyncJsonResponse - this avoids double buffering
+        // The response object owns its own JSON buffer and streams directly
+        AsyncJsonResponse *response = new AsyncJsonResponse(false, HISTORY_JSON_SIZE);
+        if (!response) {
+            Serial.println("[HISTORY] ERROR: Failed to create AsyncJsonResponse!");
+            request->send(503, "application/json", "{\"error\":\"Response allocation failed\"}");
             return;
         }
 
-        String response;
-        if (!response.reserve(jsonLength + 1)) {
-            Serial.printf("[HISTORY API] Failed to reserve %u bytes\n", jsonLength);
-            request->send(503, "application/json", "{\"error\":\"Memory allocation failed\"}");
-            return;
-        }
+        // Copy from static doc to response's internal JsonVariant
+        JsonVariant root = response->getRoot();
+        root.set(g_historyDoc->as<JsonVariant>());
 
-        serializeJson(doc, response);
+        // Set content length and send
+        response->setLength();
+        size_t responseLen = response->getSize();
 
-        if (response.length() < 10) {
-            Serial.printf("[HISTORY API] Serialization failed, got %u bytes\n", response.length());
-            request->send(500, "application/json", "{\"error\":\"Serialization failed\"}");
-            return;
-        }
-
-        Serial.printf("[HISTORY API] Sending %u bytes, heap=%u\n", response.length(), ESP.getFreeHeap());
-        request->send(200, "application/json", response);
+        Serial.printf("[HISTORY] Sending %u bytes via AsyncJsonResponse\n", responseLen);
+        request->send(response);
     });
 
     // System status dashboard endpoint

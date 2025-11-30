@@ -51,11 +51,29 @@ while true; do
     echo "    Response content: '$json_content'" | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
   else
-    # Extract data point count from response
-    count=$(echo "$json_content" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('count', 'N/A'))" 2>/dev/null)
-    debug_mem=$(echo "$json_content" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('_debug',{}).get('memory_used', 'N/A'))" 2>/dev/null)
+    # Extract all debug fields from response
+    debug_info=$(echo "$json_content" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin)
+    count = d.get('count', 'N/A')
+    dbg = d.get('_debug', {})
+    mem = dbg.get('memory_used', 'N/A')
+    largest = dbg.get('largest_block', 'N/A')
+    frag = dbg.get('fragmentation_pct', 'N/A')
+    if isinstance(frag, float):
+        frag = f'{frag:.1f}%'
+    print(f'{count}|{mem}|{largest}|{frag}')
+except:
+    print('N/A|N/A|N/A|N/A')
+" 2>/dev/null)
 
-    echo "[$timestamp] OK: ${size}b, ${count}pts, heap=${heap}, json_mem=${debug_mem}, up=${uptime}s" | tee -a "$LOG_FILE"
+    count=$(echo "$debug_info" | cut -d'|' -f1)
+    debug_mem=$(echo "$debug_info" | cut -d'|' -f2)
+    largest_block=$(echo "$debug_info" | cut -d'|' -f3)
+    frag_pct=$(echo "$debug_info" | cut -d'|' -f4)
+
+    echo "[$timestamp] OK: ${size}b, ${count}pts, heap=${heap}, largest=${largest_block}, frag=${frag_pct}, json_mem=${debug_mem}, up=${uptime}s" | tee -a "$LOG_FILE"
   fi
 
   sleep $INTERVAL
