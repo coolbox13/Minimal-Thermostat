@@ -31,7 +31,7 @@ while true; do
     uptime="N/A"
   fi
 
-  # Get history data
+  # Get history data (max 200 points to fit in 16KB buffer)
   response=$(curl -s --connect-timeout 10 -w "\n___HTTP_CODE:%{http_code}___SIZE:%{size_download}___" "http://$ESP32_IP/api/history?maxPoints=200" 2>/dev/null)
 
   # Parse HTTP code and size

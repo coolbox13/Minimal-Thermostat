@@ -1,8 +1,16 @@
+/**
+ * @file history_manager.cpp
+ * @brief Implementation of circular buffer history storage
+ *
+ * @see history_manager.h for class documentation
+ */
+
 #include "history_manager.h"
 #include "ntp_manager.h"
 #include "logger.h"
 #include <ArduinoJson.h>
 
+/// @brief Log tag for history manager messages
 static const char* TAG = "HISTORY";
 
 const int HistoryManager::BUFFER_SIZE;
@@ -41,18 +49,19 @@ void HistoryManager::addDataPoint(float temperature, float humidity, float press
 }
 
 void HistoryManager::getHistoryJson(JsonDocument& doc, int maxPoints) {
-    int numPoints = _count;
-    if (maxPoints > 0 && maxPoints < numPoints) {
-        numPoints = maxPoints;
-    }
+    // Delegate to JsonObject overload
+    JsonObject obj = doc.to<JsonObject>();
+    getHistoryJson(obj, maxPoints);
+}
 
-    JsonArray timestamps = doc.createNestedArray("timestamps");
-    JsonArray temperatures = doc.createNestedArray("temperatures");
-    JsonArray humidities = doc.createNestedArray("humidities");
-    JsonArray pressures = doc.createNestedArray("pressures");
-    JsonArray valvePositions = doc.createNestedArray("valvePositions");
+void HistoryManager::getHistoryJson(JsonObject& obj, int maxPoints) {
+    JsonArray timestamps = obj.createNestedArray("timestamps");
+    JsonArray temperatures = obj.createNestedArray("temperatures");
+    JsonArray humidities = obj.createNestedArray("humidities");
+    JsonArray pressures = obj.createNestedArray("pressures");
+    JsonArray valvePositions = obj.createNestedArray("valvePositions");
 
-    // Calculate start index (oldest point to include)
+    // Calculate start index (oldest point in buffer)
     int startIdx;
     if (_count < BUFFER_SIZE) {
         // Buffer not full yet, start from beginning
@@ -62,20 +71,18 @@ void HistoryManager::getHistoryJson(JsonDocument& doc, int maxPoints) {
         startIdx = _head;
     }
 
-    // Calculate how many points to skip if maxPoints is set
+    // Calculate skip factor to evenly sample all data points
+    // Skip is based on total count, not capped count
     int skip = 1;
-    if (maxPoints > 0 && numPoints > maxPoints) {
-        skip = numPoints / maxPoints;
+    if (maxPoints > 0 && _count > maxPoints) {
+        skip = _count / maxPoints;
     }
 
     int pointsAdded = 0;
-    for (int i = 0; i < numPoints; i += skip) {
+    int maxToAdd = (maxPoints > 0) ? maxPoints : _count;
+
+    for (int i = 0; i < _count && pointsAdded < maxToAdd; i += skip) {
         int idx = (startIdx + i) % BUFFER_SIZE;
-        // When buffer is not full, only include valid indices
-        // When buffer is full, all indices are valid
-        if (_count < BUFFER_SIZE && idx >= _count) {
-            continue;  // Skip invalid indices
-        }
         timestamps.add(_buffer[idx].timestamp);
         temperatures.add(_buffer[idx].temperature);
         humidities.add(_buffer[idx].humidity);
@@ -84,10 +91,11 @@ void HistoryManager::getHistoryJson(JsonDocument& doc, int maxPoints) {
         pointsAdded++;
     }
 
-    doc["count"] = pointsAdded;
-    doc["maxSize"] = BUFFER_SIZE;
+    obj["count"] = pointsAdded;
+    obj["maxSize"] = BUFFER_SIZE;
+    obj["totalStored"] = _count;  // Add total stored for transparency
 
-    LOG_D(TAG, "Returning %d data points", pointsAdded);
+    LOG_D(TAG, "Returning %d of %d data points (skip=%d)", pointsAdded, _count, skip);
 }
 
 int HistoryManager::getDataPointCount() {

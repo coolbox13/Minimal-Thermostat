@@ -1,68 +1,128 @@
-// adaptive_pid_controller.h
-#ifndef ADAPTIVE_PID_CONTROLLER_H
-#define ADAPTIVE_PID_CONTROLLER_H
-
-#include <stdint.h>
-
 /**
  * @file adaptive_pid_controller.h
  * @brief Adaptive PID controller for temperature regulation
- * 
+ *
  * This module implements a self-tuning PID controller designed specifically
  * for HVAC applications. It features:
  * - Automatic parameter adaptation based on observed performance
  * - Deadband support to prevent oscillation around setpoint
  * - Temperature history tracking for performance analysis
  * - Ziegler-Nichols based auto-tuning
+ *
+ * @par Control Loop Integration
+ * The controller is called from the main loop at PID_UPDATE_INTERVAL (10s).
+ * The calculated valve position is sent to KNX/MQTT for actuator control.
+ *
+ * @par Global State
+ * Uses global variables (g_pid_input, g_pid_output) for state to allow
+ * access from multiple modules (web API, MQTT, etc.).
+ *
+ * @par Memory Usage
+ * Temperature history buffer: 300 floats = 1.2KB
+ * Setpoint history buffer: 300 floats = 1.2KB
+ *
+ * @see ConfigManager for PID parameter persistence
+ * @see KNXManager for valve command transmission
  */
 
+#ifndef ADAPTIVE_PID_CONTROLLER_H
+#define ADAPTIVE_PID_CONTROLLER_H
+
+#include <stdint.h>
+
 /**
- * @brief Data structure for PID controller inputs
+ * @struct AdaptivePID_Input
+ * @brief Input parameters and configuration for the PID controller
+ *
+ * Contains all inputs needed to compute the control output, including
+ * sensor readings, setpoint, tuning parameters, and adaptation settings.
+ *
+ * @note All temperature values are in degrees Celsius
+ * @note Output values are percentages (0-100)
  */
 typedef struct {
-    float current_temp;         /**< Current room temperature (°C) */
-    float setpoint_temp;        /**< Desired room temperature (°C) */
-    float valve_feedback;       /**< Actual valve position (0-100%) */
-    float Kp, Ki, Kd;           /**< PID gains */
-    float output_min, output_max; /**< Output limits (e.g., 0-100%) */
-    float deadband;             /**< Deadband tolerance (°C) */
-    float dt;                   /**< Sample time (seconds) */
-    
+    float current_temp;         ///< Current room temperature from BME280 (°C)
+    float setpoint_temp;        ///< Target temperature from user/preset (°C)
+    float valve_feedback;       ///< Actual valve position from KNX feedback (0-100%)
+    float Kp;                   ///< Proportional gain - response to current error
+    float Ki;                   ///< Integral gain - response to accumulated error
+    float Kd;                   ///< Derivative gain - response to rate of change
+    float output_min;           ///< Minimum output limit (typically 0%)
+    float output_max;           ///< Maximum output limit (typically 100%)
+    float deadband;             ///< Temperature tolerance to prevent hunting (°C, default 0.2)
+    float dt;                   ///< Sample time between updates (seconds, default 10)
+
     // Adaptation parameters
-    float adaptation_rate;      /**< How quickly to adapt (0-1) */
-    uint8_t adaptation_enabled; /**< Enable/disable self-learning (1/0) */
+    float adaptation_rate;      ///< Learning rate for auto-tuning (0-1, default 0.1)
+    uint8_t adaptation_enabled; ///< Enable/disable self-learning (1/0)
 } AdaptivePID_Input;
 
 /**
- * @brief Data structure for PID controller outputs
+ * @struct AdaptivePID_Output
+ * @brief Output values computed by the PID controller
+ *
+ * Contains the calculated control output and intermediate error terms
+ * useful for debugging and visualization.
  */
 typedef struct {
-    float valve_command;        /**< Calculated valve position (0-100%) */
-    float error;                /**< Current error (°C) */
-    float integral_error;       /**< Accumulated error */
-    float derivative_error;     /**< Rate of change of error */
+    float valve_command;        ///< Calculated valve position to send to actuator (0-100%)
+    float error;                ///< Current error: setpoint - current_temp (°C)
+    float integral_error;       ///< Accumulated error over time (°C·s)
+    float derivative_error;     ///< Rate of error change (°C/s)
 } AdaptivePID_Output;
 
 /**
- * @brief Data structure for controller performance metrics
+ * @struct AdaptivePID_Performance
+ * @brief Performance metrics for controller evaluation
+ *
+ * Used by the auto-tuning algorithm to evaluate current controller
+ * performance and adjust parameters accordingly.
  */
 typedef struct {
-    float settling_time;        /**< Time to reach within 5% of setpoint */
-    float overshoot;            /**< Maximum overshoot percentage */
-    float steady_state_error;   /**< Average error after settling */
-    float oscillation_count;    /**< Number of oscillations around setpoint */
-    float rise_time;            /**< Time to first reach setpoint */
+    float settling_time;        ///< Time to reach within 5% of setpoint (seconds)
+    float overshoot;            ///< Maximum overshoot as percentage of step change
+    float steady_state_error;   ///< Average error after settling (°C)
+    float oscillation_count;    ///< Number of zero-crossings around setpoint
+    float rise_time;            ///< Time to first reach setpoint (seconds)
 } AdaptivePID_Performance;
 
-// Global controller state (used by functions)
+/**
+ * @name Global Controller State
+ * @brief Global variables for PID controller state access
+ *
+ * These globals allow multiple modules (web server, MQTT, etc.) to read
+ * and modify controller state. Access should be done carefully as the
+ * controller is not thread-safe.
+ * @{
+ */
+
+/// @brief Global PID input parameters (readable/writable)
 extern AdaptivePID_Input g_pid_input;
+
+/// @brief Global PID output values (read-only except by controller)
 extern AdaptivePID_Output g_pid_output;
 
-// Temperature history for auto-tuning
-#define HISTORY_SIZE 300  /**< 5 minutes at 1 second interval */
+/** @} */
+
+/**
+ * @name Temperature History
+ * @brief Circular buffers for auto-tuning and performance analysis
+ * @{
+ */
+
+/// @brief Number of samples in history buffers (5 minutes at 1 second intervals)
+#define HISTORY_SIZE 300
+
+/// @brief Circular buffer of recent temperature readings
 extern float g_temperature_history[HISTORY_SIZE];
+
+/// @brief Circular buffer of recent setpoint values
 extern float g_setpoint_history[HISTORY_SIZE];
+
+/// @brief Current write position in history buffers (0 to HISTORY_SIZE-1)
 extern int g_history_index;
+
+/** @} */
 
 /**
  * @brief Initialize the PID controller with default parameters

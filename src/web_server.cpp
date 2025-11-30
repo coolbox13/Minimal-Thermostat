@@ -25,10 +25,10 @@
 // External MQTT manager for syncing climate state to Home Assistant
 extern MQTTManager mqttManager;
 
-// Static JSON document for history - reused to reduce heap fragmentation
-// Allocated once at first use, never freed
-static DynamicJsonDocument* g_historyDoc = nullptr;
-static const size_t HISTORY_JSON_SIZE = 24576;  // 24KB buffer
+// History JSON buffer size - used by AsyncJsonResponse
+// Reduced from 24KB to 16KB since we use AsyncJsonResponse's internal buffer directly
+// (no more double-buffering with separate static document)
+static const size_t HISTORY_JSON_SIZE = 16384;  // 16KB buffer
 
 WebServerManager* WebServerManager::_instance = nullptr;
 
@@ -512,16 +512,17 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/sensor", HTTP_GET, sensorDataHandler);  // Frontend uses this
     _server->on("/api/sensor-data", HTTP_GET, sensorDataHandler);  // Legacy endpoint
 
-    // Historical data endpoint - uses AsyncJsonResponse to eliminate double buffering
-    // and reuses a static DynamicJsonDocument to reduce heap fragmentation
+    // Historical data endpoint - uses AsyncJsonResponse's internal buffer directly
+    // No separate static document needed - eliminates double buffering completely
     _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
         HistoryManager* historyManager = HistoryManager::getInstance();
 
-        // Allow up to 300 points now that we're using proper memory management
-        int maxPoints = 300;
+        // Limit points based on available memory - each point ~80 bytes in JSON
+        // 16KB buffer / 80 bytes = ~200 points max safely
+        int maxPoints = 200;
         if (request->hasParam("maxPoints")) {
             int requested = request->getParam("maxPoints")->value().toInt();
-            if (requested > 0 && requested <= 500) {
+            if (requested > 0 && requested <= 200) {
                 maxPoints = requested;
             }
         }
@@ -535,43 +536,19 @@ void WebServerManager::setupDefaultRoutes() {
                       storedPoints, maxPoints, freeHeap, largestBlock,
                       100.0f * (1.0f - (float)largestBlock / freeHeap));
 
-        // Initialize static document on first use (never freed, reduces fragmentation)
-        if (g_historyDoc == nullptr) {
-            g_historyDoc = new DynamicJsonDocument(HISTORY_JSON_SIZE);
-            if (!g_historyDoc) {
-                Serial.println("[HISTORY] ERROR: Failed to allocate static JSON doc!");
-                request->send(503, "application/json", "{\"error\":\"JSON buffer allocation failed\"}");
-                return;
-            }
-            Serial.printf("[HISTORY] Allocated static JSON doc: %u bytes\n", HISTORY_JSON_SIZE);
-        }
-
-        // Clear and reuse the static document
-        g_historyDoc->clear();
-
         // Check if we have enough contiguous memory for the response
-        // AsyncJsonResponse needs ~JSON_size for its internal buffer
-        if (largestBlock < HISTORY_JSON_SIZE + 4096) {
+        // AsyncJsonResponse needs HISTORY_JSON_SIZE for its internal buffer
+        if (largestBlock < HISTORY_JSON_SIZE + 2048) {
             Serial.printf("[HISTORY] ERROR: Fragmented! need=%u, largest=%u\n",
-                          HISTORY_JSON_SIZE + 4096, largestBlock);
+                          HISTORY_JSON_SIZE + 2048, largestBlock);
             request->send(503, "application/json",
                 "{\"error\":\"Memory fragmented\",\"largest_block\":" + String(largestBlock) +
                 ",\"needed\":" + String(HISTORY_JSON_SIZE) + "}");
             return;
         }
 
-        // Fill the static document with history data
-        historyManager->getHistoryJson(*g_historyDoc, maxPoints);
-
-        // Add debug info
-        (*g_historyDoc)["_debug"]["memory_used"] = g_historyDoc->memoryUsage();
-        (*g_historyDoc)["_debug"]["data_points_stored"] = storedPoints;
-        (*g_historyDoc)["_debug"]["free_heap"] = freeHeap;
-        (*g_historyDoc)["_debug"]["largest_block"] = largestBlock;
-        (*g_historyDoc)["_debug"]["fragmentation_pct"] = 100.0f * (1.0f - (float)largestBlock / freeHeap);
-
-        // Use AsyncJsonResponse - this avoids double buffering
-        // The response object owns its own JSON buffer and streams directly
+        // Create AsyncJsonResponse - this allocates ONE buffer that we write to directly
+        // No intermediate document needed - eliminates double buffering
         AsyncJsonResponse *response = new AsyncJsonResponse(false, HISTORY_JSON_SIZE);
         if (!response) {
             Serial.println("[HISTORY] ERROR: Failed to create AsyncJsonResponse!");
@@ -579,9 +556,20 @@ void WebServerManager::setupDefaultRoutes() {
             return;
         }
 
-        // Copy from static doc to response's internal JsonVariant
-        JsonVariant root = response->getRoot();
-        root.set(g_historyDoc->as<JsonVariant>());
+        // Get reference to response's internal JsonObject and populate it directly
+        // AsyncJsonResponse(false, size) creates an Object root (false = not array)
+        JsonObject rootObj = response->getRoot().as<JsonObject>();
+
+        // Call getHistoryJson which will populate the JsonObject with arrays
+        // The method creates its own arrays (timestamps, temperatures, etc.)
+        historyManager->getHistoryJson(rootObj, maxPoints);
+
+        // Add debug info
+        rootObj["_debug"]["memory_used"] = response->getSize();
+        rootObj["_debug"]["data_points_stored"] = storedPoints;
+        rootObj["_debug"]["free_heap"] = freeHeap;
+        rootObj["_debug"]["largest_block"] = largestBlock;
+        rootObj["_debug"]["fragmentation_pct"] = 100.0f * (1.0f - (float)largestBlock / freeHeap);
 
         // Set content length and send
         response->setLength();

@@ -33,9 +33,11 @@ A modular smart thermostat system built on ESP32 that integrates with KNX buildi
 
 - **Sensor Integration**:
   - BME280 temperature/humidity/pressure monitoring
-  - 24-hour historical data storage (circular buffer, 5-minute intervals, 288 data points)
-  - Real-time sensor readings with configurable update intervals
+  - 24-hour historical data storage (circular buffer, configurable intervals, up to 2880 data points)
+  - Real-time sensor readings with configurable update intervals (3s-5min)
   - NTP time synchronization for accurate timestamps
+  - Memory-optimized history API using AsyncJsonResponse (eliminates double-buffering)
+  - Heap fragmentation monitoring with pre-flight checks and diagnostics
 
 - **Time Synchronization**:
   - NTP-based time synchronization with configurable server
@@ -661,6 +663,12 @@ The system logs memory usage at startup:
 - SPIFFS usage
 - Warnings when usage exceeds 90% or 95%
 
+**History API Memory Optimization:**
+- Uses `AsyncJsonResponse` to eliminate double-buffering (request->send(String) copies data internally)
+- Static JSON document (24KB) allocated once and reused to reduce heap fragmentation
+- Pre-flight fragmentation check returns HTTP 503 with diagnostic info if largest contiguous block is insufficient
+- Response includes `_debug` object with `free_heap`, `largest_block`, and `fragmentation_pct` for monitoring
+
 ### Historical Data
 
 The system maintains a 24-hour rolling history of sensor readings:
@@ -825,6 +833,23 @@ All entities include:
 - Device class and state class attributes
 - Proper unit of measurement
 - Availability tracking
+
+## Dependencies
+
+Core libraries (auto-installed by PlatformIO):
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| Adafruit BME280 | ^2.2.2 | Environmental sensor (I²C) |
+| Adafruit Unified Sensor | ^1.1.15 | Sensor abstraction layer |
+| PubSubClient | ^2.8 | MQTT client |
+| WiFiManager | Latest | Captive portal for WiFi setup |
+| ESPAsyncWebServer | v3.6.0 | Async HTTP server (ESP32Async fork) |
+| AsyncTCP | v3.3.2 | Async networking (ESP32Async fork) |
+| ArduinoJson | ^6.21.3 | JSON parsing/generation |
+| ESP32Ping | Latest | Network connectivity testing |
+
+**Note**: The project uses the maintained [ESP32Async organization](https://github.com/ESP32Async) forks of ESPAsyncWebServer and AsyncTCP (successor to mathieucarbou's fork), which provide better stability, ongoing maintenance, and improved memory handling with AsyncJsonResponse support.
 
 ## Contributing
 

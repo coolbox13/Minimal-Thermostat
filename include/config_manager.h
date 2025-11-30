@@ -1,3 +1,32 @@
+/**
+ * @file config_manager.h
+ * @brief Persistent configuration storage using ESP32 Preferences API
+ *
+ * Provides centralized management of all thermostat settings with automatic
+ * persistence to ESP32's NVS (Non-Volatile Storage). Implements singleton
+ * pattern for global access.
+ *
+ * @par Storage Organization
+ * Uses multiple ESP32 Preferences namespaces for logical separation:
+ * - "thermostat": User-configurable settings
+ * - "config": System diagnostic data
+ * - "watchdog": Recovery state tracking
+ *
+ * @par JSON Import/Export
+ * Supports configuration backup and restore via getJson() and setFromJson().
+ * Used by the web interface for settings management.
+ *
+ * @par Precision Handling
+ * PID parameters are stored with controlled precision to prevent float
+ * comparison issues:
+ * - Kp: 2 decimal places
+ * - Ki/Kd: 3 decimal places
+ * - Setpoint: 1 decimal place
+ *
+ * @see WebServerManager for the /api/config endpoint
+ * @see WatchdogManager for reboot tracking integration
+ */
+
 #ifndef CONFIG_MANAGER_H
 #define CONFIG_MANAGER_H
 
@@ -5,7 +34,8 @@
 #include <Preferences.h>
 
 /**
- * @brief Configuration manager for persistent storage of thermostat settings
+ * @class ConfigManager
+ * @brief Singleton configuration manager for persistent storage of thermostat settings
  *
  * PREFERENCES NAMESPACE STRUCTURE:
  * This class uses multiple ESP32 Preferences namespaces to organize data:
