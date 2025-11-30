@@ -44,3 +44,6 @@ CLAUDE.md
 
 # Ignore Claude Code local settings
 .claude/settings.local.json
+
+# Ignore generated Doxygen documentation (regenerate with: doxygen Doxyfile)
+docs/doxygen/
