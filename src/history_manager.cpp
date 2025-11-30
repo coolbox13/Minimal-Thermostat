@@ -71,18 +71,20 @@ void HistoryManager::getHistoryJson(JsonObject& obj, int maxPoints) {
         startIdx = _head;
     }
 
-    // Calculate skip factor to evenly sample all data points
-    // Skip is based on total count, not capped count
-    int skip = 1;
-    if (maxPoints > 0 && _count > maxPoints) {
-        skip = _count / maxPoints;
-    }
+    // Determine how many points to return
+    int numPoints = (maxPoints > 0 && maxPoints < _count) ? maxPoints : _count;
+
+    // Calculate skip factor using floating point for even distribution
+    // This ensures we cover the full range from oldest to newest
+    float step = (_count > numPoints) ? (float)(_count - 1) / (numPoints - 1) : 1.0f;
 
     int pointsAdded = 0;
-    int maxToAdd = (maxPoints > 0) ? maxPoints : _count;
+    for (int i = 0; i < numPoints; i++) {
+        // Calculate index using floating point step to evenly distribute
+        int dataIdx = (int)(i * step + 0.5f);  // Round to nearest
+        if (dataIdx >= _count) dataIdx = _count - 1;  // Clamp to valid range
 
-    for (int i = 0; i < _count && pointsAdded < maxToAdd; i += skip) {
-        int idx = (startIdx + i) % BUFFER_SIZE;
+        int idx = (startIdx + dataIdx) % BUFFER_SIZE;
         timestamps.add(_buffer[idx].timestamp);
         temperatures.add(_buffer[idx].temperature);
         humidities.add(_buffer[idx].humidity);
@@ -95,7 +97,7 @@ void HistoryManager::getHistoryJson(JsonObject& obj, int maxPoints) {
     obj["maxSize"] = BUFFER_SIZE;
     obj["totalStored"] = _count;  // Add total stored for transparency
 
-    LOG_D(TAG, "Returning %d of %d data points (skip=%d)", pointsAdded, _count, skip);
+    LOG_D(TAG, "Returning %d of %d data points (step=%.2f)", pointsAdded, _count, step);
 }
 
 int HistoryManager::getDataPointCount() {
