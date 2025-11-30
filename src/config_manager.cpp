@@ -892,8 +892,8 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
     }
     if (doc["timing"].containsKey("sensor_update_interval")) {
         uint32_t interval = doc["timing"]["sensor_update_interval"].as<uint32_t>();
-        if (interval < 1000 || interval > 300000) {
-            errorMessage = "Sensor update interval must be between 1000ms and 300000ms";
+        if (interval < 3000 || interval > 300000) {
+            errorMessage = "Sensor update interval must be between 3000ms (3s) and 300000ms";
             LOG_W(TAG, "%s", errorMessage.c_str());
             return false;
         }
@@ -901,8 +901,8 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
     }
     if (doc["timing"].containsKey("history_update_interval")) {
         uint32_t interval = doc["timing"]["history_update_interval"].as<uint32_t>();
-        if (interval < 30000 || interval > 3600000) {
-            errorMessage = "History update interval must be between 30000ms (30s) and 3600000ms (1hr)";
+        if (interval < 3000 || interval > 3600000) {
+            errorMessage = "History update interval must be between 3000ms (3s) and 3600000ms (1hr)";
             LOG_W(TAG, "%s", errorMessage.c_str());
             return false;
         }

@@ -505,48 +505,64 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/sensor", HTTP_GET, sensorDataHandler);  // Frontend uses this
     _server->on("/api/sensor-data", HTTP_GET, sensorDataHandler);  // Legacy endpoint
 
-    // Historical data endpoint
+    // Historical data endpoint - limit to 200 points to prevent memory issues
     _server->on("/api/history", HTTP_GET, [](AsyncWebServerRequest *request) {
         HistoryManager* historyManager = HistoryManager::getInstance();
 
-        // Check for maxPoints parameter - limit to avoid memory issues
-        // Each data point uses ~80 bytes in JSON (5 arrays with numbers)
-        // Default to 300 points max = ~24KB JSON data
-        int maxPoints = 300;  // Default limit for safe memory usage
+        // Limit to 200 points max to stay well under memory limits
+        // 200 points × ~50 bytes = ~10KB JSON, safe for ESP32
+        int maxPoints = 200;
         if (request->hasParam("maxPoints")) {
             int requested = request->getParam("maxPoints")->value().toInt();
-            if (requested > 0 && requested <= 500) {
+            if (requested > 0 && requested <= 200) {
                 maxPoints = requested;
             }
         }
 
-        // Buffer size: ~80 bytes per data point × maxPoints + overhead
-        // 300 points × 80 bytes = 24KB, use 28KB for safety
-        const size_t bufferSize = 28672;  // 28KB buffer for history data
-        DynamicJsonDocument doc(bufferSize);
-
-        // Log before serialization for debugging
+        size_t freeHeapStart = ESP.getFreeHeap();
         int storedPoints = historyManager->getDataPointCount();
-        size_t freeHeapBefore = ESP.getFreeHeap();
+        Serial.printf("[HISTORY API] maxPoints=%d, stored=%d, heap=%u\n",
+                      maxPoints, storedPoints, freeHeapStart);
+
+        // Smaller buffer: 200 points × 50 bytes = 10KB, use 16KB for safety
+        const size_t bufferSize = 16384;
+        DynamicJsonDocument doc(bufferSize);
 
         historyManager->getHistoryJson(doc, maxPoints);
 
-        // Add debug info about JSON buffer usage
-        size_t usedMemory = doc.memoryUsage();
-        size_t capacity = doc.capacity();
-        bool overflowed = doc.overflowed();
-
-        doc["_debug"]["buffer_size"] = bufferSize;
-        doc["_debug"]["memory_used"] = usedMemory;
-        doc["_debug"]["capacity"] = capacity;
-        doc["_debug"]["overflowed"] = overflowed;
+        // Add debug info
+        doc["_debug"]["memory_used"] = doc.memoryUsage();
         doc["_debug"]["data_points_stored"] = storedPoints;
-        doc["_debug"]["max_points_limit"] = maxPoints;
-        doc["_debug"]["free_heap_before"] = freeHeapBefore;
-        doc["_debug"]["free_heap_after"] = ESP.getFreeHeap();
+        doc["_debug"]["free_heap"] = freeHeapStart;
+
+        // Measure and allocate String with exact size needed
+        size_t jsonLength = measureJson(doc);
+
+        // Check if we have enough heap for the String (need ~2x for safety during copy)
+        size_t freeNow = ESP.getFreeHeap();
+        if (freeNow < jsonLength * 2 + 10000) {
+            Serial.printf("[HISTORY API] Low memory! need=%u, have=%u\n", jsonLength * 2, freeNow);
+            request->send(503, "application/json",
+                "{\"error\":\"Insufficient memory\",\"free\":" + String(freeNow) + "}");
+            return;
+        }
 
         String response;
+        if (!response.reserve(jsonLength + 1)) {
+            Serial.printf("[HISTORY API] Failed to reserve %u bytes\n", jsonLength);
+            request->send(503, "application/json", "{\"error\":\"Memory allocation failed\"}");
+            return;
+        }
+
         serializeJson(doc, response);
+
+        if (response.length() < 10) {
+            Serial.printf("[HISTORY API] Serialization failed, got %u bytes\n", response.length());
+            request->send(500, "application/json", "{\"error\":\"Serialization failed\"}");
+            return;
+        }
+
+        Serial.printf("[HISTORY API] Sending %u bytes, heap=%u\n", response.length(), ESP.getFreeHeap());
         request->send(200, "application/json", response);
     });
 
