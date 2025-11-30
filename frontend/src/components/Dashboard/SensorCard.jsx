@@ -10,7 +10,13 @@ const html = htm.bind(h);
  * Implements skeleton loading from PREACT_UX_IMPROVEMENTS.md
  */
 export function SensorCard() {
-  const { data, loading, error } = useSensorData(5000); // Poll every 5 seconds
+  const { data, loading, error, lastUpdated } = useSensorData(5000); // Poll every 5 seconds
+
+  // Format time as HH:MM:SS
+  const formatTime = (date) => {
+    if (!date) return '--:--:--';
+    return date.toLocaleTimeString('en-GB', { hour12: false });
+  };
 
   // Skeleton Loading State (show if loading OR data is null)
   if (loading || !data) {
@@ -82,6 +88,11 @@ export function SensorCard() {
             <span class="${color} text-lg font-semibold">${value}</span>
           </div>
         `)}
+      </div>
+      <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 text-center">
+        <span class="text-xs text-gray-400 dark:text-gray-500">
+          Last updated: ${formatTime(lastUpdated)}
+        </span>
       </div>
     </div>
   `;

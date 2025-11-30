@@ -11,6 +11,7 @@ export function useSensorData(refreshInterval = 5000) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const fetchData = useCallback(async (signal) => {
     try {
@@ -29,6 +30,7 @@ export function useSensorData(refreshInterval = 5000) {
         valve: json.valve ?? 0,
         setpoint: json.setpoint ?? 22.0,
       });
+      setLastUpdated(new Date());
       setError(null);
     } catch (err) {
       // Don't log AbortError as it's expected on unmount
@@ -70,6 +72,7 @@ export function useSensorData(refreshInterval = 5000) {
     data,
     loading,
     error,
+    lastUpdated,
     refetch: fetchData,
   };
 }
