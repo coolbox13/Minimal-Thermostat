@@ -86,9 +86,10 @@ void HistoryManager::getHistoryJson(JsonObject& obj, int maxPoints) {
 
         int idx = (startIdx + dataIdx) % BUFFER_SIZE;
         timestamps.add(_buffer[idx].timestamp);
-        temperatures.add(_buffer[idx].temperature);
-        humidities.add(_buffer[idx].humidity);
-        pressures.add(_buffer[idx].pressure);
+        // Round values to reduce JSON size: temp/humidity to 1 decimal, pressure to 0 decimals
+        temperatures.add(roundf(_buffer[idx].temperature * 10.0f) / 10.0f);
+        humidities.add(roundf(_buffer[idx].humidity * 10.0f) / 10.0f);
+        pressures.add(roundf(_buffer[idx].pressure));  // Pressure doesn't need decimals
         valvePositions.add(_buffer[idx].valvePosition);
         pointsAdded++;
     }

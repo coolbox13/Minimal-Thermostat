@@ -8,6 +8,7 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <esp_task_wdt.h>
+#include <esp_heap_caps.h>
 
 // NOW include serial_redirect.h which does the #define
 // After all library includes that might reference Serial
@@ -377,6 +378,33 @@ void loop() {
             currentMillis, g_lastHistoryUpdate, g_lastSensorUpdate);
         // Use WARNING level so it persists in EventLog
         LOG_W("HIST_DIAG", "%s", diagMsg);
+    }
+
+    // Heap health monitoring - check every 30 seconds
+    static unsigned long lastHeapCheck = 0;
+    if (currentMillis - lastHeapCheck > 30000) {
+        lastHeapCheck = currentMillis;
+        uint32_t freeHeap = ESP.getFreeHeap();
+        size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+        float fragmentation = 100.0f * (1.0f - (float)largestBlock / freeHeap);
+
+        // Critical threshold: 20KB free heap - schedule restart
+        if (freeHeap < 20000) {
+            LOG_E(TAG_MAIN, "CRITICAL: Heap below 20KB (%lu bytes), scheduling restart", freeHeap);
+            EventLog::getInstance().addEntry(LOG_ERROR, TAG_MAIN,
+                "CRITICAL: Low memory restart triggered");
+            delay(100);  // Allow log to flush
+            ESP.restart();
+        }
+        // Warning threshold: 30KB free heap
+        else if (freeHeap < 30000) {
+            LOG_W(TAG_MAIN, "WARNING: Low heap (%lu bytes), fragmentation %.1f%%", freeHeap, fragmentation);
+        }
+        // High fragmentation warning (>70%) - ESP32 normally runs at 50-60%
+        else if (fragmentation > 70.0f) {
+            LOG_W(TAG_MAIN, "WARNING: High heap fragmentation (%.1f%%), largest block %u bytes",
+                  fragmentation, largestBlock);
+        }
     }
 
     // Update PID controller at specified interval

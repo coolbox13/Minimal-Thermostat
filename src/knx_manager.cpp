@@ -86,6 +86,9 @@ void KNXManager::setMQTTManager(MQTTManager* mqttManager) {
     _mqttManager = mqttManager;
 }
 
+// Maximum KNX message queue size to prevent memory exhaustion
+static const size_t KNX_MAX_QUEUE_SIZE = 20;
+
 void KNXManager::sendSensorData(float temperature, float humidity, float pressure) {
     // Queue the message for processing in the main loop
     KnxMessage message;
@@ -93,10 +96,14 @@ void KNXManager::sendSensorData(float temperature, float humidity, float pressur
     message.value1 = temperature;
     message.value2 = humidity;
     message.value3 = pressure;
-    
+
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        _messageQueue.push(message);
+        if (_messageQueue.size() < KNX_MAX_QUEUE_SIZE) {
+            _messageQueue.push(message);
+        } else {
+            LOG_W(TAG, "KNX queue full (%d msgs), dropping sensor data", KNX_MAX_QUEUE_SIZE);
+        }
     }
 }
 
@@ -119,10 +126,14 @@ void KNXManager::setValvePosition(int position) {
     KnxMessage message;
     message.type = KnxMessage::VALVE_POSITION;
     message.value1 = static_cast<float>(position);
-    
+
     {
         std::lock_guard<std::mutex> lock(_mutex);
-        _messageQueue.push(message);
+        if (_messageQueue.size() < KNX_MAX_QUEUE_SIZE) {
+            _messageQueue.push(message);
+        } else {
+            LOG_W(TAG, "KNX queue full (%d msgs), dropping valve command", KNX_MAX_QUEUE_SIZE);
+        }
     }
 }
 

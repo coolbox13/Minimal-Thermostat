@@ -1,9 +1,13 @@
 #include "config_manager.h"
 #include "config.h"
 #include "logger.h"
+#include <math.h>
 
 // Static tag for logging
 static const char* TAG = "CONFIG";
+
+// NVS write counter for monitoring flash wear
+static uint32_t _nvsWriteCount = 0;
 
 // Initialize static instance
 ConfigManager* ConfigManager::_instance = nullptr;
@@ -240,16 +244,48 @@ float ConfigManager::getPidKp() {
     return roundToPrecision(_preferences.getFloat("pid_kp", DEFAULT_KP), 2);
 }
 void ConfigManager::setPidKp(float kp) {
-    _preferences.putFloat("pid_kp", roundToPrecision(kp, 2));
+    float rounded = roundToPrecision(kp, 2);
+    float current = _preferences.getFloat("pid_kp", DEFAULT_KP);
+    if (fabs(current - rounded) > 0.001f) {
+        _preferences.putFloat("pid_kp", rounded);
+        _nvsWriteCount++;
+        if (_nvsWriteCount % 100 == 0) {
+            LOG_I(TAG, "NVS write count: %lu", _nvsWriteCount);
+        }
+    }
 }
 void ConfigManager::setPidKi(float ki) {
-    _preferences.putFloat("pid_ki", roundToPrecision(ki, 3));
+    float rounded = roundToPrecision(ki, 3);
+    float current = _preferences.getFloat("pid_ki", DEFAULT_KI);
+    if (fabs(current - rounded) > 0.0001f) {
+        _preferences.putFloat("pid_ki", rounded);
+        _nvsWriteCount++;
+        if (_nvsWriteCount % 100 == 0) {
+            LOG_I(TAG, "NVS write count: %lu", _nvsWriteCount);
+        }
+    }
 }
 void ConfigManager::setPidKd(float kd) {
-    _preferences.putFloat("pid_kd", roundToPrecision(kd, 3));
+    float rounded = roundToPrecision(kd, 3);
+    float current = _preferences.getFloat("pid_kd", DEFAULT_KD);
+    if (fabs(current - rounded) > 0.0001f) {
+        _preferences.putFloat("pid_kd", rounded);
+        _nvsWriteCount++;
+        if (_nvsWriteCount % 100 == 0) {
+            LOG_I(TAG, "NVS write count: %lu", _nvsWriteCount);
+        }
+    }
 }
 void ConfigManager::setSetpoint(float setpoint) {
-    _preferences.putFloat("setpoint", roundToPrecision(setpoint, 1));
+    float rounded = roundToPrecision(setpoint, 1);
+    float current = _preferences.getFloat("setpoint", DEFAULT_SETPOINT);
+    if (fabs(current - rounded) > 0.01f) {
+        _preferences.putFloat("setpoint", rounded);
+        _nvsWriteCount++;
+        if (_nvsWriteCount % 100 == 0) {
+            LOG_I(TAG, "NVS write count: %lu", _nvsWriteCount);
+        }
+    }
 }
 float ConfigManager::getPidKi() {
     return roundToPrecision(_preferences.getFloat("pid_ki", DEFAULT_KI), 3);

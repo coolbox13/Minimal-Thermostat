@@ -4,8 +4,11 @@
 #include "config_manager.h"
 #include "serial_monitor.h"
 #include "serial_redirect.h"
+#include "sensor_health_monitor.h"
+#include "valve_health_monitor.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <esp_heap_caps.h>
 
 // Redirect Serial to CapturedSerial for web monitor
 #define Serial CapturedSerial
@@ -105,8 +108,8 @@ void MQTTManager::publishJsonAggregate(float temperature, float humidity, float 
     ConfigManager* configManager = ConfigManager::getInstance();
     if (!configManager) return;
 
-    // Create JSON document (512 bytes should be enough for all data)
-    StaticJsonDocument<512> doc;
+    // Create JSON document (768 bytes to accommodate health data)
+    StaticJsonDocument<768> doc;
 
     // Sensor data
     doc["temperature"] = roundf(temperature * 100) / 100.0f; // Round to 2 decimals
@@ -132,6 +135,22 @@ void MQTTManager::publishJsonAggregate(float temperature, float humidity, float 
     doc["wifi"]["rssi"] = wifiRSSI;
     doc["uptime"] = uptime;
     doc["status"] = "online";
+
+    // Health monitoring data
+    SensorHealthMonitor* sensorHealth = SensorHealthMonitor::getInstance();
+    ValveHealthMonitor* valveHealth = ValveHealthMonitor::getInstance();
+
+    doc["health"]["sensor_healthy"] = sensorHealth->isSensorHealthy();
+    doc["health"]["sensor_failure_rate"] = roundf(sensorHealth->getFailureRate() * 10) / 10.0f;
+    doc["health"]["sensor_consecutive_failures"] = sensorHealth->getConsecutiveFailures();
+    doc["health"]["valve_healthy"] = valveHealth->isValveHealthy();
+    doc["health"]["valve_error_pct"] = roundf(valveHealth->getAverageError() * 10) / 10.0f;
+
+    // Memory health
+    uint32_t freeHeap = ESP.getFreeHeap();
+    size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    doc["health"]["free_heap"] = freeHeap;
+    doc["health"]["heap_fragmentation"] = roundf(100.0f * (1.0f - (float)largestBlock / freeHeap) * 10) / 10.0f;
 
     // Serialize JSON to string
     String jsonPayload;

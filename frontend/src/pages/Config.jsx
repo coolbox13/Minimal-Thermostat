@@ -32,7 +32,7 @@ export function Config() {
     setpoint: '22.0',
     deadband: '0.5',
     adaptation_enabled: true,
-    adaptation_interval: '60',
+    adaptation_interval: '1800',
   });
   const [pidValid, setPidValid] = useState({
     kp: true,

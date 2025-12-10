@@ -614,7 +614,7 @@ private:
     static constexpr uint32_t DEFAULT_SYSTEM_WATCHDOG_TIMEOUT_MS = 2700000;
     static constexpr uint32_t DEFAULT_WIFI_WATCHDOG_TIMEOUT_MS = 1800000;
     static constexpr float DEFAULT_PID_DEADBAND = 0.2f;
-    static constexpr float DEFAULT_PID_ADAPTATION_INTERVAL_SEC = 60.0f;
+    static constexpr float DEFAULT_PID_ADAPTATION_INTERVAL_SEC = 1800.0f;  // 30 minutes
     static constexpr uint8_t DEFAULT_MANUAL_OVERRIDE_POSITION = 0;
     static constexpr uint32_t DEFAULT_MANUAL_OVERRIDE_TIMEOUT_SEC = 3600; // 1 hour
     static constexpr float DEFAULT_WEBHOOK_TEMP_LOW_THRESHOLD = 15.0f;
