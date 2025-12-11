@@ -217,6 +217,8 @@ void test_store_retrieve_humidity(void) {
 
 /**
  * Test 3.3: Store and retrieve pressure
+ * Note: Pressure values are rounded to 0 decimals in JSON export
+ * to reduce payload size (1020.8 becomes 1021)
  */
 void test_store_retrieve_pressure(void) {
     HistoryManager* history = HistoryManager::getInstance();
@@ -228,7 +230,8 @@ void test_store_retrieve_pressure(void) {
 
     JsonArray pressure = doc["pressures"];
     TEST_ASSERT_EQUAL_INT(1, pressure.size());
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 1020.8f, pressure[0]);
+    // Pressure is rounded to whole numbers in JSON export
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 1021.0f, pressure[0]);
 }
 
 /**

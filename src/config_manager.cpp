@@ -872,8 +872,8 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
     }
     if (doc["pid"].containsKey("adaptation_interval")) {
         float interval = roundToPrecision(doc["pid"]["adaptation_interval"].as<float>(), 1);
-        if (interval < 10 || interval > 600) {
-            errorMessage = "PID adaptation interval must be between 10 and 600 seconds";
+        if (interval < 10 || interval > 3600) {
+            errorMessage = "PID adaptation interval must be between 10 and 3600 seconds";
             LOG_W(TAG, "%s", errorMessage.c_str());
             return false;
         }
