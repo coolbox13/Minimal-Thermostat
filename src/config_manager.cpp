@@ -65,6 +65,30 @@ bool ConfigManager::begin() {
         setLastRebootReason("Unknown");
         LOG_I(TAG, "Initialized missing reboot_reason key");
     }
+    if (!_preferences.isKey("ntp_server")) {
+        setNtpServer(NTP_SERVER);
+        LOG_I(TAG, "Initialized missing ntp_server key");
+    }
+    if (!_preferences.isKey("mqtt_user")) {
+        setMqttUsername("");
+        LOG_I(TAG, "Initialized missing mqtt_user key");
+    }
+    if (!_preferences.isKey("pid_adapt")) {
+        setPidAdaptationInterval(DEFAULT_PID_ADAPTATION_INTERVAL_SEC);
+        LOG_I(TAG, "Initialized missing pid_adapt key");
+    }
+    if (!_preferences.isKey("webhook_url")) {
+        setWebhookUrl("");
+        LOG_I(TAG, "Initialized missing webhook_url key");
+    }
+    if (!_preferences.isKey("webhook_low")) {
+        setWebhookTempLowThreshold(DEFAULT_WEBHOOK_TEMP_LOW_THRESHOLD);
+        LOG_I(TAG, "Initialized missing webhook_low key");
+    }
+    if (!_preferences.isKey("webhook_hi")) {
+        setWebhookTempHighThreshold(DEFAULT_WEBHOOK_TEMP_HIGH_THRESHOLD);
+        LOG_I(TAG, "Initialized missing webhook_hi key");
+    }
 
     return true;
 }
