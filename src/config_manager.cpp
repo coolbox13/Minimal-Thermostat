@@ -73,6 +73,10 @@ bool ConfigManager::begin() {
         setMqttUsername("");
         LOG_I(TAG, "Initialized missing mqtt_user key");
     }
+    if (!_preferences.isKey("mqtt_pass")) {
+        setMqttPassword("");
+        LOG_I(TAG, "Initialized missing mqtt_pass key");
+    }
     if (!_preferences.isKey("pid_adapt")) {
         setPidAdaptationInterval(DEFAULT_PID_ADAPTATION_INTERVAL_SEC);
         LOG_I(TAG, "Initialized missing pid_adapt key");
