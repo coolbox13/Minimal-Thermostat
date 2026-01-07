@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
+#include <ESPmDNS.h>
 #include <esp_task_wdt.h>
 #include <esp_heap_caps.h>
 
@@ -169,6 +170,15 @@ void initializeWiFi() {
         }
 
         if (event.type == WiFiEventType::CONNECTED) {
+            // Initialize mDNS for local network discovery
+            String mdnsHostname = configManager->getMdnsHostname();
+            if (MDNS.begin(mdnsHostname.c_str())) {
+                LOG_I(TAG_WIFI, "mDNS started: http://%s.local", mdnsHostname.c_str());
+                MDNS.addService("http", "tcp", 80);  // Advertise web server
+            } else {
+                LOG_W(TAG_WIFI, "mDNS failed to start");
+            }
+
             // Sync time with NTP server after WiFi connection
             LOG_I(TAG_WIFI, "Synchronizing time with NTP server...");
             if (ntpManager.syncTime(NTP_SYNC_TIMEOUT_MS)) {

@@ -53,6 +53,7 @@ export function Config() {
       setFormData({
         wifi_ssid: config.network?.wifi_ssid || '',
         wifi_pass: '',
+        mdns_hostname: config.network?.mdns_hostname || 'esp32-thermostat',
         ntp_server: config.network?.ntp_server || 'pool.ntp.org',
         ntp_timezone_offset: config.network?.ntp_timezone_offset || 0,
         ntp_daylight_offset: config.network?.ntp_daylight_offset || 0,
@@ -370,6 +371,28 @@ export function Config() {
               />
             </div>
             <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">mDNS / Local Network Discovery</h3>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  mDNS Hostname
+                </label>
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value=${formData.mdns_hostname || 'esp32-thermostat'}
+                    onInput=${(e) => updateFormData('mdns_hostname', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    class="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    placeholder="esp32-thermostat"
+                    maxlength="32"
+                  />
+                  <span class="text-gray-500 dark:text-gray-400">.local</span>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Access your device at http://${formData.mdns_hostname || 'esp32-thermostat'}.local (requires reboot)
+                </p>
+              </div>
+            </div>
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">NTP Time Synchronization</h3>
               <div class="space-y-4">
                 <div>
@@ -424,6 +447,7 @@ export function Config() {
               onClick=${() => saveConfig('network', {
                 wifi_ssid: formData.wifi_ssid,
                 wifi_pass: formData.wifi_pass || undefined,
+                mdns_hostname: formData.mdns_hostname,
                 ntp_server: formData.ntp_server,
                 ntp_timezone_offset: formData.ntp_timezone_offset,
                 ntp_daylight_offset: formData.ntp_daylight_offset,

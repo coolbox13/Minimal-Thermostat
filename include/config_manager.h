@@ -149,6 +149,19 @@ public:
      */
     void setNtpDaylightOffset(int offset);
 
+    // mDNS settings
+    /**
+     * @brief Get the mDNS hostname for local network discovery
+     * @return mDNS hostname (without .local suffix)
+     */
+    String getMdnsHostname();
+
+    /**
+     * @brief Set the mDNS hostname for local network discovery
+     * @param hostname Hostname (max 32 chars, alphanumeric and hyphens only)
+     */
+    void setMdnsHostname(const String& hostname);
+
     // MQTT settings
     /**
      * @brief Get the MQTT broker server address

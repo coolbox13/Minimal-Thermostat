@@ -89,6 +89,10 @@ bool ConfigManager::begin() {
         setWebhookTempHighThreshold(DEFAULT_WEBHOOK_TEMP_HIGH_THRESHOLD);
         LOG_I(TAG, "Initialized missing webhook_hi key");
     }
+    if (!_preferences.isKey("mdns_host")) {
+        setMdnsHostname("esp32-thermostat");
+        LOG_I(TAG, "Initialized missing mdns_host key");
+    }
 
     return true;
 }
@@ -137,6 +141,15 @@ int ConfigManager::getNtpDaylightOffset() {
 
 void ConfigManager::setNtpDaylightOffset(int offset) {
     _preferences.putInt("ntp_dst_offset", offset);
+}
+
+// mDNS settings
+String ConfigManager::getMdnsHostname() {
+    return _preferences.getString("mdns_host", "esp32-thermostat");
+}
+
+void ConfigManager::setMdnsHostname(const String& hostname) {
+    _preferences.putString("mdns_host", hostname);
 }
 
 // MQTT settings
@@ -515,6 +528,7 @@ void ConfigManager::getJson(JsonDocument& doc) {
     // Create JSON structure directly
     doc["network"]["wifi_ssid"] = getWifiSSID();
     doc["network"]["wifi_pass"] = "**********"; // Don't expose password in JSON
+    doc["network"]["mdns_hostname"] = getMdnsHostname();
     doc["network"]["ntp_server"] = getNtpServer();
     doc["network"]["ntp_timezone_offset"] = getNtpTimezoneOffset();
     doc["network"]["ntp_daylight_offset"] = getNtpDaylightOffset();
@@ -611,7 +625,34 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
             setWifiPassword(pass);
         }
     }
-    
+
+    // mDNS hostname
+    if (doc["network"].containsKey("mdns_hostname")) {
+        String hostname = doc["network"]["mdns_hostname"].as<String>();
+        if (hostname.length() > 0 && hostname.length() <= 32) {
+            // Validate: only alphanumeric and hyphens, no leading/trailing hyphens
+            bool valid = true;
+            for (size_t i = 0; i < hostname.length() && valid; i++) {
+                char c = hostname.charAt(i);
+                if (!isalnum(c) && c != '-') valid = false;
+            }
+            if (hostname.startsWith("-") || hostname.endsWith("-")) valid = false;
+
+            if (valid) {
+                setMdnsHostname(hostname);
+                LOG_D(TAG, "mDNS hostname set to: %s", hostname.c_str());
+            } else {
+                errorMessage = "mDNS hostname must be alphanumeric with hyphens only";
+                LOG_W(TAG, "%s", errorMessage.c_str());
+                return false;
+            }
+        } else if (hostname.length() > 32) {
+            errorMessage = "mDNS hostname too long (max 32 characters)";
+            LOG_W(TAG, "%s", errorMessage.c_str());
+            return false;
+        }
+    }
+
     // NTP settings
     if (doc["network"].containsKey("ntp_server")) {
         String ntpServer = doc["network"]["ntp_server"].as<String>();

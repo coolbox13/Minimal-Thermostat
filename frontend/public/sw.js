@@ -3,7 +3,7 @@
  * Provides offline capability and caching for better performance
  */
 
-const CACHE_NAME = 'esp32-thermostat-v1';
+const CACHE_NAME = 'esp32-thermostat-v3';
 const RUNTIME_CACHE = 'esp32-thermostat-runtime';
 
 // Assets to cache on install
