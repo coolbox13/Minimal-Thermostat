@@ -6,13 +6,15 @@
 #define Serial CapturedSerial
 
 EventLog::EventLog()
-    : _mqttLoggingEnabled(false)
+    : _dirty(false),
+      _lastSaveTime(0),
+      _mqttLoggingEnabled(false)
 {
     _entries.reserve(MAX_ENTRIES);
 }
 
 EventLog::~EventLog() {
-    saveToLittleFS();
+    flushIfDue(true);
 }
 
 EventLog& EventLog::getInstance() {
@@ -32,7 +34,13 @@ bool EventLog::begin() {
     }
 
     // Load existing logs from LittleFS
-    return loadFromLittleFS();
+    bool loaded = loadFromLittleFS();
+    _lastSaveTime = millis();
+    return loaded;
+}
+
+void EventLog::loop() {
+    flushIfDue(false);
 }
 
 void EventLog::addEntry(LogLevel level, const char* tag, const char* message) {
@@ -47,8 +55,8 @@ void EventLog::addEntry(LogLevel level, const char* tag, const char* message) {
         _entries.erase(_entries.begin());
     }
 
-    // Save to LittleFS (asynchronously would be better, but keep it simple for now)
-    saveToLittleFS();
+    markDirty();
+    flushIfDue(level == LOG_ERROR);
 
     // Publish to MQTT if enabled
     if (_mqttLoggingEnabled && _mqttCallback) {
@@ -84,7 +92,8 @@ String EventLog::getFilteredEntriesJSON(LogLevel minLevel, const char* tag) {
 
 void EventLog::clear() {
     _entries.clear();
-    saveToLittleFS();
+    markDirty();
+    flushIfDue(true);
 }
 
 size_t EventLog::getCount() const {
@@ -220,6 +229,8 @@ bool EventLog::saveToLittleFS() {
         return false;
     }
 
+    _dirty = false;
+    _lastSaveTime = millis();
     return true;
 }
 
@@ -227,4 +238,20 @@ void EventLog::publishToMQTT(LogLevel level, const char* tag, const char* messag
     if (_mqttCallback) {
         _mqttCallback(level, tag, message);
     }
+}
+
+void EventLog::markDirty() {
+    _dirty = true;
+}
+
+void EventLog::flushIfDue(bool force) {
+    if (!_dirty) {
+        return;
+    }
+
+    if (!force && millis() - _lastSaveTime < SAVE_INTERVAL_MS) {
+        return;
+    }
+
+    saveToLittleFS();
 }

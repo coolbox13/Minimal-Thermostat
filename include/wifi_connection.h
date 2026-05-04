@@ -236,6 +236,8 @@ private:
     void checkAndLogSignalStrength();
     void handleConnectionStatus();
     void handlePeriodicTasks();
+    void startReconnectAttempt();
+    void finishReconnectAttempt(bool connected);
     
     /**
      * @brief Get the name of a WiFi connection state
@@ -256,6 +258,8 @@ private:
     unsigned long _lastSignalCheck;
     int _reconnectAttempts;
     bool _configPortalStarted;
+    unsigned long _connectAttemptStart;
+    unsigned long _lastReconnectAttempt;
     
     // Reconnection settings
     int _maxReconnectAttempts;

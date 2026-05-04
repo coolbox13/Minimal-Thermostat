@@ -10,7 +10,7 @@ export default defineConfig({
       algorithm: 'gzip',
       ext: '.gz',
       threshold: 1024, // Only compress files > 1KB
-      deleteOriginFile: false,
+      deleteOriginFile: true,
     }),
   ],
   build: {

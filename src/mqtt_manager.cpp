@@ -17,7 +17,8 @@
 MQTTManager* MQTTManager::_instance = nullptr;
 
 MQTTManager::MQTTManager(PubSubClient& mqttClient)
-    : _mqttClient(mqttClient), _knxManager(nullptr), _valvePosition(0) {
+    : _mqttClient(mqttClient), _knxManager(nullptr), _valvePosition(0), _lastReconnectAttempt(0),
+      _mqttServer(MQTT_SERVER), _mqttPort(MQTT_PORT) {
     // Store instance for static callback
     _instance = this;
 }
@@ -34,23 +35,30 @@ void MQTTManager::begin() {
     Serial.println("Setting up MQTT...");
     
     // Set server and callback
-    _mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+    configureServerFromSettings();
     _mqttClient.setCallback(mqttCallback);
     _mqttClient.setBufferSize(1536);  // Increased buffer size for discovery messages (climate payload is ~992 bytes)
-    
-    // Try to connect
-    reconnect();
-    
+    _mqttClient.setSocketTimeout(2);
+    _mqttClient.setKeepAlive(30);
+
     // Initialize Home Assistant integration using unique_ptr
     _homeAssistant = std::unique_ptr<HomeAssistant>(new HomeAssistant(_mqttClient, "esp32_thermostat"));
     _homeAssistant->begin();
+
+    // Try to connect
+    reconnect();
     
     Serial.println("MQTT initialized");
 }
 
 void MQTTManager::loop() {
     if (!_mqttClient.connected()) {
-        reconnect();
+        unsigned long now = millis();
+        if (now - _lastReconnectAttempt >= MQTT_RECONNECT_INTERVAL_MS) {
+            _lastReconnectAttempt = now;
+            reconnect();
+        }
+        return;
     }
     _mqttClient.loop();
 }
@@ -351,52 +359,45 @@ bool MQTTManager::isConnected() {
 }
 
 void MQTTManager::reconnect() {
-    int attempts = 0;
-    while (!_mqttClient.connected() && attempts < 3) {
-        Serial.println("Attempting MQTT connection...");
-        String clientId = "ESP32Thermostat-";
-        clientId += String(random(0xffff), HEX);
-        
-        // Get MQTT credentials from ConfigManager
-        ConfigManager* configManager = ConfigManager::getInstance();
-        String mqttUser = configManager->getMqttUsername();
-        String mqttPass = configManager->getMqttPassword();
-        
-        // Use credentials if provided, otherwise use empty strings (no auth)
-        const char* username = (mqttUser.length() > 0) ? mqttUser.c_str() : nullptr;
-        const char* password = (mqttPass.length() > 0) ? mqttPass.c_str() : nullptr;
-        
-        if (_mqttClient.connect(clientId.c_str(), username, password)) {
-            Serial.println("MQTT connected");
+    if (_mqttClient.connected() || WiFi.status() != WL_CONNECTED) {
+        return;
+    }
 
-            // Subscribe to topics - include ALL topics that have callbacks in this manager
-            _mqttClient.subscribe(MQTT_TOPIC_VALVE_COMMAND);
-            _mqttClient.subscribe("esp32_thermostat/valve/set");
-            _mqttClient.subscribe("esp32_thermostat/temperature/set");
-            _mqttClient.subscribe("esp32_thermostat/preset/set");  // HA preset mode control
-            _mqttClient.subscribe("esp32_thermostat/mode/set");    // HA heat/off mode control
-            _mqttClient.subscribe("esp32_thermostat/restart");
-            
-            // Update availability
-            if (_homeAssistant) {
-                _homeAssistant->updateAvailability(true);
+    Serial.println("Attempting MQTT connection...");
+    configureServerFromSettings();
 
-                // HA MQTT FIX: Publish initial diagnostic state immediately after connection
-                // This ensures sensors don't show "Unknown" in Home Assistant
-                int rssi = WiFi.RSSI();
-                unsigned long uptime = millis() / 1000;
-                _homeAssistant->updateDiagnostics(rssi, uptime);
+    String clientId = "ESP32Thermostat-";
+    clientId += String(random(0xffff), HEX);
 
-                // HA FIX #5: Sync climate state after reconnection
-                _homeAssistant->syncClimateState();
-            }
-        } else {
-            Serial.print("MQTT connection failed, rc=");
-            Serial.print(_mqttClient.state());
-            Serial.println(" trying again in 5 seconds");
-            delay(5000);
-            attempts++;
-        }
+    ConfigManager* configManager = ConfigManager::getInstance();
+    String mqttUser = configManager->getMqttUsername();
+    String mqttPass = configManager->getMqttPassword();
+
+    const char* username = (mqttUser.length() > 0) ? mqttUser.c_str() : nullptr;
+    const char* password = (mqttPass.length() > 0) ? mqttPass.c_str() : nullptr;
+
+    if (!_mqttClient.connect(clientId.c_str(), username, password)) {
+        Serial.print("MQTT connection failed, rc=");
+        Serial.println(_mqttClient.state());
+        return;
+    }
+
+    Serial.println("MQTT connected");
+
+    _mqttClient.subscribe(MQTT_TOPIC_VALVE_COMMAND);
+    _mqttClient.subscribe("esp32_thermostat/valve/set");
+    _mqttClient.subscribe("esp32_thermostat/temperature/set");
+    _mqttClient.subscribe("esp32_thermostat/preset/set");
+    _mqttClient.subscribe("esp32_thermostat/mode/set");
+    _mqttClient.subscribe("esp32_thermostat/restart");
+
+    if (_homeAssistant) {
+        _homeAssistant->updateAvailability(true);
+
+        int rssi = WiFi.RSSI();
+        unsigned long uptime = millis() / 1000;
+        _homeAssistant->updateDiagnostics(rssi, uptime);
+        _homeAssistant->syncClimateState();
     }
 }
 
@@ -407,4 +408,11 @@ void MQTTManager::syncClimateState() {
     if (_homeAssistant) {
         _homeAssistant->syncClimateState();
     }
+}
+
+void MQTTManager::configureServerFromSettings() {
+    ConfigManager* configManager = ConfigManager::getInstance();
+    _mqttServer = configManager->getMqttServer();
+    _mqttPort = configManager->getMqttPort();
+    _mqttClient.setServer(_mqttServer.c_str(), _mqttPort);
 }

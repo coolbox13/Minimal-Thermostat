@@ -34,6 +34,8 @@ WiFiConnectionManager::WiFiConnectionManager()
       _lastSignalCheck(0),
       _reconnectAttempts(0),
       _configPortalStarted(false),
+      _connectAttemptStart(0),
+      _lastReconnectAttempt(0),
       _signalHistoryIndex(0),
       _maxReconnectAttempts(10),  // Default to 10 attempts
       _disableWatchdogDuringOperations(false),
@@ -486,6 +488,7 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
         // Get state names for better logging
         const char* oldStateName = getStateName(oldState);
         const char* newStateName = getStateName(newState);
+        unsigned long previousStateChangeTime = _lastStateChangeTime;
 
         LOG_I(TAG, "WiFi state changing: %s -> %s", oldStateName, newStateName);
 
@@ -509,7 +512,7 @@ void WiFiConnectionManager::setState(WiFiConnectionState newState) {
 
             // Log time since last connection attempt
             if (oldState == WiFiConnectionState::CONNECTING) {
-                unsigned long connectionTime = millis() - _lastStateChangeTime;
+                unsigned long connectionTime = millis() - previousStateChangeTime;
                 LOG_I(TAG, "Connection established in %lu ms after %d attempt(s)",
                       connectionTime, attemptCount + 1);  // Use stored count + 1 for correct display
             }
@@ -701,6 +704,9 @@ void WiFiConnectionManager::checkAndLogSignalStrength() {
         _lastSignalCheck = millis();
         
         if (_state == WiFiConnectionState::CONNECTED) {
+            int prevIndex = (_signalHistoryIndex == 0) ? SIGNAL_HISTORY_SIZE - 1 : _signalHistoryIndex - 1;
+            bool hasPreviousReading = _signalHistory[prevIndex].timestamp > 0;
+            int prevRSSI = hasPreviousReading ? _signalHistory[prevIndex].rssi : 0;
             int rssi = WiFi.RSSI();
             int quality = getSignalQuality();
             
@@ -712,9 +718,7 @@ void WiFiConnectionManager::checkAndLogSignalStrength() {
             _signalHistoryIndex = (_signalHistoryIndex + 1) % SIGNAL_HISTORY_SIZE;
             
             // Compare with previous reading and trigger event if significant change
-            int prevIndex = (_signalHistoryIndex == 0) ? SIGNAL_HISTORY_SIZE - 1 : _signalHistoryIndex - 1;
-            if (_signalHistory[prevIndex].timestamp > 0) {
-                int prevRSSI = _signalHistory[prevIndex].rssi;
+            if (hasPreviousReading) {
                 if (abs(rssi - prevRSSI) > 5) { // 5 dBm threshold for significant change
                     String message = "Signal strength changed from " + String(prevRSSI) + 
                                      " to " + String(rssi) + " dBm";
@@ -726,6 +730,18 @@ void WiFiConnectionManager::checkAndLogSignalStrength() {
 }
 
 void WiFiConnectionManager::handleConnectionStatus() {
+    if (_state == WiFiConnectionState::CONNECTING && _reconnectionInProgress) {
+        if (WiFi.status() == WL_CONNECTED) {
+            finishReconnectAttempt(true);
+            return;
+        }
+
+        if (millis() - _connectAttemptStart >= WIFI_RECONNECT_TIMEOUT_MS) {
+            finishReconnectAttempt(false);
+            return;
+        }
+    }
+
     // Check if WiFi is still connected
     if (_state == WiFiConnectionState::CONNECTED && WiFi.status() != WL_CONNECTED) {
         int wifiStatus = WiFi.status();
@@ -747,14 +763,11 @@ void WiFiConnectionManager::handleConnectionStatus() {
             return;
         }
         
-        // Increment reconnection counter
-        _reconnectAttempts++;
-        
-        // Attempt to reconnect
-        LOG_I(TAG, "Attempting reconnection (attempt %d of %d)", 
-              _reconnectAttempts, _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
-        
-        connect(WIFI_RECONNECT_TIMEOUT_MS);
+        if (millis() - _lastReconnectAttempt < WIFI_RECONNECT_TIMEOUT_MS) {
+            return;
+        }
+
+        startReconnectAttempt();
     }
 }
 
@@ -777,4 +790,46 @@ void WiFiConnectionManager::handlePeriodicTasks() {
             LOG_W(TAG, "Device is connected to WiFi but internet connectivity test failed");
         }
     }
+}
+
+void WiFiConnectionManager::startReconnectAttempt() {
+    String storedSSID = _configManager->getWifiSSID();
+    String storedPass = _configManager->getWifiPassword();
+
+    if (storedSSID.length() == 0) {
+        LOG_E(TAG, "Cannot reconnect - no SSID configured");
+        return;
+    }
+
+    _reconnectAttempts++;
+    _lastReconnectAttempt = millis();
+    _connectAttemptStart = millis();
+    _reconnectionInProgress = true;
+
+    LOG_I(TAG, "Starting WiFi reconnection attempt %d of %d",
+          _reconnectAttempts, _maxReconnectAttempts == 0 ? 0 : _maxReconnectAttempts);
+
+    setState(WiFiConnectionState::CONNECTING);
+    WiFi.disconnect();
+    WiFi.begin(storedSSID.c_str(), storedPass.c_str());
+}
+
+void WiFiConnectionManager::finishReconnectAttempt(bool connected) {
+    _reconnectionInProgress = false;
+
+    if (connected) {
+        LOG_I(TAG, "WiFi reconnected");
+        LOG_I(TAG, "IP address: %s", WiFi.localIP().toString().c_str());
+        setState(WiFiConnectionState::CONNECTED);
+        _lastConnectedTime = millis();
+
+        if (_watchdogManager) {
+            _watchdogManager->resetWiFiWatchdog();
+        }
+        return;
+    }
+
+    LOG_W(TAG, "WiFi reconnection attempt timed out");
+    WiFi.disconnect();
+    setState(WiFiConnectionState::DISCONNECTED);
 }

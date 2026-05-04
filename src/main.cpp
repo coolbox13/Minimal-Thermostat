@@ -114,15 +114,8 @@ WatchdogManager watchdogManager;
 // 9. performInitialSetup() - Depends on all above (WiFi status, sensors, watchdog)
 
 void initializeLogger() {
-    Logger::getInstance().setLogLevel(LOG_DEBUG);  // Increased to DEBUG for WiFi diagnostics
+    Logger::getInstance().setLogLevel(LOG_INFO);
     LOG_I(TAG_MAIN, "ESP32 KNX Thermostat - With Adaptive PID Controller");
-
-    // TEST: Multiple consecutive Serial.println to verify TeeSerial buffering
-    Serial.println("=== SERIAL MONITOR TEST START ===");
-    Serial.println("Line 1: This is a test");
-    Serial.println("Line 2: Multiple lines");
-    Serial.println("Line 3: Should all appear");
-    Serial.println("=== SERIAL MONITOR TEST END ===");
 
     // Initialize EventLog for persistent logging
     EventLog::getInstance().begin();
@@ -160,6 +153,7 @@ void initializeWiFi() {
     ntpManager.begin(ntpServer.c_str(), timezoneOffset, daylightOffset);
     
     WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+    wifiManager.setMaxReconnectAttempts(configManager->getMaxReconnectAttempts());
     wifiManager.registerEventCallback([&wifiManager, &ntpManager](const WiFiConnectionEvent& event) {
         // Note: Connection details are already logged by WiFiConnectionManager::setState()
         // Only log the event type for non-CONNECTED events to avoid duplicate logging
@@ -338,6 +332,7 @@ void loop() {
   
     // Replace old WiFi check with WiFiConnectionManager loop
     WiFiConnectionManager::getInstance().loop();
+    EventLog::getInstance().loop();
 
     // Clean up disconnected WebSocket clients
     static unsigned long lastWsCleanup = 0;
@@ -422,21 +417,6 @@ void loop() {
     if (currentTime - lastPIDUpdate > configManager->getPidUpdateInterval()) {
         updatePIDControl();
         lastPIDUpdate = currentTime;
-    }
-
-    // Add periodic internet connectivity test
-    static unsigned long lastConnectivityCheck = 0;
-    if (millis() - lastConnectivityCheck > configManager->getConnectivityCheckInterval()) {
-        lastConnectivityCheck = millis();
-
-        WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
-        if (wifiManager.getState() == WiFiConnectionState::CONNECTED) {
-            if (wifiManager.testInternetConnectivity()) {
-                LOG_D(TAG_WIFI, "Internet connectivity test passed");
-            } else {
-                LOG_W(TAG_WIFI, "Internet connectivity test failed despite WiFi connection");
-            }
-        }
     }
 
     // HA MQTT FIX: Update diagnostics every 60 seconds for Home Assistant

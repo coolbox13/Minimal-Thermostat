@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include "config.h"
 #include <WiFi.h>  // Add this include for WiFi functionality
+#include "wifi_connection.h"
 
 /**
  * PREFERENCES NAMESPACE: "watchdog"
@@ -125,7 +126,7 @@ void WatchdogManager::update() {
   // Skip updates if watchdogs are paused
   if (watchdogsPaused) {
     // Check if pause duration has expired
-    if (millis() > watchdogPauseEndTime) {
+    if ((int32_t)(millis() - watchdogPauseEndTime) >= 0) {
       resumeWatchdogs();
     }
     return;
@@ -156,13 +157,9 @@ void WatchdogManager::update() {
 
 bool WatchdogManager::attemptWiFiRecovery() {
   LOG_I(TAG, "Stage 1: Attempting WiFi reconnection");
-  
-  // This is a placeholder - the actual implementation will need to
-  // coordinate with the WiFiConnectionManager to attempt reconnection
-  // Return true if reconnection is successful, false otherwise
-  
-  // For now, we'll just return false to simulate failed recovery
-  return false;
+
+  WiFiConnectionManager& wifiManager = WiFiConnectionManager::getInstance();
+  return wifiManager.connect(WIFI_RECONNECT_TIMEOUT_MS);
 }
 
 bool WatchdogManager::resetWiFiSubsystem() {
@@ -206,7 +203,7 @@ bool WatchdogManager::shouldEnterSafeMode() {
   Preferences preferences;
   bool result = false;
   
-  if (preferences.begin(PREF_NAMESPACE, true)) {
+  if (preferences.begin(PREF_NAMESPACE, false)) {
     consecutiveResets = preferences.getUChar(PREF_CONSECUTIVE_RESETS, 0);
     
     // Check if we've had too many consecutive resets

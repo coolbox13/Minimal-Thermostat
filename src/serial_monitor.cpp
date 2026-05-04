@@ -20,10 +20,6 @@ void initSerialCapture() {
 
     // Initialize TeeSerial with hardware serial reference
     CapturedSerial.begin(_realSerial);
-
-    // TEST: Directly call TeeSerial to verify it works
-    CapturedSerial.println("*** DIRECT TEST: TeeSerial is working ***");
-    // This should appear on both hardware serial AND web monitor (once WebSocket connects)
 }
 
 // Custom vprintf for ESP-IDF log redirection

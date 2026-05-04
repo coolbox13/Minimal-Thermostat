@@ -56,15 +56,6 @@ void WebServerManager::begin(AsyncWebServer* server) {
     SerialMonitor::getInstance().begin(_server);
     Serial.println("Serial monitor WebSocket initialized");
 
-    // TEST: Send test messages directly to SerialMonitor after WebSocket is ready
-    delay(100);  // Give WebSocket time to fully initialize
-    SerialMonitor::getInstance().println("TEST 1: Direct call to SerialMonitor::println()");
-    Serial.println("TEST 2: Through Serial (redirected to CapturedSerial)");
-    SerialMonitor::getInstance().println("TEST 3: Another direct call");
-    Serial.println("TEST 4: Another Serial call");
-
-    // CORS disabled for testing - all requests are same-origin
-
     // Initialize LittleFS with format_if_failed=true and partition name "spiffs"
     // Note: Partition table uses "spiffs" name (required by PlatformIO buildfs tool)
     // Mount at "/littlefs" (can't mount to root "/" - it's reserved)
@@ -306,10 +297,6 @@ void WebServerManager::setupDefaultRoutes() {
     auto assetHandler = [](AsyncWebServerRequest *request) {
         String path = request->url();
         
-        // Debug: log the request with method and headers
-        Serial.printf("[ASSET HANDLER] Method: %s, URL: %s\n", request->methodToString(), path.c_str());
-        Serial.printf("[ASSET HANDLER] Headers: Origin=%s\n", request->header("Origin").c_str());
-        
         // Sanitize path: remove query strings and fragments
         int queryIndex = path.indexOf('?');
         if (queryIndex >= 0) {
@@ -325,8 +312,6 @@ void WebServerManager::setupDefaultRoutes() {
             path = "/" + path;
         }
         
-        Serial.printf("[ASSET HANDLER] Processed path: %s\n", path.c_str());
-
         // Determine correct MIME type based on file extension
         String contentType = "application/octet-stream";
         if (path.endsWith(".js") || path.endsWith(".mjs")) {
@@ -357,32 +342,23 @@ void WebServerManager::setupDefaultRoutes() {
         // Try gzipped version first (consistent with root route, space-optimized)
         String gzPath = fsPath + ".gz";  // e.g., "/js/file.js.gz"
 
-        Serial.printf("[ASSET] Checking: %s\n", gzPath.c_str());
         if (LittleFS.exists(gzPath)) {
-            Serial.printf("[ASSET] Found gzip: %s\n", gzPath.c_str());
-            // IMPORTANT: Pass the ORIGINAL path (without .gz) to beginResponse
-            // ESPAsyncWebServer will automatically look for .gz version and set Content-Encoding
-            // See: https://github.com/me-no-dev/ESPAsyncWebServer#serve-static-gzipped-files
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+            response->addHeader("Content-Encoding", "gzip");
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-            Serial.printf("[ASSET] Sending file (gzip auto-detected): %s, Content-Type: %s\n", fsPath.c_str(), contentType.c_str());
             request->send(response);
             return;
         }
 
         // Try uncompressed file as fallback
-        Serial.printf("[ASSET] Checking uncompressed: %s\n", fsPath.c_str());
         if (LittleFS.exists(fsPath)) {
-            Serial.printf("[ASSET] Found uncompressed: %s\n", fsPath.c_str());
             AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
-            Serial.printf("[ASSET] Sending uncompressed file: %s, Content-Type: %s\n", fsPath.c_str(), contentType.c_str());
             request->send(response);
             return;
         }
 
         // File not found - log for debugging
-        Serial.printf("[ASSET] NOT FOUND: %s (tried %s and %s)\n", path.c_str(), gzPath.c_str(), fsPath.c_str());
         request->send(404, "text/plain", "Asset not found: " + path);
     };
 
@@ -431,8 +407,8 @@ void WebServerManager::setupDefaultRoutes() {
         // Try gzipped version first - let ESPAsyncWebServer auto-detect
         String gzPath = fsPath + ".gz";  // e.g., "/manifest.json.gz"
         if (LittleFS.exists(gzPath)) {
-            // Pass original path - library will find .gz and set Content-Encoding automatically
-            AsyncWebServerResponse *response = request->beginResponse(LittleFS, fsPath, contentType);
+            AsyncWebServerResponse *response = request->beginResponse(LittleFS, gzPath, contentType);
+            response->addHeader("Content-Encoding", "gzip");
             response->addHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
             request->send(response);
             return;
@@ -459,34 +435,6 @@ void WebServerManager::setupDefaultRoutes() {
     // Note: serveStatic removed - it was causing double prefix issues
     // All file serving is handled by explicit routes above for better control
     // Explicit routes handle gzip support and correct MIME types
-
-    // DEBUG: List all files in LittleFS
-    _server->on("/api/debug/files", HTTP_GET, [](AsyncWebServerRequest *request) {
-        String output = "Files in LittleFS:\n\n";
-        // LittleFS.open() uses paths relative to filesystem root, not VFS mount point
-        File root = LittleFS.open("/");
-        if (!root) {
-            output += "ERROR: Failed to open root directory\n";
-            request->send(500, "text/plain", output);
-            return;
-        }
-
-        File file = root.openNextFile();
-        int count = 0;
-        while (file) {
-            output += file.name();
-            output += " (";
-            output += String(file.size());
-            output += " bytes)\n";
-            count++;
-            file = root.openNextFile();
-        }
-
-        output += "\nTotal files: " + String(count) + "\n";
-        output += "LittleFS Total: " + String(LittleFS.totalBytes()) + " bytes\n";
-        output += "LittleFS Used: " + String(LittleFS.usedBytes()) + " bytes\n";
-        request->send(200, "text/plain", output);
-    });
 
     // API endpoints
     // Sensor data endpoint - support both /api/sensor and /api/sensor-data for compatibility

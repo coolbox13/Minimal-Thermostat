@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 // Forward declare std::string for conversion
 #ifdef __cplusplus
@@ -74,6 +75,43 @@ public:
 
     const char* c_str() const { return data ? data : ""; }
     size_t length() const { return len; }
+
+    char charAt(size_t index) const {
+        if (index >= len) {
+            return '\0';
+        }
+        return c_str()[index];
+    }
+
+    bool startsWith(const char* prefix) const {
+        if (!prefix) {
+            return false;
+        }
+        size_t prefixLen = strlen(prefix);
+        if (prefixLen > len) {
+            return false;
+        }
+        return strncmp(c_str(), prefix, prefixLen) == 0;
+    }
+
+    bool startsWith(const String& prefix) const {
+        return startsWith(prefix.c_str());
+    }
+
+    bool endsWith(const char* suffix) const {
+        if (!suffix) {
+            return false;
+        }
+        size_t suffixLen = strlen(suffix);
+        if (suffixLen > len) {
+            return false;
+        }
+        return strcmp(c_str() + len - suffixLen, suffix) == 0;
+    }
+
+    bool endsWith(const String& suffix) const {
+        return endsWith(suffix.c_str());
+    }
 
     bool concat(const char* str) {
         if (!str) return false;

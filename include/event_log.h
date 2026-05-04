@@ -43,6 +43,11 @@ public:
     bool begin();
 
     /**
+     * @brief Flush pending log writes when the write interval has elapsed.
+     */
+    void loop();
+
+    /**
      * @brief Add a log entry
      * @param level Log level
      * @param tag Log tag/category
@@ -113,6 +118,8 @@ private:
      * @brief Save log entries to LittleFS
      */
     bool saveToLittleFS();
+    void markDirty();
+    void flushIfDue(bool force = false);
 
     /**
      * @brief Publish log entry to MQTT
@@ -120,9 +127,12 @@ private:
     void publishToMQTT(LogLevel level, const char* tag, const char* message);
 
     static const int MAX_ENTRIES = 100;           // Maximum number of log entries to store
+    static const unsigned long SAVE_INTERVAL_MS = 60000;
     static constexpr const char* LOG_FILE = "/event_log.json";  // LittleFS file path
 
     std::vector<LogEntry> _entries;               // In-memory log entries
+    bool _dirty;                                  // Pending filesystem write
+    unsigned long _lastSaveTime;                  // Last successful save timestamp
     bool _mqttLoggingEnabled;                     // MQTT logging enabled flag
     std::function<void(LogLevel, const char*, const char*)> _mqttCallback;  // MQTT callback
 };

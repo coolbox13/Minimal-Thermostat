@@ -57,16 +57,22 @@ public:
     void syncClimateState();
 
 private:
+    static constexpr unsigned long MQTT_RECONNECT_INTERVAL_MS = 5000;
+
     PubSubClient& _mqttClient;
     KNXManager* _knxManager;
     std::unique_ptr<HomeAssistant> _homeAssistant;
     int _valvePosition;
+    unsigned long _lastReconnectAttempt;
+    String _mqttServer;
+    uint16_t _mqttPort;
     
     // Static pointer to instance for callback
     static MQTTManager* _instance;
     
     // Process incoming MQTT message
     void processMessage(char* topic, byte* payload, unsigned int length);
+    void configureServerFromSettings();
 };
 
 #endif // MQTT_MANAGER_H
