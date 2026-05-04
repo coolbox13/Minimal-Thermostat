@@ -60,22 +60,31 @@ void ESPKNXIP::__start()
 {
   if (server != nullptr) {
     try {
-      // Register handlers for AsyncWebServer - fix the function signatures
-      server->on(ROOT_PREFIX, HTTP_GET, std::bind(&ESPKNXIP::__handle_root, this, std::placeholders::_1));
-      server->on(__ROOT_PATH, HTTP_GET, std::bind(&ESPKNXIP::__handle_root, this, std::placeholders::_1));
-      server->on(__REGISTER_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_register, this, std::placeholders::_1));
-      server->on(__DELETE_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_delete, this, std::placeholders::_1));
-      server->on(__PHYS_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_set, this, std::placeholders::_1));
+      ArRequestHandlerFunction rootHandler = [this](AsyncWebServerRequest* request) { __handle_root(request); };
+      ArRequestHandlerFunction registerHandler = [this](AsyncWebServerRequest* request) { __handle_register(request); };
+      ArRequestHandlerFunction deleteHandler = [this](AsyncWebServerRequest* request) { __handle_delete(request); };
+      ArRequestHandlerFunction physHandler = [this](AsyncWebServerRequest* request) { __handle_set(request); };
+      ArRequestHandlerFunction configHandler = [this](AsyncWebServerRequest* request) { __handle_config(request); };
+      ArRequestHandlerFunction feedbackHandler = [this](AsyncWebServerRequest* request) { __handle_feedback(request); };
+
+      server->on(ROOT_PREFIX, HTTP_GET, rootHandler);
+      server->on(__ROOT_PATH, HTTP_GET, rootHandler);
+      server->on(__REGISTER_PATH, HTTP_POST, registerHandler);
+      server->on(__DELETE_PATH, HTTP_POST, deleteHandler);
+      server->on(__PHYS_PATH, HTTP_POST, physHandler);
 #if !DISABLE_EEPROM_BUTTONS
-      server->on(__EEPROM_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_eeprom, this, std::placeholders::_1));
+      ArRequestHandlerFunction eepromHandler = [this](AsyncWebServerRequest* request) { __handle_eeprom(request); };
+      server->on(__EEPROM_PATH, HTTP_POST, eepromHandler);
 #endif
-      server->on(__CONFIG_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_config, this, std::placeholders::_1));
-      server->on(__FEEDBACK_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_feedback, this, std::placeholders::_1));
+      server->on(__CONFIG_PATH, HTTP_POST, configHandler);
+      server->on(__FEEDBACK_PATH, HTTP_POST, feedbackHandler);
 #if !DISABLE_RESTORE_BUTTON
-      server->on(__RESTORE_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_restore, this, std::placeholders::_1));
+      ArRequestHandlerFunction restoreHandler = [this](AsyncWebServerRequest* request) { __handle_restore(request); };
+      server->on(__RESTORE_PATH, HTTP_POST, restoreHandler);
 #endif
 #if !DISABLE_REBOOT_BUTTON
-      server->on(__REBOOT_PATH, HTTP_POST, std::bind(&ESPKNXIP::__handle_reboot, this, std::placeholders::_1));
+      ArRequestHandlerFunction rebootHandler = [this](AsyncWebServerRequest* request) { __handle_reboot(request); };
+      server->on(__REBOOT_PATH, HTTP_POST, rebootHandler);
 #endif
       
       // No need to call begin() for AsyncWebServer, it starts automatically

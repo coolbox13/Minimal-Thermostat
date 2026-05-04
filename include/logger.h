@@ -94,7 +94,7 @@ public:
         char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        log(LOG_ERROR, tag, buffer);
+        log(LOG_ERROR, tag, "%s", buffer);
     }
 
     void warning(const char* tag, const char* format, ...) {
@@ -104,7 +104,7 @@ public:
         char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        log(LOG_WARNING, tag, buffer);
+        log(LOG_WARNING, tag, "%s", buffer);
     }
 
     void info(const char* tag, const char* format, ...) {
@@ -114,7 +114,7 @@ public:
         char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        log(LOG_INFO, tag, buffer);
+        log(LOG_INFO, tag, "%s", buffer);
     }
 
     void debug(const char* tag, const char* format, ...) {
@@ -124,7 +124,7 @@ public:
         char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        log(LOG_DEBUG, tag, buffer);
+        log(LOG_DEBUG, tag, "%s", buffer);
     }
 
     void verbose(const char* tag, const char* format, ...) {
@@ -134,7 +134,7 @@ public:
         char buffer[512];
         vsnprintf(buffer, sizeof(buffer), format, args);
         va_end(args);
-        log(LOG_VERBOSE, tag, buffer);
+        log(LOG_VERBOSE, tag, "%s", buffer);
     }
 
     // Register a callback for logs (useful for storing logs or sending to a server)

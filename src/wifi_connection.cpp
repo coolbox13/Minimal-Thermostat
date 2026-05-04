@@ -258,7 +258,7 @@ int WiFiConnectionManager::getSignalQuality() const {
         return 100;
     } else {
         // Linear conversion from RSSI to quality percentage
-        return 2 * (rssi + 100);
+        return min(100, 2 * (rssi + 100));
     }
 }
 
