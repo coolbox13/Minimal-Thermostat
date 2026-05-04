@@ -497,7 +497,11 @@ void WebServerManager::setupDefaultRoutes() {
 
         // Create AsyncJsonResponse - this allocates ONE buffer that we write to directly
         // No intermediate document needed - eliminates double buffering
+#if ARDUINOJSON_VERSION_MAJOR == 6
         AsyncJsonResponse *response = new AsyncJsonResponse(false, HISTORY_JSON_SIZE);
+#else
+        AsyncJsonResponse *response = new AsyncJsonResponse(false);
+#endif
         if (!response) {
             Serial.println("[HISTORY] ERROR: Failed to create AsyncJsonResponse!");
             request->send(503, "application/json", "{\"error\":\"Response allocation failed\"}");
