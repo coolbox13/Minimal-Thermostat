@@ -157,7 +157,7 @@ void test_old_data_overwritten(void) {
     TEST_ASSERT_EQUAL_INT(21, history->getDataPointCount());
 
     // Export to JSON and verify newest data is at the end
-    StaticJsonDocument<4096> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray temps = doc["temperatures"];
@@ -191,7 +191,7 @@ void test_store_retrieve_temperature(void) {
 
     history->addDataPoint(23.7f, 55.0f, 1013.25f, 60);
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray temps = doc["temperatures"];
@@ -207,7 +207,7 @@ void test_store_retrieve_humidity(void) {
 
     history->addDataPoint(22.0f, 65.5f, 1013.25f, 50);
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray humidity = doc["humidities"];
@@ -225,7 +225,7 @@ void test_store_retrieve_pressure(void) {
 
     history->addDataPoint(22.0f, 50.0f, 1020.8f, 50);
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray pressure = doc["pressures"];
@@ -242,7 +242,7 @@ void test_store_retrieve_valve_position(void) {
 
     history->addDataPoint(22.0f, 50.0f, 1013.25f, 85);
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray valvePos = doc["valvePositions"];
@@ -262,7 +262,7 @@ void test_store_retrieve_timestamp(void) {
 
     history->addDataPoint(22.0f, 50.0f, 1013.25f, 50);
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray timestamps = doc["timestamps"];
@@ -280,7 +280,7 @@ void test_multiple_different_values(void) {
     history->addDataPoint(21.0f, 50.0f, 1010.0f, 20);
     history->addDataPoint(22.0f, 60.0f, 1020.0f, 30);
 
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray temps = doc["temperatures"];
@@ -313,17 +313,17 @@ void test_json_export_structure(void) {
 
     history->addDataPoint(22.0f, 50.0f, 1013.25f, 50);
 
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     // Check expected keys exist
-    TEST_ASSERT_TRUE(doc.containsKey("timestamps"));
-    TEST_ASSERT_TRUE(doc.containsKey("temperatures"));
-    TEST_ASSERT_TRUE(doc.containsKey("humidities"));
-    TEST_ASSERT_TRUE(doc.containsKey("pressures"));
-    TEST_ASSERT_TRUE(doc.containsKey("valvePositions"));
-    TEST_ASSERT_TRUE(doc.containsKey("count"));
-    TEST_ASSERT_TRUE(doc.containsKey("maxSize"));
+    TEST_ASSERT_TRUE(doc["timestamps"].is<JsonArray>());
+    TEST_ASSERT_TRUE(doc["temperatures"].is<JsonArray>());
+    TEST_ASSERT_TRUE(doc["humidities"].is<JsonArray>());
+    TEST_ASSERT_TRUE(doc["pressures"].is<JsonArray>());
+    TEST_ASSERT_TRUE(doc["valvePositions"].is<JsonArray>());
+    TEST_ASSERT_TRUE(doc["count"].is<int>());
+    TEST_ASSERT_TRUE(doc["maxSize"].is<int>());
 }
 
 /**
@@ -339,7 +339,7 @@ void test_json_export_metadata(void) {
         history->addDataPoint(22.0f, 50.0f, 1013.25f, 50);
     }
 
-    StaticJsonDocument<8192> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     TEST_ASSERT_EQUAL_INT(25, doc["count"]);
@@ -357,7 +357,7 @@ void test_json_export_with_max_points(void) {
         history->addDataPoint(20.0f + i * 0.1f, 50.0f, 1013.25f, 50);
     }
 
-    StaticJsonDocument<4096> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc, 50); // Request only 50 points
 
     JsonArray temps = doc["temperatures"];
@@ -371,7 +371,7 @@ void test_json_export_with_max_points(void) {
 void test_json_export_empty_buffer(void) {
     HistoryManager* history = HistoryManager::getInstance();
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     TEST_ASSERT_EQUAL_INT(0, doc["count"]);
@@ -392,7 +392,7 @@ void test_extreme_temperature_values(void) {
     history->addDataPoint(-40.0f, 50.0f, 1013.25f, 0);
     history->addDataPoint(85.0f, 50.0f, 1013.25f, 100);
 
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray temps = doc["temperatures"];
@@ -409,7 +409,7 @@ void test_humidity_boundaries(void) {
     history->addDataPoint(22.0f, 0.0f, 1013.25f, 50);
     history->addDataPoint(22.0f, 100.0f, 1013.25f, 50);
 
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray humidity = doc["humidities"];
@@ -426,7 +426,7 @@ void test_valve_position_boundaries(void) {
     history->addDataPoint(22.0f, 50.0f, 1013.25f, 0);
     history->addDataPoint(22.0f, 50.0f, 1013.25f, 100);
 
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray valvePos = doc["valvePositions"];
@@ -445,7 +445,7 @@ void test_nan_values(void) {
     // Should not crash
     TEST_ASSERT_EQUAL_INT(1, history->getDataPointCount());
 
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     // JSON should handle NaN (may serialize as null or 0)
@@ -465,7 +465,7 @@ void test_timestamp_fallback_no_ntp(void) {
 
     history->addDataPoint(22.0f, 50.0f, 1013.25f, 50);
 
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray timestamps = doc["timestamps"];
@@ -542,7 +542,7 @@ void test_timestamps_increment(void) {
         history->addDataPoint(22.0f, 50.0f, 1013.25f, 50);
     }
 
-    StaticJsonDocument<4096> doc;
+    JsonDocument doc;
     history->getHistoryJson(doc);
 
     JsonArray timestamps = doc["timestamps"];

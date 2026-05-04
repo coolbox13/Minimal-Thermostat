@@ -271,7 +271,7 @@ void WatchdogManager::registerRebootReason(RebootReason reason, const char* deta
     // Store reboot reason with timestamp in persistent storage
     
     // Create a JSON document to store the reboot information
-    StaticJsonDocument<256> doc;
+    JsonDocument doc;
     doc["reason"] = getRebootReasonName(reason);
     doc["details"] = details ? details : "";
     doc["timestamp"] = millis();

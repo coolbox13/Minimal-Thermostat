@@ -606,10 +606,10 @@ void ConfigManager::getJson(JsonDocument& doc) {
 
 // Validation helper functions
 bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("network")) {
+    if (doc["network"].isNull()) {
         return true;
     }
-    if (doc["network"].containsKey("wifi_ssid")) {
+    if (!doc["network"]["wifi_ssid"].isNull()) {
         String ssid = doc["network"]["wifi_ssid"].as<String>();
         if (ssid.length() > 32) {
             errorMessage = "WiFi SSID too long (max 32 characters)";
@@ -618,7 +618,7 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
         }
         setWifiSSID(ssid);
     }
-    if (doc["network"].containsKey("wifi_pass")) {
+    if (!doc["network"]["wifi_pass"].isNull()) {
         String pass = doc["network"]["wifi_pass"].as<String>();
         if (pass.length() > 0 && pass != "**********") {
             if (pass.length() > 64) {
@@ -631,7 +631,7 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
     }
 
     // mDNS hostname
-    if (doc["network"].containsKey("mdns_hostname")) {
+    if (!doc["network"]["mdns_hostname"].isNull()) {
         String hostname = doc["network"]["mdns_hostname"].as<String>();
         if (hostname.length() > 0 && hostname.length() <= 32) {
             // Validate: only alphanumeric and hyphens, no leading/trailing hyphens
@@ -658,7 +658,7 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
     }
 
     // NTP settings
-    if (doc["network"].containsKey("ntp_server")) {
+    if (!doc["network"]["ntp_server"].isNull()) {
         String ntpServer = doc["network"]["ntp_server"].as<String>();
         if (ntpServer.length() > 0 && ntpServer.length() <= 64) {
             setNtpServer(ntpServer);
@@ -670,7 +670,7 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
         }
     }
     
-    if (doc["network"].containsKey("ntp_timezone_offset")) {
+    if (!doc["network"]["ntp_timezone_offset"].isNull()) {
         int offset = doc["network"]["ntp_timezone_offset"].as<int>();
         // Valid range: -43200 to 43200 (UTC-12 to UTC+12)
         if (offset >= -43200 && offset <= 43200) {
@@ -683,7 +683,7 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
         }
     }
     
-    if (doc["network"].containsKey("ntp_daylight_offset")) {
+    if (!doc["network"]["ntp_daylight_offset"].isNull()) {
         int offset = doc["network"]["ntp_daylight_offset"].as<int>();
         // Valid range: 0 to 7200 (0 to 2 hours)
         if (offset >= 0 && offset <= 7200) {
@@ -699,13 +699,13 @@ bool ConfigManager::validateAndApplyNetworkSettings(const JsonDocument& doc, Str
     return true;
 }
 bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("mqtt")) {
+    if (doc["mqtt"].isNull()) {
         return true;
     }
-    if (doc["mqtt"].containsKey("server")) {
+    if (!doc["mqtt"]["server"].isNull()) {
         setMqttServer(doc["mqtt"]["server"].as<String>());
     }
-    if (doc["mqtt"].containsKey("port")) {
+    if (!doc["mqtt"]["port"].isNull()) {
         uint16_t port = doc["mqtt"]["port"].as<uint16_t>();
         if (port == 0) {
             errorMessage = "Invalid MQTT port";
@@ -715,7 +715,7 @@ bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String
         setMqttPort(port);
     }
     
-    if (doc["mqtt"].containsKey("username")) {
+    if (!doc["mqtt"]["username"].isNull()) {
         String username = doc["mqtt"]["username"].as<String>();
         if (username.length() <= 64) {
             setMqttUsername(username);
@@ -727,7 +727,7 @@ bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String
         }
     }
     
-    if (doc["mqtt"].containsKey("password")) {
+    if (!doc["mqtt"]["password"].isNull()) {
         String password = doc["mqtt"]["password"].as<String>();
         if (password.length() > 0 && password != "**********") {
             if (password.length() <= 64) {
@@ -742,7 +742,7 @@ bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String
         // If password is empty or masked, don't change it (keep current)
     }
     
-    if (doc["mqtt"].containsKey("json_aggregate_enabled")) {
+    if (!doc["mqtt"]["json_aggregate_enabled"].isNull()) {
         setMqttJsonAggregateEnabled(doc["mqtt"]["json_aggregate_enabled"].as<bool>());
         LOG_D(TAG, "MQTT JSON aggregate enabled: %s", doc["mqtt"]["json_aggregate_enabled"].as<bool>() ? "true" : "false");
     }
@@ -750,10 +750,10 @@ bool ConfigManager::validateAndApplyMQTTSettings(const JsonDocument& doc, String
     return true;
 }
 bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("knx")) {
+    if (doc["knx"].isNull()) {
         return true;
     }
-    if (doc["knx"].containsKey("area")) {
+    if (!doc["knx"]["area"].isNull()) {
         uint8_t area = doc["knx"]["area"].as<uint8_t>();
         if (area > 15) {
             errorMessage = "KNX area must be 0-15";
@@ -762,7 +762,7 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
         }
         setKnxArea(area);
     }
-    if (doc["knx"].containsKey("line")) {
+    if (!doc["knx"]["line"].isNull()) {
         uint8_t line = doc["knx"]["line"].as<uint8_t>();
         if (line > 15) {
             errorMessage = "KNX line must be 0-15";
@@ -771,7 +771,7 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
         }
         setKnxLine(line);
     }
-    if (doc["knx"].containsKey("member")) {
+    if (!doc["knx"]["member"].isNull()) {
         uint8_t member = doc["knx"]["member"].as<uint8_t>();
         if (member > 255) {
             errorMessage = "KNX member must be 0-255";
@@ -780,13 +780,13 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
         }
         setKnxMember(member);
     }
-    if (doc["knx"].containsKey("use_test")) {
+    if (!doc["knx"]["use_test"].isNull()) {
         setUseTestAddresses(doc["knx"]["use_test"].as<bool>());
     }
 
     // Valve command address
-    if (doc["knx"].containsKey("valve_command")) {
-        if (doc["knx"]["valve_command"].containsKey("area")) {
+    if (!doc["knx"]["valve_command"].isNull()) {
+        if (!doc["knx"]["valve_command"]["area"].isNull()) {
             uint8_t area = doc["knx"]["valve_command"]["area"].as<uint8_t>();
             if (area > 15) {
                 errorMessage = "Valve command area must be 0-15";
@@ -795,7 +795,7 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
             }
             setKnxValveCommandArea(area);
         }
-        if (doc["knx"]["valve_command"].containsKey("line")) {
+        if (!doc["knx"]["valve_command"]["line"].isNull()) {
             uint8_t line = doc["knx"]["valve_command"]["line"].as<uint8_t>();
             if (line > 15) {
                 errorMessage = "Valve command line must be 0-15";
@@ -804,7 +804,7 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
             }
             setKnxValveCommandLine(line);
         }
-        if (doc["knx"]["valve_command"].containsKey("member")) {
+        if (!doc["knx"]["valve_command"]["member"].isNull()) {
             uint8_t member = doc["knx"]["valve_command"]["member"].as<uint8_t>();
             if (member > 255) {
                 errorMessage = "Valve command member must be 0-255";
@@ -816,8 +816,8 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
     }
 
     // Valve feedback address
-    if (doc["knx"].containsKey("valve_feedback")) {
-        if (doc["knx"]["valve_feedback"].containsKey("area")) {
+    if (!doc["knx"]["valve_feedback"].isNull()) {
+        if (!doc["knx"]["valve_feedback"]["area"].isNull()) {
             uint8_t area = doc["knx"]["valve_feedback"]["area"].as<uint8_t>();
             if (area > 15) {
                 errorMessage = "Valve feedback area must be 0-15";
@@ -826,7 +826,7 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
             }
             setKnxValveFeedbackArea(area);
         }
-        if (doc["knx"]["valve_feedback"].containsKey("line")) {
+        if (!doc["knx"]["valve_feedback"]["line"].isNull()) {
             uint8_t line = doc["knx"]["valve_feedback"]["line"].as<uint8_t>();
             if (line > 15) {
                 errorMessage = "Valve feedback line must be 0-15";
@@ -835,7 +835,7 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
             }
             setKnxValveFeedbackLine(line);
         }
-        if (doc["knx"]["valve_feedback"].containsKey("member")) {
+        if (!doc["knx"]["valve_feedback"]["member"].isNull()) {
             uint8_t member = doc["knx"]["valve_feedback"]["member"].as<uint8_t>();
             if (member > 255) {
                 errorMessage = "Valve feedback member must be 0-255";
@@ -849,10 +849,10 @@ bool ConfigManager::validateAndApplyKNXSettings(const JsonDocument& doc, String&
     return true;
 }
 bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("bme280")) {
+    if (doc["bme280"].isNull()) {
         return true;
     }
-    if (doc["bme280"].containsKey("address")) {
+    if (!doc["bme280"]["address"].isNull()) {
         String address = doc["bme280"]["address"].as<String>();
         if (address != "0x76" && address != "0x77") {
             errorMessage = "BME280 address must be 0x76 or 0x77";
@@ -860,7 +860,7 @@ bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& erro
             return false;
         }
     }
-    if (doc["bme280"].containsKey("sda_pin")) {
+    if (!doc["bme280"]["sda_pin"].isNull()) {
         uint8_t pin = doc["bme280"]["sda_pin"].as<uint8_t>();
         if (pin > 39) {
             errorMessage = "BME280 SDA pin must be 0-39";
@@ -868,7 +868,7 @@ bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& erro
             return false;
         }
     }
-    if (doc["bme280"].containsKey("scl_pin")) {
+    if (!doc["bme280"]["scl_pin"].isNull()) {
         uint8_t pin = doc["bme280"]["scl_pin"].as<uint8_t>();
         if (pin > 39) {
             errorMessage = "BME280 SCL pin must be 0-39";
@@ -876,7 +876,7 @@ bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& erro
             return false;
         }
     }
-    if (doc["bme280"].containsKey("interval")) {
+    if (!doc["bme280"]["interval"].isNull()) {
         uint16_t interval = doc["bme280"]["interval"].as<uint16_t>();
         if (interval < 1 || interval > 3600) {
             errorMessage = "BME280 interval must be 1-3600 seconds";
@@ -887,10 +887,10 @@ bool ConfigManager::validateBME280Settings(const JsonDocument& doc, String& erro
     return true;
 }
 bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("pid")) {
+    if (doc["pid"].isNull()) {
         return true;
     }
-    if (doc["pid"].containsKey("kp")) {
+    if (!doc["pid"]["kp"].isNull()) {
         float kp = roundToPrecision(doc["pid"]["kp"].as<float>(), 2);
         LOG_D(TAG, "Parsed Kp: %.2f (rounded)", kp);
         if (kp < 0) {
@@ -900,7 +900,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setPidKp(kp);
     }
-    if (doc["pid"].containsKey("ki")) {
+    if (!doc["pid"]["ki"].isNull()) {
         float ki = roundToPrecision(doc["pid"]["ki"].as<float>(), 3);
         LOG_D(TAG, "Parsed Ki: %.3f (rounded)", ki);
         if (ki < 0) {
@@ -910,7 +910,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setPidKi(ki);
     }
-    if (doc["pid"].containsKey("kd")) {
+    if (!doc["pid"]["kd"].isNull()) {
         float kd = roundToPrecision(doc["pid"]["kd"].as<float>(), 3);
         LOG_D(TAG, "Parsed Kd: %.3f (rounded)", kd);
         if (kd < 0) {
@@ -920,7 +920,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setPidKd(kd);
     }
-    if (doc["pid"].containsKey("setpoint")) {
+    if (!doc["pid"]["setpoint"].isNull()) {
         float setpoint = roundToPrecision(doc["pid"]["setpoint"].as<float>(), 1);
         LOG_D(TAG, "Parsed setpoint: %.1f (rounded)", setpoint);
         if (setpoint < 5 || setpoint > 30) {
@@ -930,7 +930,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setSetpoint(setpoint);
     }
-    if (doc["pid"].containsKey("deadband")) {
+    if (!doc["pid"]["deadband"].isNull()) {
         float deadband = roundToPrecision(doc["pid"]["deadband"].as<float>(), 1);
         if (deadband < 0 || deadband > 5) {
             errorMessage = "PID deadband must be between 0°C and 5°C";
@@ -939,7 +939,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setPidDeadband(deadband);
     }
-    if (doc["pid"].containsKey("adaptation_interval")) {
+    if (!doc["pid"]["adaptation_interval"].isNull()) {
         float interval = roundToPrecision(doc["pid"]["adaptation_interval"].as<float>(), 1);
         if (interval < 10 || interval > 3600) {
             errorMessage = "PID adaptation interval must be between 10 and 3600 seconds";
@@ -948,7 +948,7 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
         }
         setPidAdaptationInterval(interval);
     }
-    if (doc["pid"].containsKey("adaptation_enabled")) {
+    if (!doc["pid"]["adaptation_enabled"].isNull()) {
         bool enabled = doc["pid"]["adaptation_enabled"].as<bool>();
         setAdaptationEnabled(enabled);
         LOG_D(TAG, "Adaptation enabled set to: %s", enabled ? "true" : "false");
@@ -957,17 +957,17 @@ bool ConfigManager::validateAndApplyPIDSettings(const JsonDocument& doc, String&
 }
 
 bool ConfigManager::validateAndApplyManualOverrideSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("manual_override")) {
+    if (doc["manual_override"].isNull()) {
         return true; // Manual override section is optional
     }
 
-    if (doc["manual_override"].containsKey("enabled")) {
+    if (!doc["manual_override"]["enabled"].isNull()) {
         bool enabled = doc["manual_override"]["enabled"].as<bool>();
         setManualOverrideEnabled(enabled);
         LOG_D(TAG, "Manual override enabled: %d", enabled);
     }
 
-    if (doc["manual_override"].containsKey("position")) {
+    if (!doc["manual_override"]["position"].isNull()) {
         int position = doc["manual_override"]["position"].as<int>();
         if (position < 0 || position > 100) {
             errorMessage = "Manual override position must be between 0 and 100";
@@ -978,7 +978,7 @@ bool ConfigManager::validateAndApplyManualOverrideSettings(const JsonDocument& d
         LOG_D(TAG, "Manual override position: %d%%", position);
     }
 
-    if (doc["manual_override"].containsKey("timeout")) {
+    if (!doc["manual_override"]["timeout"].isNull()) {
         uint32_t timeout = doc["manual_override"]["timeout"].as<uint32_t>();
         if (timeout > 86400) { // Max 24 hours
             errorMessage = "Manual override timeout must be <= 86400 seconds (24 hours)";
@@ -992,10 +992,10 @@ bool ConfigManager::validateAndApplyManualOverrideSettings(const JsonDocument& d
     return true;
 }
 bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("timing")) {
+    if (doc["timing"].isNull()) {
         return true;
     }
-    if (doc["timing"].containsKey("sensor_update_interval")) {
+    if (!doc["timing"]["sensor_update_interval"].isNull()) {
         uint32_t interval = doc["timing"]["sensor_update_interval"].as<uint32_t>();
         if (interval < 3000 || interval > 300000) {
             errorMessage = "Sensor update interval must be between 3000ms (3s) and 300000ms";
@@ -1004,7 +1004,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setSensorUpdateInterval(interval);
     }
-    if (doc["timing"].containsKey("history_update_interval")) {
+    if (!doc["timing"]["history_update_interval"].isNull()) {
         uint32_t interval = doc["timing"]["history_update_interval"].as<uint32_t>();
         if (interval < 3000 || interval > 3600000) {
             errorMessage = "History update interval must be between 3000ms (3s) and 3600000ms (1hr)";
@@ -1013,7 +1013,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setHistoryUpdateInterval(interval);
     }
-    if (doc["timing"].containsKey("pid_update_interval")) {
+    if (!doc["timing"]["pid_update_interval"].isNull()) {
         uint32_t interval = doc["timing"]["pid_update_interval"].as<uint32_t>();
         if (interval < 1000 || interval > 60000) {
             errorMessage = "PID update interval must be between 1000ms and 60000ms";
@@ -1022,7 +1022,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setPidUpdateInterval(interval);
     }
-    if (doc["timing"].containsKey("connectivity_check_interval")) {
+    if (!doc["timing"]["connectivity_check_interval"].isNull()) {
         uint32_t interval = doc["timing"]["connectivity_check_interval"].as<uint32_t>();
         if (interval < 60000 || interval > 3600000) {
             errorMessage = "Connectivity check interval must be between 60000ms and 3600000ms";
@@ -1031,7 +1031,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setConnectivityCheckInterval(interval);
     }
-    if (doc["timing"].containsKey("pid_config_write_interval")) {
+    if (!doc["timing"]["pid_config_write_interval"].isNull()) {
         uint32_t interval = doc["timing"]["pid_config_write_interval"].as<uint32_t>();
         if (interval < 60000 || interval > 3600000) {
             errorMessage = "PID config write interval must be between 60000ms and 3600000ms";
@@ -1040,7 +1040,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setPidConfigWriteInterval(interval);
     }
-    if (doc["timing"].containsKey("wifi_connect_timeout")) {
+    if (!doc["timing"]["wifi_connect_timeout"].isNull()) {
         uint16_t timeout = doc["timing"]["wifi_connect_timeout"].as<uint16_t>();
         if (timeout < 10 || timeout > 600) {
             errorMessage = "WiFi connect timeout must be between 10s and 600s";
@@ -1049,7 +1049,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setWifiConnectTimeout(timeout);
     }
-    if (doc["timing"].containsKey("max_reconnect_attempts")) {
+    if (!doc["timing"]["max_reconnect_attempts"].isNull()) {
         uint8_t attempts = doc["timing"]["max_reconnect_attempts"].as<uint8_t>();
         if (attempts < 1 || attempts > 100) {
             errorMessage = "Max reconnect attempts must be between 1 and 100";
@@ -1058,7 +1058,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setMaxReconnectAttempts(attempts);
     }
-    if (doc["timing"].containsKey("system_watchdog_timeout")) {
+    if (!doc["timing"]["system_watchdog_timeout"].isNull()) {
         uint32_t timeout = doc["timing"]["system_watchdog_timeout"].as<uint32_t>();
         if (timeout < 60000 || timeout > 7200000) {
             errorMessage = "System watchdog timeout must be between 60000ms and 7200000ms";
@@ -1067,7 +1067,7 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
         }
         setSystemWatchdogTimeout(timeout);
     }
-    if (doc["timing"].containsKey("wifi_watchdog_timeout")) {
+    if (!doc["timing"]["wifi_watchdog_timeout"].isNull()) {
         uint32_t timeout = doc["timing"]["wifi_watchdog_timeout"].as<uint32_t>();
         if (timeout < 60000 || timeout > 7200000) {
             errorMessage = "WiFi watchdog timeout must be between 60000ms and 7200000ms";
@@ -1080,16 +1080,16 @@ bool ConfigManager::validateAndApplyTimingSettings(const JsonDocument& doc, Stri
 }
 
 bool ConfigManager::validateAndApplyWebhookSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("webhook")) {
+    if (doc["webhook"].isNull()) {
         return true;
     }
 
-    if (doc["webhook"].containsKey("enabled")) {
+    if (!doc["webhook"]["enabled"].isNull()) {
         bool enabled = doc["webhook"]["enabled"].as<bool>();
         setWebhookEnabled(enabled);
     }
 
-    if (doc["webhook"].containsKey("url")) {
+    if (!doc["webhook"]["url"].isNull()) {
         String url = doc["webhook"]["url"].as<String>();
         if (url.length() > 512) {
             errorMessage = "Webhook URL must be less than 512 characters";
@@ -1099,7 +1099,7 @@ bool ConfigManager::validateAndApplyWebhookSettings(const JsonDocument& doc, Str
         setWebhookUrl(url);
     }
 
-    if (doc["webhook"].containsKey("temp_low_threshold")) {
+    if (!doc["webhook"]["temp_low_threshold"].isNull()) {
         float threshold = doc["webhook"]["temp_low_threshold"].as<float>();
         if (threshold < -20.0f || threshold > 50.0f) {
             errorMessage = "Webhook low temperature threshold must be between -20°C and 50°C";
@@ -1109,7 +1109,7 @@ bool ConfigManager::validateAndApplyWebhookSettings(const JsonDocument& doc, Str
         setWebhookTempLowThreshold(threshold);
     }
 
-    if (doc["webhook"].containsKey("temp_high_threshold")) {
+    if (!doc["webhook"]["temp_high_threshold"].isNull()) {
         float threshold = doc["webhook"]["temp_high_threshold"].as<float>();
         if (threshold < -20.0f || threshold > 50.0f) {
             errorMessage = "Webhook high temperature threshold must be between -20°C and 50°C";
@@ -1145,12 +1145,12 @@ bool ConfigManager::setFromJson(const JsonDocument& doc, String& errorMessage) {
 }
 
 bool ConfigManager::validateAndApplyPresetSettings(const JsonDocument& doc, String& errorMessage) {
-    if (!doc.containsKey("presets")) {
+    if (doc["presets"].isNull()) {
         return true;  // Presets section is optional
     }
 
     // Validate and apply current preset
-    if (doc["presets"].containsKey("current")) {
+    if (!doc["presets"]["current"].isNull()) {
         String preset = doc["presets"]["current"].as<String>();
         if (preset != "none" && preset != "eco" && preset != "comfort" &&
             preset != "away" && preset != "sleep" && preset != "boost") {
@@ -1164,7 +1164,7 @@ bool ConfigManager::validateAndApplyPresetSettings(const JsonDocument& doc, Stri
     // Validate and apply preset temperatures
     const char* presets[] = {"eco", "comfort", "away", "sleep", "boost"};
     for (const char* preset : presets) {
-        if (doc["presets"].containsKey(preset)) {
+        if (!doc["presets"][preset].isNull()) {
             float temp = doc["presets"][preset].as<float>();
             if (temp < 5.0f || temp > 30.0f) {
                 errorMessage = String("Preset temperature for ") + preset + " must be between 5°C and 30°C";

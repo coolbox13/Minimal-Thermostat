@@ -117,7 +117,7 @@ void MQTTManager::publishJsonAggregate(float temperature, float humidity, float 
     if (!configManager) return;
 
     // Create JSON document (768 bytes to accommodate health data)
-    StaticJsonDocument<768> doc;
+    JsonDocument doc;
 
     // Sensor data
     doc["temperature"] = roundf(temperature * 100) / 100.0f; // Round to 2 decimals

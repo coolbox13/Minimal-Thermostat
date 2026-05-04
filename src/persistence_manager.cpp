@@ -94,7 +94,7 @@ void PersistenceManager::printStoredValues() {
 JsonObject PersistenceManager::getStoredValues(JsonDocument& doc) {
     JsonObject root = doc.to<JsonObject>();
     
-    JsonObject pid = root.createNestedObject("pid");
+    JsonObject pid = root["pid"].to<JsonObject>();
     pid["kp"] = preferences.getFloat(KEY_PID_KP, 1.0);
     pid["ki"] = preferences.getFloat(KEY_PID_KI, 0.1);
     pid["kd"] = preferences.getFloat(KEY_PID_KD, 0.05);

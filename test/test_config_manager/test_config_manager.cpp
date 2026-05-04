@@ -243,7 +243,7 @@ void test_export_to_json(void) {
     config->setMqttPort(8883);
 
     // Export to JSON
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     config->getJson(doc);
 
     // Verify exported values (match actual JSON structure from getJson)
@@ -261,7 +261,7 @@ void test_import_from_json_valid(void) {
     config->begin();
 
     // Create JSON configuration (match actual JSON structure expected by setFromJson)
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     doc["network"]["wifi_ssid"] = "ImportedNet";
     doc["network"]["wifi_pass"] = "ImportedPass";
     doc["mqtt"]["server"] = "imported.mqtt.com";
@@ -300,7 +300,7 @@ void test_import_from_json_invalid_mqtt_port(void) {
     config->begin();
 
     // Create JSON with invalid MQTT port
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     doc["mqtt"]["server"] = "test.mqtt.com";
     doc["mqtt"]["port"] = 99999; // Invalid port (> 65535)
 
@@ -320,7 +320,7 @@ void test_import_from_json_invalid_knx_area(void) {
     config->begin();
 
     // Create JSON with invalid KNX area
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     doc["knx"]["area"] = 20; // Invalid (should be 0-15)
     doc["knx"]["line"] = 1;
     doc["knx"]["member"] = 100;
@@ -341,7 +341,7 @@ void test_import_from_json_invalid_setpoint(void) {
     config->begin();
 
     // Create JSON with invalid setpoint (out of range)
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     doc["pid"]["setpoint"] = 50.0f; // Invalid (should be 5-30°C)
 
     String errorMessage;
@@ -366,7 +366,7 @@ void test_json_round_trip(void) {
     config->setKnxArea(7);
 
     // Export to JSON
-    StaticJsonDocument<2048> doc;
+    JsonDocument doc;
     config->getJson(doc);
 
     // Clear and re-import

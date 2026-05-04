@@ -427,7 +427,7 @@ bool WiFiConnectionManager::testInternetConnectivity() {
 }
 
 String WiFiConnectionManager::getConnectionDetailsJson(bool includeHistory) {
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     
     // Connection state
     const char* stateNames[] = {
@@ -460,10 +460,10 @@ String WiFiConnectionManager::getConnectionDetailsJson(bool includeHistory) {
     
     // Include signal history if requested
     if (includeHistory && _state == WiFiConnectionState::CONNECTED) {
-        JsonArray history = doc.createNestedArray("signal_history");
+        JsonArray history = doc["signal_history"].to<JsonArray>();
         for (uint8_t i = 0; i < SIGNAL_HISTORY_SIZE; i++) {
             if (_signalHistory[i].timestamp > 0) {
-                JsonObject entry = history.createNestedObject();
+                JsonObject entry = history.add<JsonObject>();
                 entry["timestamp"] = _signalHistory[i].timestamp;
                 entry["rssi"] = _signalHistory[i].rssi;
             }

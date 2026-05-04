@@ -142,7 +142,7 @@ void WebServerManager::addEndpoint(const char* uri, WebRequestMethodComposite me
 
 // Helper method to handle KNX address changes
 void WebServerManager::handleKNXAddressChange(const JsonDocument& jsonDoc, bool oldUseTestSetting) {
-    if (!jsonDoc.containsKey("knx") || !jsonDoc["knx"].containsKey("use_test")) {
+    if (jsonDoc["knx"].isNull() || jsonDoc["knx"]["use_test"].isNull()) {
         return;
     }
     bool newUseTestSetting = jsonDoc["knx"]["use_test"].as<bool>();
@@ -152,28 +152,28 @@ void WebServerManager::handleKNXAddressChange(const JsonDocument& jsonDoc, bool 
     }
 }
 void WebServerManager::handlePIDParameterUpdates(const JsonDocument& jsonDoc) {
-    if (!jsonDoc.containsKey("pid")) {
+    if (jsonDoc["pid"].isNull()) {
         return;
     }
-    if (jsonDoc["pid"].containsKey("kp")) {
+    if (!jsonDoc["pid"]["kp"].isNull()) {
         float kp = ConfigManager::roundToPrecision(jsonDoc["pid"]["kp"].as<float>(), 2);
         setPidKp(kp);
         Serial.print("Rounded Kp value: ");
         Serial.println(kp, 2);
     }
-    if (jsonDoc["pid"].containsKey("ki")) {
+    if (!jsonDoc["pid"]["ki"].isNull()) {
         float ki = ConfigManager::roundToPrecision(jsonDoc["pid"]["ki"].as<float>(), 3);
         setPidKi(ki);
         Serial.print("Rounded Ki value: ");
         Serial.println(ki, 3);
     }
-    if (jsonDoc["pid"].containsKey("kd")) {
+    if (!jsonDoc["pid"]["kd"].isNull()) {
         float kd = ConfigManager::roundToPrecision(jsonDoc["pid"]["kd"].as<float>(), 3);
         setPidKd(kd);
         Serial.print("Rounded Kd value: ");
         Serial.println(kd, 3);
     }
-    if (jsonDoc["pid"].containsKey("setpoint")) {
+    if (!jsonDoc["pid"]["setpoint"].isNull()) {
         float setpoint = ConfigManager::roundToPrecision(jsonDoc["pid"]["setpoint"].as<float>(), 1);
         setTemperatureSetpoint(setpoint);
         Serial.print("Rounded setpoint value: ");
@@ -183,7 +183,7 @@ void WebServerManager::handlePIDParameterUpdates(const JsonDocument& jsonDoc) {
 }
 
 void WebServerManager::handleNTPUpdate(const JsonDocument& jsonDoc) {
-    if (!jsonDoc.containsKey("network")) {
+    if (jsonDoc["network"].isNull()) {
         return;
     }
     
@@ -194,19 +194,19 @@ void WebServerManager::handleNTPUpdate(const JsonDocument& jsonDoc) {
         
         bool ntpChanged = false;
         
-        if (jsonDoc["network"].containsKey("ntp_server")) {
+        if (!jsonDoc["network"]["ntp_server"].isNull()) {
             String ntpServer = configManager->getNtpServer();
             ntpManager.setNTPServer(ntpServer.c_str());
             ntpChanged = true;
         }
         
-        if (jsonDoc["network"].containsKey("ntp_timezone_offset")) {
+        if (!jsonDoc["network"]["ntp_timezone_offset"].isNull()) {
             int timezoneOffset = configManager->getNtpTimezoneOffset();
             ntpManager.setTimezoneOffset(timezoneOffset);
             ntpChanged = true;
         }
         
-        if (jsonDoc["network"].containsKey("ntp_daylight_offset")) {
+        if (!jsonDoc["network"]["ntp_daylight_offset"].isNull()) {
             int daylightOffset = configManager->getNtpDaylightOffset();
             ntpManager.setDaylightOffset(daylightOffset);
             ntpChanged = true;
@@ -445,7 +445,7 @@ void WebServerManager::setupDefaultRoutes() {
         extern float pressure;
         extern AdaptivePID_Input g_pid_input;
 
-        StaticJsonDocument<200> doc;
+        JsonDocument doc;
         doc["temperature"] = temperature;
         doc["humidity"] = humidity;
         doc["pressure"] = pressure;
@@ -541,7 +541,7 @@ void WebServerManager::setupDefaultRoutes() {
 
         ConfigManager* configManager = ConfigManager::getInstance();
 
-        DynamicJsonDocument doc(2048);
+        JsonDocument doc;
 
         // System information
         doc["system"]["uptime"] = millis() / 1000; // seconds
@@ -657,7 +657,7 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/sensor-health", HTTP_GET, [](AsyncWebServerRequest *request) {
         SensorHealthMonitor* sensorHealth = SensorHealthMonitor::getInstance();
 
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
 
         doc["healthy"] = sensorHealth->isSensorHealthy();
         doc["consecutive_failures"] = sensorHealth->getConsecutiveFailures();
@@ -680,7 +680,7 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/valve-health", HTTP_GET, [](AsyncWebServerRequest *request) {
         ValveHealthMonitor* valveHealth = ValveHealthMonitor::getInstance();
 
-        DynamicJsonDocument doc(512);
+        JsonDocument doc;
 
         doc["healthy"] = valveHealth->isValveHealthy();
         doc["average_error"] = valveHealth->getAverageError();
@@ -715,7 +715,7 @@ void WebServerManager::setupDefaultRoutes() {
         HistoryManager* historyManager = HistoryManager::getInstance();
         ConfigManager* configManager = ConfigManager::getInstance();
 
-        DynamicJsonDocument doc(1024);
+        JsonDocument doc;
 
         unsigned long now = millis();
 
@@ -864,7 +864,7 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/manual-override", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
 
-        StaticJsonDocument<256> doc;
+        JsonDocument doc;
         doc["enabled"] = configManager->getManualOverrideEnabled();
         doc["position"] = configManager->getManualOverridePosition();
         doc["timeout"] = configManager->getManualOverrideTimeout();
@@ -890,7 +890,7 @@ void WebServerManager::setupDefaultRoutes() {
         ConfigManager* configManager = ConfigManager::getInstance();
         // Increased from 1024 to 2048 to accommodate webhook URL (up to 512 chars)
         // and other configuration fields. Total estimated size: ~1500 bytes max
-        DynamicJsonDocument doc(2048);
+        JsonDocument doc;
 
         configManager->getJson(doc);
 
@@ -903,7 +903,7 @@ void WebServerManager::setupDefaultRoutes() {
     _server->on("/api/config/export", HTTP_GET, [](AsyncWebServerRequest *request) {
         ConfigManager* configManager = ConfigManager::getInstance();
         // Increased from 1024 to 2048 to match /api/config endpoint
-        DynamicJsonDocument doc(2048);
+        JsonDocument doc;
 
         configManager->getJson(doc);
 
@@ -941,7 +941,7 @@ void WebServerManager::setupDefaultRoutes() {
             if (final) {
                 ConfigManager* configManager = ConfigManager::getInstance();
                 // Increased from 1024 to 2048 to match export endpoint
-                DynamicJsonDocument doc(2048);
+                JsonDocument doc;
 
                 DeserializationError error = deserializeJson(doc, fileContent);
                 if (error) {
@@ -972,7 +972,7 @@ void WebServerManager::setupDefaultRoutes() {
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
             // Increased from 1024 to 2048 to accommodate webhook URL (up to 512 chars)
             // and other configuration fields. Total estimated size: ~1500 bytes max
-            static DynamicJsonDocument jsonDoc(2048);
+            static JsonDocument jsonDoc;
             static String jsonBuffer;
 
             if (index == 0) {

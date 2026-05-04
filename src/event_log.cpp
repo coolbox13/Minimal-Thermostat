@@ -69,7 +69,7 @@ String EventLog::getEntriesJSON() {
 }
 
 String EventLog::getFilteredEntriesJSON(LogLevel minLevel, const char* tag) {
-    DynamicJsonDocument doc(8192);  // Adjust size as needed
+    JsonDocument doc;  // Adjust size as needed
     JsonArray array = doc.to<JsonArray>();
 
     for (const auto& entry : _entries) {
@@ -78,7 +78,7 @@ String EventLog::getFilteredEntriesJSON(LogLevel minLevel, const char* tag) {
         if (tag != nullptr && entry.tag != tag) continue;
 
         // Create JSON object for this entry
-        JsonObject obj = array.createNestedObject();
+        JsonObject obj = array.add<JsonObject>();
         obj["timestamp"] = entry.timestamp;
         obj["level"] = logLevelToString(entry.level);
         obj["tag"] = entry.tag;
@@ -150,7 +150,7 @@ bool EventLog::loadFromLittleFS() {
     }
 
     // Read the file content
-    DynamicJsonDocument doc(8192);
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, file);
     file.close();
 
@@ -209,11 +209,11 @@ bool EventLog::saveToLittleFS() {
     }
 
     // Create JSON array
-    DynamicJsonDocument doc(8192);
+    JsonDocument doc;
     JsonArray array = doc.to<JsonArray>();
 
     for (const auto& entry : _entries) {
-        JsonObject obj = array.createNestedObject();
+        JsonObject obj = array.add<JsonObject>();
         obj["timestamp"] = entry.timestamp;
         obj["level"] = logLevelToString(entry.level);
         obj["tag"] = entry.tag;

@@ -55,11 +55,11 @@ void HistoryManager::getHistoryJson(JsonDocument& doc, int maxPoints) {
 }
 
 void HistoryManager::getHistoryJson(JsonObject& obj, int maxPoints) {
-    JsonArray timestamps = obj.createNestedArray("timestamps");
-    JsonArray temperatures = obj.createNestedArray("temperatures");
-    JsonArray humidities = obj.createNestedArray("humidities");
-    JsonArray pressures = obj.createNestedArray("pressures");
-    JsonArray valvePositions = obj.createNestedArray("valvePositions");
+    JsonArray timestamps = obj["timestamps"].to<JsonArray>();
+    JsonArray temperatures = obj["temperatures"].to<JsonArray>();
+    JsonArray humidities = obj["humidities"].to<JsonArray>();
+    JsonArray pressures = obj["pressures"].to<JsonArray>();
+    JsonArray valvePositions = obj["valvePositions"].to<JsonArray>();
 
     // Calculate start index (oldest point in buffer)
     int startIdx;

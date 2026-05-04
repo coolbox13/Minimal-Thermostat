@@ -210,7 +210,7 @@ void initializeKNXAndMQTT() {
     EventLog::getInstance().setMQTTCallback([](LogLevel level, const char* tag, const char* message) {
         if (mqttClient.connected()) {
             // Create JSON payload for the log
-            StaticJsonDocument<256> doc;
+            JsonDocument doc;
             doc["timestamp"] = millis();
             doc["level"] = EventLog::logLevelToString(level);
             doc["tag"] = tag;

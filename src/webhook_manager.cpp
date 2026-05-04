@@ -21,7 +21,7 @@ bool WebhookManager::sendEvent(const String& eventName, const String& value1,
     }
 
     // Create JSON payload compatible with IFTTT format
-    StaticJsonDocument<256> doc;
+    JsonDocument doc;
     doc["event"] = eventName;
     doc["value1"] = value1;
     if (!value2.isEmpty()) {
