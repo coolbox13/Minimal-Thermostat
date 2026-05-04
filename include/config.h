@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Firmware Version
-#define FIRMWARE_VERSION "11.0"
+#define FIRMWARE_VERSION "11.1.0-exp.1"
 
 // KNX Configuration
 #define KNX_AREA 1
